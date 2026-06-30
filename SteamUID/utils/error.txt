@@ -1,0 +1,218 @@
+06-30 12:49:50 [error    ] Job "get_user_Summaries_job (trigger: interval[0:00:20], next run at: 2026-06-30 12:50:04 CST)" raised an exception
+╭───────────────────────────────────────── Traceback (most recent call last) ──────────────────────────────────────────╮
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_transports\default.py:101 in map_httpcore_exceptions                │
+│                                                                                                                      │
+│    98 │   if len(HTTPCORE_EXC_MAP) == 0:                                                                             │
+│    99 │   │   HTTPCORE_EXC_MAP = _load_httpcore_exceptions()                                                         │
+│   100 │   try:                                                                                                       │
+│ ❱ 101 │   │   yield                                                                                                  │
+│   102 │   except Exception as exc:                                                                                   │
+│   103 │   │   mapped_exc = None                                                                                      │
+│   104                                                                                                                │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_transports\default.py:394 in handle_async_request                   │
+│                                                                                                                      │
+│   391 │   │   │   extensions=request.extensions,                                                                     │
+│   392 │   │   )                                                                                                      │
+│   393 │   │   with map_httpcore_exceptions():                                                                        │
+│ ❱ 394 │   │   │   resp = await self._pool.handle_async_request(req)                                                  │
+│   395 │   │                                                                                                          │
+│   396 │   │   assert isinstance(resp.stream, typing.AsyncIterable)                                                   │
+│   397                                                                                                                │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpcore\_async\connection_pool.py:256 in handle_async_request             │
+│                                                                                                                      │
+│   253 │   │   │   │   closing = self._assign_requests_to_connections()                                               │
+│   254 │   │   │                                                                                                      │
+│   255 │   │   │   await self._close_connections(closing)                                                             │
+│ ❱ 256 │   │   │   raise exc from None                                                                                │
+│   257 │   │                                                                                                          │
+│   258 │   │   # Return the response. Note that in this case we still have to manage                                  │
+│   259 │   │   # the point at which the response is closed.                                                           │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpcore\_async\connection_pool.py:236 in handle_async_request             │
+│                                                                                                                      │
+│   233 │   │   │   │                                                                                                  │
+│   234 │   │   │   │   try:                                                                                           │
+│   235 │   │   │   │   │   # Send the request on the assigned connection.                                             │
+│ ❱ 236 │   │   │   │   │   response = await connection.handle_async_request(                                          │
+│   237 │   │   │   │   │   │   pool_request.request                                                                   │
+│   238 │   │   │   │   │   )                                                                                          │
+│   239 │   │   │   │   except ConnectionNotAvailable:                                                                 │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpcore\_async\http_proxy.py:316 in handle_async_request                  │
+│                                                                                                                      │
+│   313 │   │   │   │   │   "timeout": timeout,                                                                        │
+│   314 │   │   │   │   }                                                                                              │
+│   315 │   │   │   │   async with Trace("start_tls", logger, request, kwargs) as trace:                               │
+│ ❱ 316 │   │   │   │   │   stream = await stream.start_tls(**kwargs)                                                  │
+│   317 │   │   │   │   │   trace.return_value = stream                                                                │
+│   318 │   │   │   │                                                                                                  │
+│   319 │   │   │   │   # Determine if we should be using HTTP/1.1 or HTTP/2                                           │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpcore\_async\http11.py:376 in start_tls                                 │
+│                                                                                                                      │
+│   373 │   │   server_hostname: str | None = None,                                                                    │
+│   374 │   │   timeout: float | None = None,                                                                          │
+│   375 │   ) -> AsyncNetworkStream:                                                                                   │
+│ ❱ 376 │   │   return await self._stream.start_tls(ssl_context, server_hostname, timeout)                             │
+│   377 │                                                                                                              │
+│   378 │   def get_extra_info(self, info: str) -> typing.Any:                                                         │
+│   379 │   │   return self._stream.get_extra_info(info)                                                               │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpcore\_backends\anyio.py:67 in start_tls                                │
+│                                                                                                                      │
+│    64 │   │   │   anyio.EndOfStream: ConnectError,                                                                   │
+│    65 │   │   │   ssl.SSLError: ConnectError,                                                                        │
+│    66 │   │   }                                                                                                      │
+│ ❱  67 │   │   with map_exceptions(exc_map):                                                                          │
+│    68 │   │   │   try:                                                                                               │
+│    69 │   │   │   │   with anyio.fail_after(timeout):                                                                │
+│    70 │   │   │   │   │   ssl_stream = await anyio.streams.tls.TLSStream.wrap(                                       │
+│                                                                                                                      │
+│ C:\Users\sssysy\AppData\Roaming\uv\python\cpython-3.13-windows-x86_64-none\Lib\contextlib.py:162 in __exit__         │
+│                                                                                                                      │
+│   159 │   │   │   │   # tell if we get the same exception back                                                       │
+│   160 │   │   │   │   value = typ()                                                                                  │
+│   161 │   │   │   try:                                                                                               │
+│ ❱ 162 │   │   │   │   self.gen.throw(value)                                                                          │
+│   163 │   │   │   except StopIteration as exc:                                                                       │
+│   164 │   │   │   │   # Suppress StopIteration *unless* it's the same exception that                                 │
+│   165 │   │   │   │   # was passed to throw().  This prevents a StopIteration                                        │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpcore\_exceptions.py:14 in map_exceptions                               │
+│                                                                                                                      │
+│   11 │   except Exception as exc:  # noqa: PIE786                                                                    │
+│   12 │   │   for from_exc, to_exc in map.items():                                                                    │
+│   13 │   │   │   if isinstance(exc, from_exc):                                                                       │
+│ ❱ 14 │   │   │   │   raise to_exc(exc) from exc                                                                      │
+│   15 │   │   raise  # pragma: nocover                                                                                │
+│   16                                                                                                                 │
+│   17                                                                                                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+╭───────────────────────────────────────── Traceback (most recent call last) ──────────────────────────────────────────╮
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\apscheduler\executors\base.py:181 in run_coroutine_job                     │
+│                                                                                                                      │
+│   178 │   │                                                                                                          │
+│   179 │   │   logger.info('Running job "%s" (scheduled at %s)', job, run_time)                                       │
+│   180 │   │   try:                                                                                                   │
+│ ❱ 181 │   │   │   retval = await job.func(*job.args, **job.kwargs)                                                   │
+│   182 │   │   except BaseException:                                                                                  │
+│   183 │   │   │   exc, tb = sys.exc_info()[1:]                                                                       │
+│   184 │   │   │   formatted_tb = "".join(format_tb(tb))                                                              │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\gsuid_core\plugins\SteamUID\SteamUID\SteamPoll\__init__.py:26 in get_user_Summaries_job            │
+│                                                                                                                      │
+│   23 │   if not steamid_all:                                                                                         │
+│   24 │   │   return                                                                                                  │
+│   25 │                                                                                                               │
+│ ❱ 26 │   resp = await get_user_Summaries(steamid_all)                                                                │
+│   27 │                                                                                                               │
+│   28 │   push_list = []                                                                                              │
+│   29 │   for info in resp:                                                                                           │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\gsuid_core\plugins\SteamUID\SteamUID\utils\api.py:19 in get_user_Summaries                         │
+│                                                                                                                      │
+│   16 │   }                                                                                                           │
+│   17 │                                                                                                               │
+│   18 │   async with httpx.AsyncClient() as client:                                                                   │
+│ ❱ 19 │   │   response = await client.get(url, params=params)                                                         │
+│   20 │   │   data = response.json()                                                                                  │
+│   21 │   │   players = data.get("response", {}).get("players", [])                                                   │
+│   22 │   │   return players                                                                                          │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_client.py:1768 in get                                               │
+│                                                                                                                      │
+│   1765 │   │                                                                                                         │
+│   1766 │   │   **Parameters**: See `httpx.request`.                                                                  │
+│   1767 │   │   """                                                                                                   │
+│ ❱ 1768 │   │   return await self.request(                                                                            │
+│   1769 │   │   │   "GET",                                                                                            │
+│   1770 │   │   │   url,                                                                                              │
+│   1771 │   │   │   params=params,                                                                                    │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_client.py:1540 in request                                           │
+│                                                                                                                      │
+│   1537 │   │   │   timeout=timeout,                                                                                  │
+│   1538 │   │   │   extensions=extensions,                                                                            │
+│   1539 │   │   )                                                                                                     │
+│ ❱ 1540 │   │   return await self.send(request, auth=auth, follow_redirects=follow_redirects)                         │
+│   1541 │                                                                                                             │
+│   1542 │   @asynccontextmanager                                                                                      │
+│   1543 │   async def stream(                                                                                         │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_client.py:1629 in send                                              │
+│                                                                                                                      │
+│   1626 │   │                                                                                                         │
+│   1627 │   │   auth = self._build_request_auth(request, auth)                                                        │
+│   1628 │   │                                                                                                         │
+│ ❱ 1629 │   │   response = await self._send_handling_auth(                                                            │
+│   1630 │   │   │   request,                                                                                          │
+│   1631 │   │   │   auth=auth,                                                                                        │
+│   1632 │   │   │   follow_redirects=follow_redirects,                                                                │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_client.py:1657 in _send_handling_auth                               │
+│                                                                                                                      │
+│   1654 │   │   │   request = await auth_flow.__anext__()                                                             │
+│   1655 │   │   │                                                                                                     │
+│   1656 │   │   │   while True:                                                                                       │
+│ ❱ 1657 │   │   │   │   response = await self._send_handling_redirects(                                               │
+│   1658 │   │   │   │   │   request,                                                                                  │
+│   1659 │   │   │   │   │   follow_redirects=follow_redirects,                                                        │
+│   1660 │   │   │   │   │   history=history,                                                                          │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_client.py:1694 in _send_handling_redirects                          │
+│                                                                                                                      │
+│   1691 │   │   │   for hook in self._event_hooks["request"]:                                                         │
+│   1692 │   │   │   │   await hook(request)                                                                           │
+│   1693 │   │   │                                                                                                     │
+│ ❱ 1694 │   │   │   response = await self._send_single_request(request)                                               │
+│   1695 │   │   │   try:                                                                                              │
+│   1696 │   │   │   │   for hook in self._event_hooks["response"]:                                                    │
+│   1697 │   │   │   │   │   await hook(response)                                                                      │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_client.py:1730 in _send_single_request                              │
+│                                                                                                                      │
+│   1727 │   │   │   )                                                                                                 │
+│   1728 │   │                                                                                                         │
+│   1729 │   │   with request_context(request=request):                                                                │
+│ ❱ 1730 │   │   │   response = await transport.handle_async_request(request)                                          │
+│   1731 │   │                                                                                                         │
+│   1732 │   │   assert isinstance(response.stream, AsyncByteStream)                                                   │
+│   1733 │   │   response.request = request                                                                            │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_transports\default.py:393 in handle_async_request                   │
+│                                                                                                                      │
+│   390 │   │   │   content=request.stream,                                                                            │
+│   391 │   │   │   extensions=request.extensions,                                                                     │
+│   392 │   │   )                                                                                                      │
+│ ❱ 393 │   │   with map_httpcore_exceptions():                                                                        │
+│   394 │   │   │   resp = await self._pool.handle_async_request(req)                                                  │
+│   395 │   │                                                                                                          │
+│   396 │   │   assert isinstance(resp.stream, typing.AsyncIterable)                                                   │
+│                                                                                                                      │
+│ C:\Users\sssysy\AppData\Roaming\uv\python\cpython-3.13-windows-x86_64-none\Lib\contextlib.py:162 in __exit__         │
+│                                                                                                                      │
+│   159 │   │   │   │   # tell if we get the same exception back                                                       │
+│   160 │   │   │   │   value = typ()                                                                                  │
+│   161 │   │   │   try:                                                                                               │
+│ ❱ 162 │   │   │   │   self.gen.throw(value)                                                                          │
+│   163 │   │   │   except StopIteration as exc:                                                                       │
+│   164 │   │   │   │   # Suppress StopIteration *unless* it's the same exception that                                 │
+│   165 │   │   │   │   # was passed to throw().  This prevents a StopIteration                                        │
+│                                                                                                                      │
+│ D:\EPL\gsuid_core\.venv\Lib\site-packages\httpx\_transports\default.py:118 in map_httpcore_exceptions                │
+│                                                                                                                      │
+│   115 │   │   │   raise                                                                                              │
+│   116 │   │                                                                                                          │
+│   117 │   │   message = str(exc)                                                                                     │
+│ ❱ 118 │   │   raise mapped_exc(message) from exc                                                                     │
+│   119                                                                                                                │
+│   120                                                                                                                │
+│   121 class ResponseStream(SyncByteStream):                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ConnectTimeout

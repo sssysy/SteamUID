@@ -14,10 +14,15 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "前往 https://steamcommunity.com/dev/apikey 申请",
         "",
     ),
-    "BaseURL": GsStrConfig(
+    "APIBaseURL": GsStrConfig(
         "SteamAPIBaseURL",
         "steamAPI基础URL，用于反代",
         "https://api.steampowered.com",
+    ),
+    "storeBaseURL": GsStrConfig(
+        "Steam商店BaseURL",
+        "steam商店基础URL，用于反代",
+        "https://store.steampowered.com",
     ),
     "PollInterval": GsIntConfig(
         "轮询间隔",

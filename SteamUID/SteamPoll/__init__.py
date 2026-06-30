@@ -2,12 +2,15 @@ from gsuid_core.logger import logger
 from gsuid_core.aps import scheduler
 from gsuid_core.subscribe import gs_subscribe
 from ..utils.database.models import SteamIDInfo
-from .api import get_user_Summaries
+from ..utils.api import get_user_Summaries
 import json
 from ..SteamConfig import SteamConfig
+from ..utils.PIL.draw import draw_start_game_photo
+from ..utils.api import get_game_info
+from PIL import Image
+from gsuid_core.segment import MessageSegment
 
-
-# 订阅主题（与 SteamBind/__init__.py 保持一致）
+# 订阅
 STEAM_POLL_TASK = "SteamPoll"
 
 
@@ -16,12 +19,15 @@ STEAM_POLL_TASK = "SteamPoll"
     seconds=SteamConfig.get_config("PollInterval").data,
 )
 async def get_user_Summaries_job():
-    # 无绑定时跳过，避免无意义请求
     steamid_all = await SteamIDInfo.get_all_steamid64()
     if not steamid_all:
         return
 
-    resp = await get_user_Summaries(steamid_all)
+    try:
+        resp = await get_user_Summaries(steamid_all)
+    except Exception as error:
+        logger.warning(f"[SteamPoll] 拉取玩家摘要失败: {error!r}")
+        return
 
     push_list = []
     for info in resp:
@@ -42,8 +48,20 @@ async def get_user_Summaries_job():
             if info.get("gameid", "") != old_info.get("gameid", ""):
                 push_list.append(info)
 
+    # 预取所有 appid 的游戏信息
+    appids = {item.get("gameid") for item in push_list if item.get("gameid", "")}
+    game_info_map: dict[str, dict] = {}
+    for aid in appids:
+        try:
+            info = await get_game_info(aid)
+        except Exception as error:
+            logger.warning(f"[SteamPoll] 拉取游戏信息失败 appid={aid}: {error!r}")
+            continue
+        if info and info.get("success"):
+            game_info_map[aid] = info.get("data", {})
+
     # 推送逻辑移出 for info 循环，避免重复推送
-    for item in push_list:
+    for item in push_list: # item -> appidinfo
         steamid64 = item.get("steamid")
         # 反查该 steamid64 的所有订阅者（订阅系统自动处理路由）
         subs = await gs_subscribe.get_subscribe(STEAM_POLL_TASK, uid=steamid64)
@@ -51,7 +69,25 @@ async def get_user_Summaries_job():
             continue
 
         if item.get("gameid", ""):
-            send_msg = f"{item.get('personaname')} 正在玩 {item.get('gameextrainfo')}"
+            appid = item.get("gameid")
+            game_data = game_info_map.get(appid, {})
+            game_avatar = game_data.get("header_image")
+            try:
+                IMG = await draw_start_game_photo(
+                    appid=appid,
+                    game_name=item.get("gameextrainfo"),
+                    avatar_url=item.get("avatarfull"),
+                    avatar_hash=item.get("avatarhash"),
+                    username=item.get("personaname"),
+                    game_background=game_avatar,
+                )
+            except Exception as error:
+                logger.warning(f"[SteamPoll] 绘图失败 appid={appid}: {error!r}")
+                IMG = None
+            if isinstance(IMG, Image.Image):
+                send_msg = MessageSegment.image(IMG)
+            else:
+                send_msg = f"{item.get('personaname')} 正在玩 {item.get('gameextrainfo')}"
         else:
             send_msg = f"{item.get('personaname')} 结束游戏"
 

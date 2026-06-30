@@ -5,7 +5,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.subscribe import gs_subscribe
 from ..utils.database.models import SteamIDInfo
-from ..SteamPoll.api import get_user_Summaries
+from ..utils.api import get_user_Summaries
 
 bind_sv = SV("绑定账号")
 
