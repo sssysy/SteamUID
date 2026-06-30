@@ -66,7 +66,7 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
         group_id=ev.group_id,
         bot_self_id=ev.bot_self_id,
     )
-    await bot.send("绑定成功")
+    await bot.send(f"绑定 steamid: {steamid64} 成功")
 
     # 判断资料公开性，如果没公开就提醒一次用户
     visible = steamid_visible(steamid_info[0])
@@ -112,7 +112,7 @@ async def do_unbind(bot: Bot, ev: Event, steamid64: str):
     if not remaining:
         await SteamIDInfo.delete_steamuserinfo(steamid64)
 
-    await bot.send("解绑成功")
+    await bot.send(f"解绑 steamid: {steamid64} 成功")
 
 @bind_sv.on_command("解绑")
 async def steamunbind(bot: Bot, ev: Event):
@@ -142,4 +142,4 @@ async def steamview(bot: Bot, ev: Event):
     if not steamid_list:
         return await bot.send("未绑定任何 steamid")
 
-    await bot.send(f"已绑定的steamid：{','.join(steamid_list)}")
+    await bot.send(f"[steam] 已绑定的steamid：\n{'\n'.join(steamid_list)}")
