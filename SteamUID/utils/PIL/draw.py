@@ -30,15 +30,16 @@ async def draw_start_game_photo(
 ) -> Image.Image | None:
     if game_background is None:
         return None
-
+    # 背景
     m = _BG_HASH_PATTERN.search(game_background)
     if m:
         bg_cache = CACHE_DIR / f"{m.group(1)}.jpg"
     else:
         bg_cache = CACHE_DIR / f"{appid}.jpg"
     bg = await _load_or_download(game_background, bg_cache)
+    # 画布
     W_bg, H_bg = bg.size
-
+    # 玩家
     avatar_cache = CACHE_DIR / f"{avatar_hash}.jpg"
     avatar = await _load_or_download(avatar_url, avatar_cache)
     new_w = round(avatar.width * 85 / avatar.height)

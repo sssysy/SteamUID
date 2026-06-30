@@ -33,7 +33,6 @@ async def get_user_Summaries_job():
     for info in resp:
         steamid64 = info.get("steamid")
         if not steamid64:
-            # 缺字段跳过，避免污染缓存
             continue
 
         old_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
@@ -63,7 +62,7 @@ async def get_user_Summaries_job():
     # 推送逻辑移出 for info 循环，避免重复推送
     for item in push_list: # item -> appidinfo
         steamid64 = item.get("steamid")
-        # 反查该 steamid64 的所有订阅者（订阅系统自动处理路由）
+        # 反查该 steamid64 的所有订阅者
         subs = await gs_subscribe.get_subscribe(STEAM_POLL_TASK, uid=steamid64)
         if not subs:
             continue
