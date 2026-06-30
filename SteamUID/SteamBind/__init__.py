@@ -7,6 +7,7 @@ from gsuid_core.subscribe import gs_subscribe
 from ..utils.database.models import SteamIDInfo
 from ..utils.api import get_user_Summaries
 from . import login
+from ..SteamConfig import SteamConfig
 
 bind_sv = SV("绑定账号")
 
@@ -75,7 +76,10 @@ async def steambind(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
     # 手动绑定
     if steamid64:
-        await do_bind(bot, ev, steamid64)
+        if SteamConfig.get_config("OnlyOpenID").data:
+            return await bot.send("仅允许网页登录，不支持手动绑定steamid！")
+        else:
+            await do_bind(bot, ev, steamid64)
 
     # 自动绑定
     else:
