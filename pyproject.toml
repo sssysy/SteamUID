@@ -1,7 +1,7 @@
 [project]
 name = "SteamUID"
 version = "0.1.0"
-description = "SteamUID 插件"
+description = "多功能 steam 插件"
 authors = [
     {name = "sssysy", email = "sssysy@vip.qq.com"},
 ]
