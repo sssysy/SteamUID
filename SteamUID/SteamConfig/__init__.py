@@ -24,6 +24,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "steam商店基础URL，用于反代",
         "https://store.steampowered.com",
     ),
+    "gscoreBaseURL": GsStrConfig(
+        "steam登录基础URL",
+        "应为 gscore 的公网地址或穿透地址",
+        "http://127.0.0.1:8765",
+    ),
     "PollInterval": GsIntConfig(
         "轮询间隔",
         "轮询间隔，单位秒。修改后需重启 GsCore 生效",
