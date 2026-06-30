@@ -3,16 +3,12 @@ import json
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
-from gsuid_core.subscribe import gs_subscribe
-from ..utils.database.models import SteamIDInfo
+from ..utils.database.models import SteamIDInfo, SteamBind
 from ..utils.api import get_user_Summaries
 from . import login
 from ..SteamConfig import SteamConfig
 
 bind_sv = SV("绑定账号")
-
-# 订阅
-STEAM_POLL_TASK = "SteamPoll"
 
 
 async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
@@ -43,7 +39,7 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
         return await bot.send("请输入正确的64位steamid")
 
     # id 已被绑定
-    existing = await gs_subscribe.get_subscribe(STEAM_POLL_TASK, uid=steamid64)
+    existing = await SteamBind.get_bind_by_steamid(steamid64)
     if existing:
         # 已订阅
         is_self = any(
@@ -60,8 +56,16 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
     if not await update_steam_info(steamid64, steamid_info):
         return await bot.send("该steamid不存在")
 
-    # 写订阅
-    await gs_subscribe.add_subscribe("single", STEAM_POLL_TASK, ev, uid=steamid64)
+    # 写绑定
+    await SteamBind.upsert_bind(
+        steamid64=steamid64,
+        bot_id=ev.bot_id,
+        user_id=ev.user_id,
+        user_type=ev.user_type,
+        WS_BOT_ID=ev.WS_BOT_ID,
+        group_id=ev.group_id,
+        bot_self_id=ev.bot_self_id,
+    )
     await bot.send("绑定成功")
 
     # 判断资料公开性，如果没公开就提醒一次用户
@@ -93,33 +97,18 @@ async def do_unbind(bot: Bot, ev: Event, steamid64: str):
     if not steamid64 or not steamid64.isdigit():
         return await bot.send("请输入正确的64位steamid")
 
-    # 查绑定状态
-    existing = await gs_subscribe.get_subscribe(
-        STEAM_POLL_TASK,
-        uid=steamid64,
-        user_id=ev.user_id,
+    # 删除绑定（返回 0 成功 / -1 未找到）
+    result = await SteamBind.delete_bind(
+        steamid64=steamid64,
         bot_id=ev.bot_id,
+        user_id=ev.user_id,
         user_type=ev.user_type,
     )
-    if not existing:
+    if result != 0:
         return await bot.send("未找到绑定的项目")
 
-    # 删除订阅
-    await gs_subscribe.delete_subscribe("single", STEAM_POLL_TASK, ev, uid=steamid64)
-
-    # 复查
-    still_exist = await gs_subscribe.get_subscribe(
-        STEAM_POLL_TASK,
-        uid=steamid64,
-        user_id=ev.user_id,
-        bot_id=ev.bot_id,
-        user_type=ev.user_type,
-    )
-    if still_exist:
-        return await bot.send("解绑失败，请稍后重试")
-
     # 检查是否需要删除steamid缓存
-    remaining = await gs_subscribe.get_subscribe(STEAM_POLL_TASK, uid=steamid64)
+    remaining = await SteamBind.get_bind_by_steamid(steamid64)
     if not remaining:
         await SteamIDInfo.delete_steamuserinfo(steamid64)
 
@@ -141,16 +130,15 @@ async def steamunbind(bot: Bot, ev: Event):
 
 @bind_sv.on_command("查看")
 async def steamview(bot: Bot, ev: Event):
-    subs = await gs_subscribe.get_subscribe(
-        STEAM_POLL_TASK,
-        user_id=ev.user_id,
+    subs = await SteamBind.get_binds_by_user(
         bot_id=ev.bot_id,
+        user_id=ev.user_id,
         user_type=ev.user_type,
     )
     if not subs:
         return await bot.send("未绑定任何 steamid")
 
-    steamid_list = [sub.uid for sub in subs if sub.uid]
+    steamid_list = [sub.steamid64 for sub in subs if sub.steamid64]
     if not steamid_list:
         return await bot.send("未绑定任何 steamid")
 

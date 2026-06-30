@@ -1,7 +1,6 @@
 from gsuid_core.logger import logger
 from gsuid_core.aps import scheduler
-from gsuid_core.subscribe import gs_subscribe
-from ..utils.database.models import SteamIDInfo
+from ..utils.database.models import SteamIDInfo, SteamBind
 from ..utils.api import get_user_Summaries
 import json
 from ..SteamConfig import SteamConfig
@@ -9,9 +8,6 @@ from ..utils.PIL.draw import draw_start_game_photo
 from ..utils.api import get_game_info
 from PIL import Image
 from gsuid_core.segment import MessageSegment
-
-# 订阅
-STEAM_POLL_TASK = "SteamPoll"
 
 
 @scheduler.scheduled_job(
@@ -62,8 +58,8 @@ async def get_user_Summaries_job():
     # 推送逻辑移出 for info 循环，避免重复推送
     for item in push_list: # item -> appidinfo
         steamid64 = item.get("steamid")
-        # 反查该 steamid64 的所有订阅者
-        subs = await gs_subscribe.get_subscribe(STEAM_POLL_TASK, uid=steamid64)
+        # 反查该 steamid64 的所有绑定者
+        subs = await SteamBind.get_bind_by_steamid(steamid64)
         if not subs:
             continue
 
