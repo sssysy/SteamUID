@@ -46,7 +46,7 @@ async def get_user_Summaries_job():
     for info, old_info in push_list:
         if info.get("gameid", ""):
             appids.add(info.get("gameid"))
-        elif old_info.get("gameid", ""):
+        if old_info.get("gameid", ""):
             appids.add(old_info.get("gameid"))
     game_info_map: dict[str, dict] = {}
     for aid in appids:
@@ -65,12 +65,23 @@ async def get_user_Summaries_job():
         subs = await SteamBind.get_bind_by_steamid(steamid64)
         if not subs:
             continue
+        
+        is_playing = bool(info.get("gameid", ""))
+        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
+        game_data = game_info_map.get(appid, {})
+        game_avatar = game_data.get("header_image")
 
-        if info.get("gameid", ""):
+        # 提前判断是否有用户需要推送，避免无效渲染
+        push_switch = set(SteamConfig.get_config("PushSwitch").data)
+        target_event = "开始游戏" if is_playing else "结束游戏"
+        if target_event not in push_switch:
+            continue
+        push_column = "push_start_game" if is_playing else "push_end_game"
+        if not any(getattr(sub, push_column) for sub in subs):
+            continue
+
+        if is_playing:
             # 开始游戏
-            appid = info.get("gameid")
-            game_data = game_info_map.get(appid, {})
-            game_avatar = game_data.get("header_image")
             try:
                 IMG = await draw_start_game_photo(
                     appid=appid,
@@ -89,9 +100,6 @@ async def get_user_Summaries_job():
                 send_msg = f"{info.get('personaname')} 正在玩 {info.get('gameextrainfo')}"
         else:
             # 结束游戏
-            appid = old_info.get("gameid", "")
-            game_data = game_info_map.get(appid, {})
-            game_avatar = game_data.get("header_image")
             try:
                 IMG = await draw_end_game_photo(
                     appid=appid,
@@ -110,6 +118,10 @@ async def get_user_Summaries_job():
                 send_msg = f"{info.get('personaname')} 结束游戏 {old_info.get('gameextrainfo')}"
 
         for sub in subs:
+            if is_playing and not sub.push_start_game:
+                continue
+            if not is_playing and not sub.push_end_game:
+                continue
             try:
                 await sub.send(send_msg)
             except Exception as error:
