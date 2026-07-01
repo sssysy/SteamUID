@@ -1,0 +1,131 @@
+{
+  "绑定账号": {
+    "desc": "绑定时如果不知道 steamid 是多少就留空发送使用网页登录",
+    "data": [
+      {
+        "name": "绑定",
+        "desc": "绑定 steam 账号",
+        "eg": "绑定",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "解绑",
+        "desc": "解绑 steam 账号",
+        "eg": "解绑",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "查看",
+        "desc": "查看已绑定的 steam 账号",
+        "eg": "查看",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "推送服务(待更新)": {
+    "desc": "控制已绑定 steam 账号状态变化推送",
+    "data": [
+      {
+        "name": "开启推送",
+        "desc": "开启自己在群聊 / 私聊的推送功能",
+        "eg": "开启推送",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭推送",
+        "desc": "关闭自己在群聊 / 私聊的推送功能",
+        "eg": "关闭推送",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "推送状态",
+        "desc": "查看自己的推送开关状态",
+        "eg": "推送状态",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "库存服务(待更新)": {
+    "desc": "查询 steam 库存与年度游戏榜单",
+    "data": [
+      {
+        "name": "库存",
+        "desc": "查看自己的 steam 游戏库存",
+        "eg": "库存",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "年度榜单",
+        "desc": "查看自己的 steam 年度游戏榜单",
+        "eg": "年度榜单2025",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "成就服务(待更新)": {
+    "desc": "查询游戏成就并控制成就推送",
+    "data": [
+      {
+        "name": "成就总览",
+        "desc": "查看自己最近游戏的成就",
+        "eg": "成就",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "游戏成就",
+        "desc": "查看指定游戏的成就",
+        "eg": "游戏成就1282270",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "开启成就推送",
+        "desc": "开启自己成就解锁的推送功能",
+        "eg": "开启成就推送",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭成就推送",
+        "desc": "关闭自己成就解锁的推送功能",
+        "eg": "关闭成就推送",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "其他服务": {
+    "desc": "一些杂项服务",
+    "data": [
+      {
+        "name": "帮助",
+        "desc": "呼出该帮助界面",
+        "eg": "帮助",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  }
+}

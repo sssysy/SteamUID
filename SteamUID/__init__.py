@@ -1,7 +1,7 @@
 from gsuid_core.sv import Plugins
 
 Plugins(
-    name="SteamUID",
+    name="steamUID",
     force_prefix=["steam"],
     allow_empty_prefix=False,
 )

@@ -38,9 +38,11 @@
 ### 基础命令
 | 命令 | 说明 |
 |------|:------:|
-| `steam绑定 <steamid64>` | 绑定steam |
-| `steam解绑 <steamid64>` | 解绑steam |
+| `steam帮助` | 查看帮助菜单 |
+| `steam绑定` | 绑定steam |
+| `steam解绑` | 解绑steam |
 | `steam查看` | 查看已绑定的steamid64列表 |
+
 
 
 ## 丨其他
