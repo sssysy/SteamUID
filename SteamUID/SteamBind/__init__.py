@@ -9,7 +9,7 @@ from . import login
 from ..SteamConfig import SteamConfig
 
 bind_sv = SV("绑定账号")
-
+BASE_STEAM_ID64 = 76561197960265728
 
 async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
     """拉取缓存 Steam 用户信息"""
@@ -85,6 +85,9 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
 @bind_sv.on_command(("绑定", "登录", "登陆", "bind"))
 async def steambind(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
+    # 转换好友码为 steamid64
+    if int(steamid64) < BASE_STEAM_ID64:
+        steamid64 = str(BASE_STEAM_ID64 + int(steamid64))
     # 手动绑定
     if steamid64:
         if SteamConfig.get_config("OnlyOpenID").data:
@@ -125,6 +128,9 @@ async def do_unbind(bot: Bot, ev: Event, steamid64: str):
 @bind_sv.on_command(("解绑", "unbind", "退出登录", "退出登陆"))
 async def steamunbind(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
+    # 转换好友码为 steamid64
+    if int(steamid64) < BASE_STEAM_ID64:
+        steamid64 = str(BASE_STEAM_ID64 + int(steamid64))
     # 手动解绑
     if steamid64:
         await do_unbind(bot, ev, steamid64)

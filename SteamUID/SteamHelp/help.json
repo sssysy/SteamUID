@@ -1,19 +1,19 @@
 {
   "绑定账号": {
-    "desc": "绑定时如果不知道 steamid 是多少就留空发送使用网页登录",
+    "desc": "绑定时如果不知道好友码就留空发送，会发起网页登录",
     "data": [
       {
         "name": "绑定",
-        "desc": "绑定 steam 账号,可附加steamid",
-        "eg": "绑定(123456)",
+        "desc": "绑定 steam 账号,后可接好友码",
+        "eg": "绑定12345678",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "解绑",
-        "desc": "解绑 steam 账号,可附加steamid",
-        "eg": "解绑",
+        "desc": "解绑 steam 账号,后可接好友码",
+        "eg": "解绑12345678",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
