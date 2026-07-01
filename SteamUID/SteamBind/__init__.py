@@ -146,6 +146,9 @@ async def steamview(bot: Bot, ev: Event):
         else:
             other_id_list.append(sub.steamid64)
 
+    now_id_list = list(set(now_id_list))
+    other_id_list = list(set(other_id_list))
+    
     if not now_id_list and not other_id_list:
         return await bot.send("未绑定任何 steamid")
     
