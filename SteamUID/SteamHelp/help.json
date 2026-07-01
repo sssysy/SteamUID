@@ -4,15 +4,15 @@
     "data": [
       {
         "name": "绑定",
-        "desc": "绑定 steam 账号",
-        "eg": "绑定",
+        "desc": "绑定 steam 账号,可附加steamid",
+        "eg": "绑定(123456)",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "解绑",
-        "desc": "解绑 steam 账号",
+        "desc": "解绑 steam 账号,可附加steamid",
         "eg": "解绑",
         "need_ck": false,
         "need_sk": false,
@@ -20,8 +20,16 @@
       },
       {
         "name": "查看",
-        "desc": "查看已绑定的 steam 账号",
+        "desc": "查看自己当前群绑定 steam",
         "eg": "查看",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "查看全部",
+        "desc": "查看自己所有绑定 steam",
+        "eg": "查看全部",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
