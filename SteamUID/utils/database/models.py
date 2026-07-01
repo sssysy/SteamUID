@@ -27,6 +27,9 @@ exec_list.extend(
         'ALTER TABLE steambind ADD COLUMN group_id VARCHAR',
         'ALTER TABLE steambind ADD COLUMN bot_self_id VARCHAR',
         'ALTER TABLE steambind ADD COLUMN user_type VARCHAR',
+        # 推送开关列
+        'ALTER TABLE steambind ADD COLUMN push_start_game BOOLEAN DEFAULT 1',
+        'ALTER TABLE steambind ADD COLUMN push_end_game BOOLEAN DEFAULT 1',
     ]
 )
 
@@ -112,6 +115,8 @@ class SteamBind(BaseIDModel, table=True):
     group_id: Optional[str] = Field(default=None, title="群ID")
     bot_self_id: Optional[str] = Field(default=None, title="机器人自身ID")
     user_type: str = Field(default=None, title="发送类型")
+    push_start_game: bool = Field(default=True, title="推送开始游戏")
+    push_end_game: bool = Field(default=True, title="推送结束游戏")
 
     async def send(
         self,
@@ -202,7 +207,7 @@ class SteamBind(BaseIDModel, table=True):
         result = await session.execute(stmt)
         existing = result.scalars().first()
 
-        if existing is not None:
+        if existing is not None:# 更新绑定不需要修改推送状态
             existing.WS_BOT_ID = WS_BOT_ID
             existing.group_id = group_id
             existing.bot_self_id = bot_self_id
@@ -217,6 +222,8 @@ class SteamBind(BaseIDModel, table=True):
                     WS_BOT_ID=WS_BOT_ID,
                     group_id=group_id,
                     bot_self_id=bot_self_id,
+                    push_start_game=True,
+                    push_end_game=True,
                 )
             )
         return 0
@@ -275,6 +282,68 @@ class SteamBind(BaseIDModel, table=True):
         if result.rowcount and result.rowcount > 0:  # type: ignore
             return 0
         return -1
+
+    PUSH_COLUMNS = {"push_start_game", "push_end_game"}
+
+    @classmethod
+    @with_session
+    async def set_push_status(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        steamid64: str,
+        bot_id: str,
+        user_id: str,
+        user_type: str,
+        push_column: str,
+        enabled: bool,
+    ) -> int:
+        """
+        设置某个推送开关。
+        0: 成功
+        -1: 未找到绑定
+        -2: 非法列名
+        """
+        if push_column not in cls.PUSH_COLUMNS:
+            return -2
+        stmt = select(cls).where(
+            cls.steamid64 == steamid64,
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+        )
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is None:
+            return -1
+        setattr(existing, push_column, enabled)
+        session.add(existing)
+        return 0
+
+    @classmethod
+    @with_session
+    async def get_push_status(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        steamid64: str,
+        bot_id: str,
+        user_id: str,
+        user_type: str,
+        push_column: str,
+    ) -> Optional[bool]:
+        """
+        查询某个绑定记录的某个推送状态。
+        None未找到。
+        """
+        if push_column not in cls.PUSH_COLUMNS:
+            return None
+        stmt = select(getattr(cls, push_column)).where(
+            cls.steamid64 == steamid64,
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+        )
+        result = await session.execute(stmt)
+        return result.scalars().first()
 
 
 @site.register_admin
