@@ -75,7 +75,7 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
 
 
 
-@bind_sv.on_command("绑定")
+@bind_sv.on_command(("绑定", "登录", "登陆", "bind"))
 async def steambind(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
     # 手动绑定
@@ -114,7 +114,7 @@ async def do_unbind(bot: Bot, ev: Event, steamid64: str):
 
     await bot.send(f"解绑 steamid: {steamid64} 成功")
 
-@bind_sv.on_command("解绑")
+@bind_sv.on_command(("解绑", "unbind", "退出登录", "退出登陆"))
 async def steamunbind(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
     # 手动解绑

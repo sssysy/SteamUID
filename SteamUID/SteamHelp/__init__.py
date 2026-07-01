@@ -13,7 +13,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.logger import logger
 
-from ..version import steamUID_version
+from ..version import SteamUID_version
 
 ICON = Path(__file__).parent.parent.parent / 'ICON.png'
 HELP_DATA = Path(__file__).parent / 'help.json'
@@ -21,7 +21,7 @@ ICON_PATH = Path(__file__).parent / 'icon_path'
 TEXT_PATH = Path(__file__).parent / 'texture2d'
 
 # 使用Core内置函数`get_plugin_available_prefix`获取插件可用的前缀
-PREFIX = get_plugin_available_prefix('steamUID')
+PREFIX = get_plugin_available_prefix('SteamUID')
 
 sv_steam_help = SV('steam帮助')
 
@@ -34,10 +34,10 @@ async def get_help_data() -> Dict[str, PluginHelp]:
 async def get_steam_help(user_pm: int):
     return await get_new_help(
         # 插件名
-        plugin_name='steamUID',
+        plugin_name='SteamUID',
         # 插件的badge, 会出现在帮助图title的右边的色块
         # 该值是一个dict, key为内容, value为色块颜色（RGB数组或者字符串）
-        plugin_info={f'v{steamUID_version}': ''},
+        plugin_info={f'v{SteamUID_version}': ''},
         # 插件的logo
         plugin_icon=Image.open(ICON),
         # 之前准备的help.json文件
@@ -67,7 +67,7 @@ async def get_steam_help(user_pm: int):
         pm=user_pm,
     )
 
-register_help('steamUID', f'{PREFIX}帮助', Image.open(ICON))
+register_help('SteamUID', f'{PREFIX}帮助', Image.open(ICON))
 
 
 

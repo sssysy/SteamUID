@@ -1,1 +1,1 @@
-steamUID_version = '0.1.0'
+SteamUID_version = '0.1.0'

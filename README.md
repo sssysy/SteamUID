@@ -1,9 +1,9 @@
 # steamUID
 
 <p align="center">
-  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="ICON.gif" width="256" height="256" alt="steamUID"></a>
+  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="ICON.gif" width="256" height="256" alt="SteamUID"></a>
 </p>
-<h1 align="center">steamUID 0.1.0</h1>
+<h1 align="center">SteamUID 0.1.0</h1>
 <h4 align="center">基于 gsuid_core 的 steam 状态推送插件</h4>
 <div align="center">
   <a href="https://docs.sayu-bot.com/" target="_blank">安装文档</a> &nbsp; · &nbsp;
@@ -16,7 +16,7 @@
 >
 > **运行环境要求 Python `3.11+`**
 >
-> ~~如果已经是最新版本的 `gsuid_core`，可以直接对 bot 发送 `core安装插件steamUID`，然后重启 Core 以应用安装~~
+> ~~如果已经是最新版本的 `gsuid_core`，可以直接对 bot 发送 `core安装插件SteamUID`，然后重启 Core 以应用安装~~
 >
 > 插件检测 steam 状态需要将 steam 资料设置为公开
 >

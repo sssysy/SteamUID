@@ -18,7 +18,7 @@ from gsuid_core.web_app import app
 from ..SteamConfig import SteamConfig
 
 STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
-LOGIN_REDIRECT_URL = "https://github.com/sssysy/steamUID"
+LOGIN_REDIRECT_URL = "https://github.com/sssysy/SteamUID"
 LOGIN_TTL_S = 300
 LOGIN_POLL_INTERVAL = 2.0
 
