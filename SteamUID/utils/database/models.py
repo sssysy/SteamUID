@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, ClassVar, Dict, List, Optional, Set, Type, TypeVar, Union
 
 from sqlmodel import Field, select
 from sqlalchemy import delete
@@ -283,7 +283,7 @@ class SteamBind(BaseIDModel, table=True):
             return 0
         return -1
 
-    PUSH_COLUMNS = {"push_start_game", "push_end_game"}
+    PUSH_COLUMNS: ClassVar[Set[str]] = {"push_start_game", "push_end_game"}
 
     @classmethod
     @with_session

@@ -3,7 +3,7 @@ from gsuid_core.utils.plugins_config.models import (
     GsStrConfig,
     GsIntConfig,
     GsBoolConfig,
-    GsListConfig
+    GsListStrConfig
 )
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
 from gsuid_core.data_store import get_res_path
@@ -41,7 +41,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后将不支持用户手动传入steamid，而采用 Openid 验证 steamid 所有权后绑定",
         False,
     ),
-    "PushSwitch": GsListConfig(
+    "PushSwitch": GsListStrConfig(
         "推送总开关",
         "选择开启的推送事件",
         ["开始游戏","结束游戏"],
