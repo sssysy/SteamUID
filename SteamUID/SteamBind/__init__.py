@@ -110,6 +110,7 @@ async def do_unbind(bot: Bot, ev: Event, steamid64: str):
         bot_id=ev.bot_id,
         user_id=ev.user_id,
         user_type=ev.user_type,
+        group_id=ev.group_id,
     )
     if result != 0:
         return await bot.send("未找到绑定的项目")

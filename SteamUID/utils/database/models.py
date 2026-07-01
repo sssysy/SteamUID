@@ -267,6 +267,7 @@ class SteamBind(BaseIDModel, table=True):
         bot_id: str,
         user_id: str,
         user_type: str,
+        group_id: Optional[str] = None,
     ) -> int:
         """
         0: 成功
@@ -277,6 +278,7 @@ class SteamBind(BaseIDModel, table=True):
             cls.bot_id == bot_id, # type: ignore
             cls.user_id == user_id, # type: ignore
             cls.user_type == user_type, # type: ignore
+            cls.group_id == group_id # type: ignore
         )
         result = await session.execute(stmt)
         if result.rowcount and result.rowcount > 0:  # type: ignore
