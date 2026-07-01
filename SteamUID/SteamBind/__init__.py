@@ -43,7 +43,7 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
     if existing:
         # 已订阅
         is_self = any(
-            sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
+            sub.user_id == ev.user_id and sub.bot_id == ev.bot_id and sub.group_id == ev.group_id
             for sub in existing
         )
         if is_self:
@@ -148,7 +148,7 @@ async def steamview(bot: Bot, ev: Event):
 
     now_id_list = list(set(now_id_list))
     other_id_list = list(set(other_id_list))
-    
+
     if not now_id_list and not other_id_list:
         return await bot.send("未绑定任何 steamid")
     
