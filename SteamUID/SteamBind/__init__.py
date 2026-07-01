@@ -43,12 +43,19 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
     if existing:
         # 已订阅
         is_self = any(
-            sub.user_id == ev.user_id and sub.bot_id == ev.bot_id and sub.group_id == ev.group_id
+            sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
             for sub in existing
         )
-        if is_self:
-            return await bot.send("你已绑定该steamid！")
-        else:
+        if is_self: # 是自己
+            is_binding_here = any(
+                sub.group_id == ev.group_id
+                for sub in existing if sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
+            )
+            if is_binding_here: # 在这个群内绑定过
+                return await bot.send("你已在该群绑定该steamid！")
+            else: # 没绑定过就继续
+                pass
+        else: # 被其他人绑定
             return await bot.send("该steamid已被他人绑定！")
 
     # 取 steamid 信息
