@@ -203,13 +203,13 @@ class SteamBind(BaseIDModel, table=True):
             cls.bot_id == bot_id,
             cls.user_id == user_id,
             cls.user_type == user_type,
+            cls.group_id == group_id
         )
         result = await session.execute(stmt)
         existing = result.scalars().first()
 
         if existing is not None:# 更新绑定不需要修改推送状态
             existing.WS_BOT_ID = WS_BOT_ID
-            existing.group_id = group_id
             existing.bot_self_id = bot_self_id
             session.add(existing)
         else:
