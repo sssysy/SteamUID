@@ -138,8 +138,21 @@ async def steamview(bot: Bot, ev: Event):
     if not subs:
         return await bot.send("未绑定任何 steamid")
 
-    steamid_list = [sub.steamid64 for sub in subs if sub.steamid64]
-    if not steamid_list:
-        return await bot.send("未绑定任何 steamid")
+    now_id_list = []
+    other_id_list = []
+    for sub in subs:
+        if sub.group_id == ev.group_id:
+            now_id_list.append(sub.steamid64)
+        else:
+            other_id_list.append(sub.steamid64)
 
-    await bot.send(f"[steam] 已绑定的steamid：\n{'\n'.join(steamid_list)}")
+    if not now_id_list and not other_id_list:
+        return await bot.send("未绑定任何 steamid")
+    
+    send_msg = "[steam] -=绑定列表=-\n"
+    if now_id_list:
+        send_msg += f"此群已绑定的steamid：\n{'\n'.join(now_id_list) }\n{"-"*20}\n"
+    if other_id_list:
+        send_msg += f"其他地方已绑定的steamid：\n{'\n'.join(other_id_list) }\n{"-"*20}\n"
+
+    await bot.send(send_msg)
