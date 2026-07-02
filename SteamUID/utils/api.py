@@ -45,3 +45,4 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
         response = await client.get(url, params=params)
         data = response.json()
         return data.get("response", {})
+    

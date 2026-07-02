@@ -87,9 +87,6 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str, is_main_id: bool = True):
 async def steambind(bot: Bot, ev: Event):
     text = ev.text.strip()
     steamid64 = auto2steamid64(text)
-
-
-
     # 手动绑定
     if steamid64:
         if SteamConfig.get_config("OnlyOpenID").data:

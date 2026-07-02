@@ -319,7 +319,7 @@ class SteamBind(BaseIDModel, table=True):
                     cls.user_id == user_id,
                     cls.user_type == user_type,
                     cls.group_id == group_id,
-                ).order_by(cls.id.desc())
+                ).order_by(cls.id.desc())  # type: ignore
                 next_result = await session.execute(next_stmt)
                 next_bind = next_result.scalars().first()
                 if next_bind is not None:
