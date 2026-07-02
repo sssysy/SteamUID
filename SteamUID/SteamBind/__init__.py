@@ -7,9 +7,9 @@ from ..utils.database.models import SteamIDInfo, SteamBind
 from ..utils.api import get_user_Summaries
 from . import login
 from ..SteamConfig import SteamConfig
+from ..utils.utils import auto2steamid64
 
 bind_sv = SV("绑定账号")
-BASE_STEAM_ID64 = 76561197960265728
 
 async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
     """拉取缓存 Steam 用户信息"""
@@ -33,7 +33,7 @@ def steamid_visible(player: dict) -> str:
         return ""
 
 
-async def do_bind(bot: Bot, ev: Event, steamid64: str):
+async def do_bind(bot: Bot, ev: Event, steamid64: str, is_main_id: bool = True):
     """绑定 steam 主函数"""
     if not steamid64 or not steamid64.isdigit():
         return await bot.send("请输入正确的64位steamid")
@@ -72,6 +72,7 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
         WS_BOT_ID=ev.WS_BOT_ID,
         group_id=ev.group_id,
         bot_self_id=ev.bot_self_id,
+        is_main_id=is_main_id,
     )
     await bot.send(f"绑定 steamid: {steamid64} 成功")
 
@@ -84,10 +85,11 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str):
 
 @bind_sv.on_command(("绑定", "登录", "登陆", "bind"))
 async def steambind(bot: Bot, ev: Event):
-    steamid64 = ev.text.strip()
-    # 转换好友码为 steamid64
-    if int(steamid64) < BASE_STEAM_ID64:
-        steamid64 = str(BASE_STEAM_ID64 + int(steamid64))
+    text = ev.text.strip()
+    steamid64 = auto2steamid64(text)
+
+
+
     # 手动绑定
     if steamid64:
         if SteamConfig.get_config("OnlyOpenID").data:
@@ -127,10 +129,8 @@ async def do_unbind(bot: Bot, ev: Event, steamid64: str):
 
 @bind_sv.on_command(("解绑", "unbind", "退出登录", "退出登陆"))
 async def steamunbind(bot: Bot, ev: Event):
-    steamid64 = ev.text.strip()
-    # 转换好友码为 steamid64
-    if int(steamid64) < BASE_STEAM_ID64:
-        steamid64 = str(BASE_STEAM_ID64 + int(steamid64))
+    text = ev.text.strip()
+    steamid64 = auto2steamid64(text)
     # 手动解绑
     if steamid64:
         await do_unbind(bot, ev, steamid64)
@@ -155,10 +155,12 @@ async def steamview(bot: Bot, ev: Event):
     now_id_list = []
     other_id_list = []
     for sub in subs:
+        tag = " [主]" if (sub.is_main_id and sub.group_id == ev.group_id) else ""
+        entry = f"{sub.steamid64}{tag}"
         if sub.group_id == ev.group_id:
-            now_id_list.append(sub.steamid64)
+            now_id_list.append(entry)
         else:
-            other_id_list.append(sub.steamid64)
+            other_id_list.append(entry)
 
     now_id_list = list(set(now_id_list))
     other_id_list = list(set(other_id_list))
