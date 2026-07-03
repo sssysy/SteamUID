@@ -46,3 +46,17 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
         data = response.json()
         return data.get("response", {})
     
+async def get_archivement_info(appid: str, steamid64: str):
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetPlayerAchievements}"
+    params = {
+        "key": api_key,
+        "appid": appid,
+        "steamid": steamid64,
+        "l": "zh-cn",
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params=params)
+        data = response.json()
+        return data.get("playerstats", {})

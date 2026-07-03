@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Optional, Set, Type, TypeVar, Union
 
 from sqlmodel import Field, select
-from sqlalchemy import delete
+from sqlalchemy import delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gsuid_core.bot import Bot
@@ -30,12 +30,14 @@ exec_list.extend(
         # 推送开关列
         'ALTER TABLE steambind ADD COLUMN push_start_game BOOLEAN DEFAULT 1',
         'ALTER TABLE steambind ADD COLUMN push_end_game BOOLEAN DEFAULT 1',
+        'ALTER TABLE steambind ADD COLUMN push_archivement BOOLEAN DEFAULT 1',
         'ALTER TABLE steambind ADD COLUMN is_main_id BOOLEAN DEFAULT 0',
     ]
 )
 
 T_SteamBind = TypeVar("T_SteamBind", bound="SteamBind")
 T_SteamIDInfo = TypeVar("T_SteamIDInfo", bound="SteamIDInfo")
+T_SteamArchivementInfo = TypeVar("T_SteamArchivementInfo", bound="SteamArchivementInfo")
 
 class SteamIDInfo(BaseIDModel, table=True):
     __table_args__: Dict[str, Any] = {"extend_existing": True}
@@ -105,6 +107,82 @@ class SteamIDInfo(BaseIDModel, table=True):
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
+class SteamArchivementInfo(BaseIDModel, table=True):
+    __table_args__: Dict[str, Any] = {"extend_existing": True}
+
+    steamid64: str = Field(default=None, index=True, unique=True, title="SteamID64")
+    appid: str = Field(default=None, index=True, title="游戏中AppID")
+    archivement_data: str = Field(default=None, title="成就数据JSON")
+
+    @classmethod
+    @with_session
+    async def upsert_archivement_data(
+        cls: Type[T_SteamArchivementInfo],
+        session: AsyncSession,
+        steamid64: str,
+        appid: str,
+        archivement_data: str,
+    ) -> int:
+        stmt = (
+            insert(cls)
+            .prefix_with("OR REPLACE")
+            .values(
+                steamid64=steamid64,
+                appid=appid,
+                archivement_data=archivement_data,
+            )
+        )
+        await session.execute(stmt)
+        return 0
+
+    @classmethod
+    @with_session
+    async def get_archivement_data(
+        cls: Type[T_SteamArchivementInfo],
+        session: AsyncSession,
+        steamid64: str,
+    ) -> str | None:
+        stmt = select(cls.archivement_data).where(cls.steamid64 == steamid64)
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def delete_archivement_data(
+        cls: Type[T_SteamArchivementInfo],
+        session: AsyncSession,
+        steamid64: str,
+    ) -> int:
+        """
+        0: 成功
+        -1: 未找到匹配记录
+        """
+        stmt = delete(cls).where(cls.steamid64 == steamid64) # type: ignore
+        result = await session.execute(stmt)
+        if result.rowcount and result.rowcount > 0: # type: ignore
+            return 0
+        return -1
+
+    @classmethod
+    @with_session
+    async def get_all_steamid64(
+        cls: Type[T_SteamArchivementInfo],
+        session: AsyncSession,
+    ) -> list[str]:
+        stmt = select(cls.steamid64)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
+    async def get_all_archivement_info(
+        cls: Type[T_SteamArchivementInfo],
+        session: AsyncSession,
+    ) -> list["SteamArchivementInfo"]:
+        stmt = select(cls)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
 class SteamBind(BaseIDModel, table=True):
     """从subscribe表独立出来"""
     __table_args__: Dict[str, Any] = {"extend_existing": True}
@@ -118,6 +196,7 @@ class SteamBind(BaseIDModel, table=True):
     user_type: str = Field(default=None, title="发送类型")
     push_start_game: bool = Field(default=True, title="推送开始游戏")
     push_end_game: bool = Field(default=True, title="推送结束游戏")
+    push_archivement: bool = Field(default=True, title="推送成就")
     is_main_id: bool = Field(default=False, title="是否主ID")
 
     async def send(
@@ -241,6 +320,7 @@ class SteamBind(BaseIDModel, table=True):
                     bot_self_id=bot_self_id,
                     push_start_game=True,
                     push_end_game=True,
+                    push_archivement=True,
                     is_main_id=is_main_id,
                 )
             )
@@ -328,7 +408,7 @@ class SteamBind(BaseIDModel, table=True):
             return 0
         return -1
 
-    PUSH_COLUMNS: ClassVar[Set[str]] = {"push_start_game", "push_end_game"}
+    PUSH_COLUMNS: ClassVar[Set[str]] = {"push_start_game", "push_end_game", "push_archivement"}
 
     @classmethod
     @with_session
@@ -475,3 +555,13 @@ class SteamBindAdmin(GsAdminModel):
     )  # type: ignore
 
     model = SteamBind
+
+@site.register_admin
+class SteamArchivementInfoAdmin(GsAdminModel):
+    pk_name = "id"
+    page_schema = PageSchema(
+        label="Steam成就记录",
+        icon="fa fa-database",
+    )  # type: ignore
+
+    model = SteamArchivementInfo

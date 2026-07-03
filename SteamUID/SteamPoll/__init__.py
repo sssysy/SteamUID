@@ -1,7 +1,7 @@
 from gsuid_core.logger import logger
 from gsuid_core.aps import scheduler
-from ..utils.database.models import SteamIDInfo, SteamBind
-from ..utils.api import get_user_Summaries
+from ..utils.database.models import SteamIDInfo, SteamBind, SteamArchivementInfo
+from ..utils.api import get_user_Summaries, get_archivement_info
 import json
 from ..SteamConfig import SteamConfig
 from ..utils.PIL.draw import draw_start_game_photo, draw_end_game_photo
@@ -15,6 +15,7 @@ from gsuid_core.segment import MessageSegment
     seconds=SteamConfig.get_config("PollInterval").data,
 )
 async def get_user_Summaries_job():
+
     steamid_all = await SteamIDInfo.get_all_steamid64()
     if not steamid_all:
         return
@@ -98,6 +99,19 @@ async def get_user_Summaries_job():
                 send_msg = MessageSegment.image(IMG)
             else:
                 send_msg = f"{info.get('personaname')} 正在玩 {info.get('gameextrainfo')}"
+            
+            # 添加到成就轮询列表
+            if "获得成就" in SteamConfig.get_config("PushSwitch").data:
+                try:
+                    resp = await get_archivement_info(appid, steamid64)
+                    await SteamArchivementInfo.upsert_archivement_data(
+                        steamid64,
+                        appid,
+                        json.dumps(resp, ensure_ascii=False)
+                    )
+                except Exception as error:
+                    logger.warning(f"[SteamPoll] 拉取成就初始数据失败 appid={appid} steamid={steamid64}: {error!r}")
+                
         else:
             # 结束游戏
             try:
@@ -117,6 +131,10 @@ async def get_user_Summaries_job():
             else:
                 send_msg = f"{info.get('personaname')} 结束游戏 {old_info.get('gameextrainfo')}"
 
+            # 从成就轮询列表中移除
+            if "获得成就" in SteamConfig.get_config("PushSwitch").data:
+                await SteamArchivementInfo.delete_archivement_data(steamid64)
+                
         for sub in subs:
             if is_playing and not sub.push_start_game:
                 continue
@@ -127,8 +145,77 @@ async def get_user_Summaries_job():
             except Exception as error:
                 logger.warning(f"[SteamPoll] 推送 steamid={steamid64} 失败: {error!r}")
 
+
+
     # 推送完成后写入数据库
     for steamid64, info in update_list:
         await SteamIDInfo.upsert_steamuserinfo(
             steamid64, json.dumps(info, ensure_ascii=False)
+        )
+
+@scheduler.scheduled_job(
+    'interval',
+    seconds=SteamConfig.get_config("ArchivementsPollInterval").data,
+)
+async def check_archivement():
+    """查询Steam成就记录"""
+    # 开始关闭游戏推送没开启直接返回，防止无用请求
+    push_switch = SteamConfig.get_config("PushSwitch").data
+    if "获得成就" not in push_switch:
+        return
+
+    steamid_all = await SteamArchivementInfo.get_all_archivement_info()
+    if not steamid_all:
+        return
+    
+    for steamid in steamid_all:
+        appid = steamid.appid
+        steamid64 = steamid.steamid64
+
+        try:
+            resp = await get_archivement_info(appid, steamid64)
+        except Exception as error:
+            logger.warning(f"[SteamPoll] 拉取成就信息失败 appid={appid} steamid64={steamid64}:  {error!r}")
+            continue
+        
+        old_archivement_info = json.loads(steamid.archivement_data or "{}")
+        new_archivement_info = resp
+        # 对比新旧成就，找出新解锁的
+        old_achievements = {    
+            a['apiname']: a
+            for a in old_archivement_info.get('achievements', [])
+        }
+        newly_achieved = [
+            a for a in new_archivement_info.get('achievements', [])
+            if a.get('achieved') == 1
+            and old_achievements.get(a['apiname'], {}).get('achieved') == 0
+        ]
+
+        if not newly_achieved:
+            # 没有新成就，跳过
+            continue
+
+        # 获取绑定该 steamid 的用户并推送
+        subs = await SteamBind.get_bind_by_steamid(steamid64)
+        game_name = new_archivement_info.get('gameName', '未知游戏')
+
+        for ach in newly_achieved:
+            msg = (
+                f"{steamid.steamid64} 解锁成就：\n"
+                f"游戏：{game_name}\n"
+                f"成就：{ach.get('name', '无名称')}\n"
+                f"描述：{ach.get('description', '无描述')}"
+            )
+            for sub in subs:
+                if not sub.push_archivement:
+                    continue
+                try:
+                    await sub.send(msg)
+                except Exception as error:
+                    logger.warning(f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}")
+
+        # 更新数据库
+        await SteamArchivementInfo.upsert_archivement_data(
+            steamid64, appid,
+            json.dumps(new_archivement_info, ensure_ascii=False)
         )
