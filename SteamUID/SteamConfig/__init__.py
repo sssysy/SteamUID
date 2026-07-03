@@ -36,6 +36,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "轮询间隔，单位秒。修改后需重启 GsCore 生效",
         20,
     ),
+    "ArchivementsPollInterval": GsIntConfig(
+        "成就轮询间隔",
+        "成就轮询间隔，单位秒。修改后需重启 GsCore 生效",
+        60,
+    ),
     "OnlyOpenID": GsBoolConfig(
         "仅允许网页登录",
         "开启后将不支持用户手动传入steamid，而采用 Openid 验证 steamid 所有权后绑定",
@@ -44,10 +49,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
     "PushSwitch": GsListStrConfig(
         "推送总开关",
         "选择开启的推送事件",
-        ["开始游戏","结束游戏"],
+        ["开始游戏","结束游戏","获得成就"],
         options=[
             "开始游戏",
             "结束游戏",
+            "获得成就",
         ]
     )
 

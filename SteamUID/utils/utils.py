@@ -61,6 +61,3 @@ def auto2steamid64(count: str | None) -> str | None:
     if int(count) < BASE_STEAM_ID64:
         count = str(BASE_STEAM_ID64 + int(count))
     return count
-
-def replayisshared(html: str) -> bool:
-    return "此帐户的回顾未分享" not in html

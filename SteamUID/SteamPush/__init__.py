@@ -9,6 +9,7 @@ push_SV = SV("steam推送开关")
 push_status = {
     "push_start_game": "开始游戏",
     "push_end_game": "结束游戏",
+    "push_archivement": "获得成就",
 }
 
 async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str], status: bool):
@@ -98,5 +99,15 @@ async def open_end_push(bot: Bot, ev: Event):
 async def close_end_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
     await switch_push(bot, ev, steamid64, ["push_end_game"], False)
+
+@push_SV.on_command("开启成就推送")
+async def open_archivement_push(bot: Bot, ev: Event):
+    steamid64 = ev.text.strip()
+    await switch_push(bot, ev, steamid64, ["push_archivement"], True)
+
+@push_SV.on_command("关闭成就推送")
+async def close_archivement_push(bot: Bot, ev: Event):
+    steamid64 = ev.text.strip()
+    await switch_push(bot, ev, steamid64, ["push_archivement"], False)
 
 
