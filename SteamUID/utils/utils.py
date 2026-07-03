@@ -55,7 +55,7 @@ async def batch_download_images(
 def auto2steamid64(count: str | None) -> str | None:
     """把好友码/steamid64自动变化成steamid64"""
     BASE_STEAM_ID64 = 76561197960265728
-    if count is None:
+    if count is None or count.strip() == "" or not count.isdigit():
         return None
     count = count.strip()
     if int(count) < BASE_STEAM_ID64:

@@ -172,3 +172,27 @@ async def steamview(bot: Bot, ev: Event):
         send_msg += f"其他地方已绑定的steamid：\n{'\n'.join(other_id_list) }\n{"-"*20}\n"
 
     await bot.send(send_msg)
+
+@bind_sv.on_command("切换")
+async def switchsteamid(bot: Bot, ev: Event):
+    text = ev.text.strip()
+    steamid64 = auto2steamid64(text)
+    if not steamid64:
+        return await bot.send("请输入正确的steamid或好友码")
+    all_binds = await SteamBind.get_binds_by_user(
+        bot_id=ev.bot_id,
+        user_id=ev.user_id,
+        user_type=ev.user_type,
+    )
+    all_steamid64 = [bind.steamid64 for bind in all_binds]
+    if steamid64 not in all_steamid64:
+        return await bot.send("未绑定当前steamid!")
+
+    await SteamBind.set_main_id(
+        steamid64=steamid64,
+        bot_id=ev.bot_id,
+        user_id=ev.user_id,
+        user_type=ev.user_type,
+        group_id=ev.group_id,
+    )
+    await bot.send(f"切换 steamid: {steamid64} 成功")

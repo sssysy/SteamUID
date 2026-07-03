@@ -61,6 +61,8 @@ async def get_steamlibrary_image(bot: Bot, ev: Event):
     for i, url in enumerate(downloaded_paths):
         gameinfo.append((url, played_times[i]))
     
+    if not gameinfo:
+        return await bot.send("该 steam 账号暂无游戏库存")
     # 制作封面
     wall = build_wall(gameinfo)
     await bot.send(MessageSegment.image(wall))
