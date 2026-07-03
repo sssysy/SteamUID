@@ -6,163 +6,97 @@ from ..SteamConfig import SteamConfig
 
 push_SV = SV("steam推送开关")
 
-"""
-===============
-等待后续有空了重构
-===============
-"""
+push_status = {
+    "push_start_game": "开始游戏",
+    "push_end_game": "结束游戏",
+}
+
+async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str], status: bool):
+    """切换推送状态"""
+    # 判断是否开启此推送
+    push_switch = set(SteamConfig.get_config("PushSwitch").data)
+    error_column = []
+    fact_push_column = []
+    for push_type in push_column:
+        if push_status[push_type] not in push_switch:
+            error_column.append(push_status[push_type])
+        else:
+            fact_push_column.append(push_type)
+    if error_column:
+        await bot.send(f"管理员未开放{' / '.join(error_column)}推送功能！")
+    if not fact_push_column:
+        return
+
+    subs = [s.steamid64 for s in await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)]
+    if steamid64:
+        # 传递了 steamid
+        if steamid64 not in subs:
+            return await bot.send("你没有绑定该 steamid，无法修改推送设置")
+        else:
+            # 传递了steamid64就修改为传入的steamid64
+            subs = [steamid64]
+
+    if not subs:
+        return await bot.send("你没有绑定任何账号，无法修改推送设置")
+    
+    error_ids = set()
+    for sub in subs:
+        for push_type in fact_push_column:
+            set_status = await SteamBind.set_push_status(sub, ev.bot_id, ev.user_id, ev.user_type, push_type, status)
+            if set_status != 0:
+                error_ids.add(sub)
+
+    if error_ids:
+        await bot.send(f"{'\n'.join(error_ids)}\n推送状态切换失败")
+
+    success_count = len(subs) - len(error_ids)
+    if success_count == 0:
+        return
+    elif success_count < len(subs):
+        return await bot.send("其余绑定的steamid推送状态切换成功")
+    else:
+        push_names = ' / '.join(push_status[p] for p in fact_push_column)
+        return await bot.send(f"{push_names}推送状态切换成功")
+
 
 @push_SV.on_command("开启推送")
 async def open_all_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    if not {"开始游戏", "结束游戏"}.issubset(push_switch):
-        return await bot.send("管理员未开放游戏/结束游戏推送功能！")
+    await switch_push(bot, ev, steamid64, ["push_start_game", "push_end_game"], True)
 
-    if not steamid64:
-        # 没有传递 steamid
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if not subs:
-            return await bot.send("你没有绑定任何账号，无法开启推送")
-
-        for sub in subs:
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", True)
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", True)
-        return await bot.send("已开启绑定的所有 steamid 开始 / 结束游戏推送")
-
-    else:
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if steamid64 not in [s.steamid64 for s in subs]:
-            return await bot.send("你没有绑定该 steamid，无法开启推送")
-
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", True)
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", True)
-        return await bot.send(f"已开启 steamid: {steamid64} 开始 / 结束游戏推送")
 
 
 @push_SV.on_command("关闭推送")
 async def close_all_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    if not {"开始游戏", "结束游戏"}.issubset(push_switch):
-        return await bot.send("管理员未开放游戏/结束游戏推送功能！")
+    await switch_push(bot, ev, steamid64, ["push_start_game", "push_end_game"], False)
 
-    if not steamid64:
-        # 没有传递 steamid
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if not subs:
-            return await bot.send("你没有绑定任何账号，无需关闭推送")
 
-        for sub in subs:
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", False)
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", False)
-        return await bot.send("已关闭绑定的所有 steamid 开始 / 结束游戏推送")
-
-    else:
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if steamid64 not in [s.steamid64 for s in subs]:
-            return await bot.send("你没有绑定该 steamid，无法关闭推送")
-
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", False)
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", False)
-        return await bot.send(f"已关闭 steamid: {steamid64} 开始 / 结束游戏推送")
 
 @push_SV.on_command("开启开始游戏推送")
 async def open_start_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    if "开始游戏" not in push_switch:
-        return await bot.send("管理员未开放开始游戏推送功能！")
-    
-    if not steamid64:
-        # 没有传递 steamid
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if not subs:
-            return await bot.send("你没有绑定任何账号，无法开启开始游戏推送")
+    await switch_push(bot, ev, steamid64, ["push_start_game"], True)
 
-        for sub in subs:
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", True)
-        return await bot.send("已开启绑定的所有 steamid 开始游戏推送")
 
-    else:
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if steamid64 not in [s.steamid64 for s in subs]:
-            return await bot.send("你没有绑定该 steamid，无法开启开始游戏推送")
-
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", True)
-        return await bot.send(f"已开启 steamid: {steamid64} 开始游戏推送")
 
 @push_SV.on_command("关闭开始游戏推送")
 async def close_start_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    if "开始游戏" not in push_switch:
-        return await bot.send("管理员未开放开始游戏推送功能！")
-    
-    if not steamid64:
-        # 没有传递 steamid
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if not subs:
-            return await bot.send("你没有绑定任何账号，无需关闭开始游戏推送")
-        
-        for sub in subs:
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", False)
-        return await bot.send("已关闭绑定的所有 steamid 开始游戏推送")
-    
-    else:
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if steamid64 not in [s.steamid64 for s in subs]:
-            return await bot.send("你没有绑定该 steamid，无法关闭开始游戏推送")
+    await switch_push(bot, ev, steamid64, ["push_start_game"], False)
 
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_start_game", False)
-        return await bot.send(f"已关闭 steamid: {steamid64} 开始游戏推送")
+
 
 @push_SV.on_command("开启结束游戏推送")
 async def open_end_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    if "结束游戏" not in push_switch:
-        return await bot.send("管理员未开放结束游戏推送功能！")
-    
-    if not steamid64:
-        # 没有传递 steamid
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if not subs:
-            return await bot.send("你没有绑定任何账号，无法开启结束游戏推送")
-        
-        for sub in subs:
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", True)
-        return await bot.send("已开启绑定的所有 steamid 结束游戏推送")
-    
-    else:
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if steamid64 not in [s.steamid64 for s in subs]:
-            return await bot.send("你没有绑定该 steamid，无法开启结束游戏推送")
+    await switch_push(bot, ev, steamid64, ["push_end_game"], True)
 
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", True)
-        return await bot.send(f"已开启 steamid: {steamid64} 结束游戏推送")
+
 
 @push_SV.on_command("关闭结束游戏推送")
 async def close_end_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    if "结束游戏" not in push_switch:
-        return await bot.send("管理员未开放结束游戏推送功能！")
+    await switch_push(bot, ev, steamid64, ["push_end_game"], False)
 
-    if not steamid64:
-        # 没有传递 steamid
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if not subs:
-            return await bot.send("你没有绑定任何账号，无法关闭结束游戏推送")
-        
-        for sub in subs:
-            await SteamBind.set_push_status(sub.steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", False)
-        return await bot.send("已关闭绑定的所有 steamid 结束游戏推送")
-    
-    else:
-        subs = await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)
-        if steamid64 not in [s.steamid64 for s in subs]:
-            return await bot.send("你没有绑定该 steamid，无法关闭结束游戏推送")
 
-        await SteamBind.set_push_status(steamid64, ev.bot_id, ev.user_id,ev.user_type, "push_end_game", False)
-        return await bot.send(f"已关闭 steamid: {steamid64} 结束游戏推送")
