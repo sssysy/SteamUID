@@ -19,3 +19,19 @@ class SteamAPI:
 
     # 获取游戏详情
     store_GetGameDetails = "/api/appdetails"
+
+    # 游戏封面图api
+    @staticmethod
+    def GetGameCoverImageURL(appid: str, variant: str = "header") -> str:
+        """
+        variant支持：
+        header	        商店页头部横幅
+        library_600x900	库竖版封面
+        library_hero	库英雄图
+        capsule_616x353	社交分享卡图
+        capsule_467x181	中等胶囊图
+        capsule_231x87	小胶囊图
+        capsule_184x69	搜索缩略图
+        """
+        url = f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/{variant}.jpg"
+        return url

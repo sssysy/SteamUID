@@ -65,21 +65,13 @@
       }
     ]
   },
-  "库存服务(待更新)": {
-    "desc": "查询 steam 库存与年度游戏榜单",
+  "游戏库服务": {
+    "desc": "游戏墙因steam cdn原因, 新游戏可能无法获取到封面",
     "data": [
       {
-        "name": "库存",
-        "desc": "查看自己的 steam 游戏库存",
-        "eg": "库存",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "年度榜单",
-        "desc": "查看自己的 steam 年度游戏榜单",
-        "eg": "年度榜单2025",
+        "name": "游戏墙",
+        "desc": "查询指定steam的游戏墙",
+        "eg": "游戏墙",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false

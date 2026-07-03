@@ -30,6 +30,7 @@ exec_list.extend(
         # 推送开关列
         'ALTER TABLE steambind ADD COLUMN push_start_game BOOLEAN DEFAULT 1',
         'ALTER TABLE steambind ADD COLUMN push_end_game BOOLEAN DEFAULT 1',
+        'ALTER TABLE steambind ADD COLUMN is_main_id BOOLEAN DEFAULT 0',
     ]
 )
 
@@ -117,6 +118,7 @@ class SteamBind(BaseIDModel, table=True):
     user_type: str = Field(default=None, title="发送类型")
     push_start_game: bool = Field(default=True, title="推送开始游戏")
     push_end_game: bool = Field(default=True, title="推送结束游戏")
+    is_main_id: bool = Field(default=False, title="是否主ID")
 
     async def send(
         self,
@@ -196,8 +198,22 @@ class SteamBind(BaseIDModel, table=True):
         WS_BOT_ID: Optional[str] = None,
         group_id: Optional[str] = None,
         bot_self_id: Optional[str] = None,
+        is_main_id: bool = False,
     ) -> int:
         """写入绑定关系（同一 user + steamid 已存在则更新）"""
+        # 如果设置为主ID，先将该用户在【同群】绑定的 is_main_id 清零
+        if is_main_id:
+            user_stmt = select(cls).where(
+                cls.bot_id == bot_id,
+                cls.user_id == user_id,
+                cls.user_type == user_type,
+                cls.group_id == group_id,
+            )
+            user_result = await session.execute(user_stmt)
+            for row in user_result.scalars().all():
+                row.is_main_id = False
+                session.add(row)
+
         stmt = select(cls).where(
             cls.steamid64 == steamid64,
             cls.bot_id == bot_id,
@@ -211,6 +227,7 @@ class SteamBind(BaseIDModel, table=True):
         if existing is not None:# 更新绑定不需要修改推送状态
             existing.WS_BOT_ID = WS_BOT_ID
             existing.bot_self_id = bot_self_id
+            existing.is_main_id = is_main_id
             session.add(existing)
         else:
             session.add(
@@ -224,6 +241,7 @@ class SteamBind(BaseIDModel, table=True):
                     bot_self_id=bot_self_id,
                     push_start_game=True,
                     push_end_game=True,
+                    is_main_id=is_main_id,
                 )
             )
         return 0
@@ -273,6 +291,18 @@ class SteamBind(BaseIDModel, table=True):
         0: 成功
         -1: 未找到匹配记录
         """
+        # 先查询被删记录，判断是否为主ID
+        check_stmt = select(cls).where(
+            cls.steamid64 == steamid64,
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+            cls.group_id == group_id,
+        )
+        check_result = await session.execute(check_stmt)
+        target = check_result.scalars().first()
+        was_main = target is not None and target.is_main_id
+
         stmt = delete(cls).where(  # type: ignore
             cls.steamid64 == steamid64, # type: ignore
             cls.bot_id == bot_id, # type: ignore
@@ -282,6 +312,19 @@ class SteamBind(BaseIDModel, table=True):
         )
         result = await session.execute(stmt)
         if result.rowcount and result.rowcount > 0:  # type: ignore
+            # 如果删除的是主ID，自动提升本群最近绑定的ID为主ID
+            if was_main:
+                next_stmt = select(cls).where(
+                    cls.bot_id == bot_id,
+                    cls.user_id == user_id,
+                    cls.user_type == user_type,
+                    cls.group_id == group_id,
+                ).order_by(cls.id.desc())  # type: ignore
+                next_result = await session.execute(next_stmt)
+                next_bind = next_result.scalars().first()
+                if next_bind is not None:
+                    next_bind.is_main_id = True
+                    session.add(next_bind)
             return 0
         return -1
 
@@ -343,6 +386,71 @@ class SteamBind(BaseIDModel, table=True):
             cls.bot_id == bot_id,
             cls.user_id == user_id,
             cls.user_type == user_type,
+        )
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def set_main_id(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        steamid64: str,
+        bot_id: str,
+        user_id: str,
+        user_type: str,
+        group_id: Optional[str] = None,
+    ) -> int:
+        """
+        设置主ID：先清零该用户在【同群】绑定的 is_main_id，再将指定绑定设为 True。
+        0: 成功
+        -1: 未找到指定绑定
+        """
+        # 先清零该用户在同群的所有绑定
+        user_stmt = select(cls).where(
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+            cls.group_id == group_id,
+        )
+        user_result = await session.execute(user_stmt)
+        for row in user_result.scalars().all():
+            row.is_main_id = False
+            session.add(row)
+
+        # 将指定绑定设为主ID
+        stmt = select(cls).where(
+            cls.steamid64 == steamid64,
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+            cls.group_id == group_id,
+        )
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is None:
+            return -1
+        existing.is_main_id = True
+        session.add(existing)
+        return 0
+
+    @classmethod
+    @with_session
+    async def get_main_id(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        bot_id: str,
+        user_id: str,
+        user_type: str,
+        group_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """获取该用户在指定群的主ID(steamid64)，不存在则返回 None。"""
+        stmt = select(cls.steamid64).where(
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+            cls.is_main_id == True,  # noqa: E712
+            cls.group_id == group_id,
         )
         result = await session.execute(stmt)
         return result.scalars().first()

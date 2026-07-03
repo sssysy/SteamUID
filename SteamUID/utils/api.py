@@ -31,3 +31,18 @@ async def get_game_info(appid: str) -> dict:
         response = await client.get(url, params=params)
         data = response.json()
         return data.get(appid, {})
+    
+async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetOwnedGames}"
+    params = {
+        "key": api_key,
+        "steamid": steamid64,
+        "include_appinfo": True,
+        "include_played_free_games": True,
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params=params)
+        data = response.json()
+        return data.get("response", {})
+    
