@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Optional, Set, Type, TypeVar, Union
 
 from sqlmodel import Field, select
-from sqlalchemy import delete
+from sqlalchemy import delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gsuid_core.bot import Bot
@@ -110,7 +110,7 @@ class SteamIDInfo(BaseIDModel, table=True):
 class SteamArchivementInfo(BaseIDModel, table=True):
     __table_args__: Dict[str, Any] = {"extend_existing": True}
 
-    steamid64: str = Field(default=None, index=True, title="SteamID64")
+    steamid64: str = Field(default=None, index=True, unique=True, title="SteamID64")
     appid: str = Field(default=None, index=True, title="游戏中AppID")
     archivement_data: str = Field(default=None, title="成就数据JSON")
 
@@ -123,21 +123,16 @@ class SteamArchivementInfo(BaseIDModel, table=True):
         appid: str,
         archivement_data: str,
     ) -> int:
-        stmt = select(cls).where(cls.steamid64 == steamid64) # 同一时间只会有1个appid存在
-        result = await session.execute(stmt)
-        existing = result.scalars().first()
-
-        if existing is not None:
-            existing.archivement_data = archivement_data
-            session.add(existing)
-        else:
-            session.add(
-                cls(
-                    steamid64=steamid64,
-                    appid=appid,
-                    archivement_data=archivement_data,
-                )
+        stmt = (
+            insert(cls)
+            .prefix_with("OR REPLACE")
+            .values(
+                steamid64=steamid64,
+                appid=appid,
+                archivement_data=archivement_data,
             )
+        )
+        await session.execute(stmt)
         return 0
 
     @classmethod

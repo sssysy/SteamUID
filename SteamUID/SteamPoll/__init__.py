@@ -15,10 +15,6 @@ from gsuid_core.segment import MessageSegment
     seconds=SteamConfig.get_config("PollInterval").data,
 )
 async def get_user_Summaries_job():
-    # 开始关闭游戏推送没开启直接返回，防止无用请求
-    push_switch = SteamConfig.get_config("PushSwitch").data
-    if "开始游戏" not in push_switch and "结束游戏" not in push_switch:
-        return
 
     steamid_all = await SteamIDInfo.get_all_steamid64()
     if not steamid_all:
@@ -182,15 +178,15 @@ async def check_archivement():
             logger.warning(f"[SteamPoll] 拉取成就信息失败 appid={appid} steamid64={steamid64}:  {error!r}")
             continue
         
-        old_archivement_info = json.loads(steamid.archivement_data)
+        old_archivement_info = json.loads(steamid.archivement_data or "{}")
         new_archivement_info = resp
         # 对比新旧成就，找出新解锁的
         old_achievements = {    
             a['apiname']: a
-            for a in old_archivement_info.get('playerstats', {}).get('achievements', [])
+            for a in old_archivement_info.get('achievements', [])
         }
         newly_achieved = [
-            a for a in new_archivement_info.get('playerstats', {}).get('achievements', [])
+            a for a in new_archivement_info.get('achievements', [])
             if a.get('achieved') == 1
             and old_achievements.get(a['apiname'], {}).get('achieved') == 0
         ]
@@ -207,8 +203,8 @@ async def check_archivement():
             msg = (
                 f"{steamid.steamid64} 解锁成就：\n"
                 f"游戏：{game_name}\n"
-                f"成就：{ach['name']}\n"
-                f"描述：{ach['description']}"
+                f"成就：{ach.get('name', '无名称')}\n"
+                f"描述：{ach.get('description', '无描述')}"
             )
             for sub in subs:
                 if not sub.push_archivement:
