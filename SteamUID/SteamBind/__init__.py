@@ -37,7 +37,6 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str, is_main_id: bool = True):
     """绑定 steam 主函数"""
     if not steamid64 or not steamid64.isdigit():
         return await bot.send("请输入正确的64位steamid")
-
     # id 已被绑定
     existing = await SteamBind.get_bind_by_steamid(steamid64)
     if existing:
@@ -74,7 +73,7 @@ async def do_bind(bot: Bot, ev: Event, steamid64: str, is_main_id: bool = True):
         bot_self_id=ev.bot_self_id,
         is_main_id=is_main_id,
     )
-    await bot.send(f"绑定 steamid: {steamid64} 成功")
+    await bot.send(f"绑定 steamid: {steamid64} 成功", True)
 
     # 判断资料公开性，如果没公开就提醒一次用户
     visible = steamid_visible(steamid_info[0])
@@ -141,6 +140,10 @@ async def steamunbind(bot: Bot, ev: Event):
 
 @bind_sv.on_command("查看")
 async def steamview(bot: Bot, ev: Event):
+    at = ev.at
+    if at:
+        ev.user_id = at
+
     subs = await SteamBind.get_binds_by_user(
         bot_id=ev.bot_id,
         user_id=ev.user_id,

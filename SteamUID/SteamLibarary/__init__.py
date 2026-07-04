@@ -17,9 +17,13 @@ library_SV = SV("steam库存相关")
 
 @library_SV.on_command(("游戏墙", "游戏库"))
 async def get_steamlibrary_image(bot: Bot, ev: Event):
+    at = ev.at
     text = ev.text.strip()
     steamid64 = auto2steamid64(text)
     
+    # 是否@其他用户
+    if at:
+        ev.user_id = at
     # 读取主 steamid64
     if not steamid64: # 没有传入steamid64
         steamid64 = await SteamBind.get_main_id(ev.bot_id,ev.user_id,ev.user_type,ev.group_id)

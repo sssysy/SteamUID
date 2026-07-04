@@ -66,12 +66,12 @@
     ]
   },
   "游戏库服务": {
-    "desc": "游戏墙因steam cdn原因, 新游戏可能无法获取到封面",
+    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面",
     "data": [
       {
         "name": "游戏墙",
         "desc": "查询指定steam的游戏墙",
-        "eg": "游戏墙",
+        "eg": "游戏墙123456",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
