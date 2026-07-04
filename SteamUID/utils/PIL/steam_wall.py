@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
 # 方形分块网格：UNIT 2:3 与图源 library_600x900 同比例 → 等比缩放即不裁切不变形
-UNIT_W = 48
-UNIT_H = 72          # UNIT_W:UNIT_H = 2:3，与 library_600x900(600x900) 同比例
-MAX_COLS = 40        # 列数上限：画布最大宽 = MAX_COLS * UNIT_W = 40 * 48 = 1920px
+UNIT_W = 200
+UNIT_H = 300         # UNIT_W:UNIT_H = 2:3，与 library_600x900(600x900) 同比例；N=3 → 600×900 即原始分辨率(不缩放、最清晰)
+MAX_COLS = 9         # 列数上限：画布最大宽 = MAX_COLS * UNIT_W = 9 * 200 = 1800px(≤1920，游戏多时自动变长图)
 GAP = 0              # 无空隙
 BG_COLOR = (0x1B, 0x28, 0x38)
 

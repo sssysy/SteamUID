@@ -47,6 +47,7 @@ async def get_steamlibrary_image(bot: Bot, ev: Event):
         url = SteamAPI.GetGameCoverImageURL(appid, variant='library_600x900')
         cdn_urls.append(url)
         played_time = (
+                game.get("playtime_forever", 0) or
                 game.get("playtime_windows_forever", 0) + 
                 game.get("playtime_mac_forever", 0) + 
                 game.get("playtime_linux_forever", 0) + 
