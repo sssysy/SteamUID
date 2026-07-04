@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
@@ -9,7 +11,7 @@ from ..utils.api import get_steamlibrary_by_steamid64
 from ..utils.utils import batch_download_images, auto2steamid64
 from gsuid_core.data_store import get_res_path
 from gsuid_core.logger import logger
-from gsuid_core.segment import MessageSegment
+from gsuid_core.segment import MessageSegment, pic_quality
 
 library_SV = SV("steam库存相关")
 
@@ -66,4 +68,7 @@ async def get_steamlibrary_image(bot: Bot, ev: Event):
         return await bot.send("该 steam 账号暂无游戏库存")
     # 制作封面
     wall = build_wall(gameinfo)
-    await bot.send(MessageSegment.image(wall))
+    # 转 JPEG 
+    buf = BytesIO()
+    wall.save(buf, format="JPEG", quality=pic_quality, subsampling=0)
+    await bot.send(MessageSegment.image(buf.getvalue()))
