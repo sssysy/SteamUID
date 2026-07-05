@@ -54,9 +54,26 @@ async def get_archivement_info(appid: str, steamid64: str):
         "key": api_key,
         "appid": appid,
         "steamid": steamid64,
-        "l": "zh-cn",
+        "l": "zh-CN",
+    }    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params=params)
+        data = response.json()
+        return data.get("playerstats", {})
+    
+async def get_archivement_img(appid: str, archivement_name: str) -> str:
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetSchemaForGame}"
+    params = {
+        "key": api_key,
+        "appid": appid,
+        "l": "zh-CN",
     }
     async with httpx.AsyncClient() as client:
         response = await client.get(url, params=params)
         data = response.json()
-        return data.get("playerstats", {})
+        archivements =  data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
+        for archivement in archivements:
+            if archivement.get("name") == archivement_name:
+                return archivement.get("icon", "")
+        return ""

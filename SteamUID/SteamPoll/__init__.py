@@ -1,10 +1,10 @@
 from gsuid_core.logger import logger
 from gsuid_core.aps import scheduler
 from ..utils.database.models import SteamIDInfo, SteamBind, SteamArchivementInfo
-from ..utils.api import get_user_Summaries, get_archivement_info
+from ..utils.api import get_user_Summaries, get_archivement_info, get_archivement_img
 import json
 from ..SteamConfig import SteamConfig
-from ..utils.PIL.draw import draw_start_game_photo, draw_end_game_photo
+from ..utils.PIL.draw import draw_start_game_photo, draw_end_game_photo, draw_archivements_photo
 from ..utils.api import get_game_info
 from PIL import Image
 from gsuid_core.segment import MessageSegment
@@ -199,18 +199,52 @@ async def check_archivement():
         subs = await SteamBind.get_bind_by_steamid(steamid64)
         game_name = new_archivement_info.get('gameName', '未知游戏')
 
+        # 查询玩家轮询状态，获取头像与昵称（avatarfull / personaname）
+        gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
+        gamer_name = gamer_info.get("personaname", steamid64)
+        gamer_img_url = gamer_info.get("avatarfull", "")
+
         for ach in newly_achieved:
-            msg = (
-                f"{steamid.steamid64} 解锁成就：\n"
+            archivement_name = ach.get("name", "无名称")
+            archivement_desc = ach.get("description", "无描述")
+            # 图片渲染失败时的文字回退消息
+            text_msg = (
+                f"{steamid64} 解锁成就：\n"
                 f"游戏：{game_name}\n"
-                f"成就：{ach.get('name', '无名称')}\n"
-                f"描述：{ach.get('description', '无描述')}"
+                f"成就：{archivement_name}\n"
+                f"描述：{archivement_desc}"
             )
+
+            send_msg = None
+            try:
+                # archivement_name 参数取成就接口的 apiname（对应 schema 的 name 字段）
+                archivement_img_url = await get_archivement_img(
+                    appid, ach.get("apiname", "")
+                )
+                IMG = await draw_archivements_photo(
+                    gamer_name=gamer_name,
+                    gamer_img_url=gamer_img_url,
+                    archivement_name=archivement_name,
+                    archivement_img_url=archivement_img_url,
+                    game_name=game_name,
+                    archivement_desc=archivement_desc,
+                )
+                if isinstance(IMG, Image.Image):
+                    send_msg = MessageSegment.image(IMG)
+            except Exception as error:
+                logger.warning(
+                    f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
+                )
+
+            # 仅当渲染图片流程有问题时回退到文字发送
+            if send_msg is None:
+                send_msg = text_msg
+
             for sub in subs:
                 if not sub.push_archivement:
                     continue
                 try:
-                    await sub.send(msg)
+                    await sub.send(send_msg)
                 except Exception as error:
                     logger.warning(f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}")
 
