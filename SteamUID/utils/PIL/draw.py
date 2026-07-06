@@ -208,8 +208,8 @@ async def draw_archivements_photo(
     draw = ImageDraw.Draw(canvas)
 
     # 玩家名
-    font_gamer = _font_with_height(48)
-    draw.text((236, 15), gamer_name, font=font_gamer, fill=username_color)
+    font_gamer = _font_with_height(42)
+    draw.text((236, 10), gamer_name, font=font_gamer, fill=username_color)
 
     # "在 {game_name} 解锁了成就" —— 混色绘制
     font_game_line = _font_with_height(20)
