@@ -347,12 +347,20 @@ async def draw_user_info_head(
     draw.text((text_x, username_y), username_disp, font=font_line, fill=username_color)
     draw.text((text_x, subtitle_y), subtitle_disp, font=font_line, fill=subtitle_color)
 
-    # Step 9 — 合成返回（head 在上，img 在下；img 不变）
+    # Step 9 — 合成返回（head 在上，img 在下；RGBA → RGB 白色背景，便于直接存 JPEG）
     img_rgba = img if img.mode == "RGBA" else img.convert("RGBA")
     combined = Image.new("RGBA", (W, img.height + head_h), (0, 0, 0, 0))
     combined.alpha_composite(head, (0, 0))
     combined.alpha_composite(img_rgba, (0, head_h))
-    return combined
+    # 转换为带白色背景的 RGB，避免业务代码保存 JPEG 报错
+    if combined.mode == "RGBA":
+        bg = Image.new("RGB", combined.size, (255, 255, 255))
+        bg.paste(combined, mask=combined.split()[3])
+        return bg
+    elif combined.mode != "RGB":
+        return combined.convert("RGB")
+    else:
+        return combined
 
 # —— Steam 风格游戏成就列表配色 ——
 _ACH_BG_B        = (0x1b, 0x28, 0x38)   # 顶部面板 B 底 #1b2838
