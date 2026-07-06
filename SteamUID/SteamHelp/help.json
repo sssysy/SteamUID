@@ -90,7 +90,7 @@
         "need_admin": false
       },
       {
-        "name": "游戏成就(待更新)",
+        "name": "游戏成就",
         "desc": "查看指定游戏的成就",
         "eg": "游戏成就1282270",
         "need_ck": false,
