@@ -346,13 +346,17 @@ class SteamBind(BaseIDModel, table=True):
         bot_id: str,
         user_id: str,
         user_type: str,
+        group_id: Optional[str] = None,
     ) -> list["SteamBind"]:
         """按用户查其所有绑定（用于查看命令、解绑查本人订阅）"""
-        stmt = select(cls).where(
+        where_list = [
             cls.bot_id == bot_id,
             cls.user_id == user_id,
             cls.user_type == user_type,
-        )
+        ]
+        if group_id is not None:
+            where_list.append(cls.group_id == group_id)
+        stmt = select(cls).where(*where_list)
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
@@ -421,6 +425,7 @@ class SteamBind(BaseIDModel, table=True):
         user_type: str,
         push_column: str,
         enabled: bool,
+        group_id: Optional[str] = None,
     ) -> int:
         """
         设置某个推送开关。
@@ -435,6 +440,7 @@ class SteamBind(BaseIDModel, table=True):
             cls.bot_id == bot_id,
             cls.user_id == user_id,
             cls.user_type == user_type,
+            cls.group_id == group_id,
         )
         result = await session.execute(stmt)
         existing = result.scalars().first()

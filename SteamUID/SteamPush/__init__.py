@@ -32,7 +32,7 @@ async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str],
         # 关闭推送不受管理员开关限制
         fact_push_column = push_column[:]
 
-    subs = [s.steamid64 for s in await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)]
+    subs = [s.steamid64 for s in await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type, ev.group_id)]
     if steamid64:
         # 传递了 steamid
         if steamid64 not in subs:
@@ -47,7 +47,7 @@ async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str],
     error_ids = set()
     for sub in subs:
         for push_type in fact_push_column:
-            set_status = await SteamBind.set_push_status(sub, ev.bot_id, ev.user_id, ev.user_type, push_type, status)
+            set_status = await SteamBind.set_push_status(sub, ev.bot_id, ev.user_id, ev.user_type, push_type, status, ev.group_id)
             if set_status != 0:
                 error_ids.add(sub)
 
@@ -70,14 +70,14 @@ async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str],
 @push_SV.on_command("开启推送")
 async def open_all_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    await switch_push(bot, ev, steamid64, ["push_start_game", "push_end_game"], True)
+    await switch_push(bot, ev, steamid64, ["push_start_game", "push_end_game", "push_archivement"], True)
 
 
 
 @push_SV.on_command("关闭推送")
 async def close_all_push(bot: Bot, ev: Event):
     steamid64 = ev.text.strip()
-    await switch_push(bot, ev, steamid64, ["push_start_game", "push_end_game"], False)
+    await switch_push(bot, ev, steamid64, ["push_start_game", "push_end_game", "push_archivement"], False)
 
 
 
