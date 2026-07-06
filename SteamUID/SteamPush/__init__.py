@@ -14,19 +14,23 @@ push_status = {
 
 async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str], status: bool):
     """切换推送状态"""
-    # 判断是否开启此推送
-    push_switch = set(SteamConfig.get_config("PushSwitch").data)
-    error_column = []
-    fact_push_column = []
-    for push_type in push_column:
-        if push_status[push_type] not in push_switch:
-            error_column.append(push_status[push_type])
-        else:
-            fact_push_column.append(push_type)
-    if error_column:
-        await bot.send(f"管理员未开放{' / '.join(error_column)}推送功能！")
-    if not fact_push_column:
-        return
+    if status:
+        # 开启推送时才检查管理员开关
+        push_switch = set(SteamConfig.get_config("PushSwitch").data)
+        error_column = []
+        fact_push_column = []
+        for push_type in push_column:
+            if push_status[push_type] not in push_switch:
+                error_column.append(push_status[push_type])
+            else:
+                fact_push_column.append(push_type)
+        if error_column:
+            await bot.send(f"管理员未开放{' / '.join(error_column)}推送功能！")
+        if not fact_push_column:
+            return
+    else:
+        # 关闭推送不受管理员开关限制
+        fact_push_column = push_column[:]
 
     subs = [s.steamid64 for s in await SteamBind.get_binds_by_user(ev.bot_id, ev.user_id, ev.user_type)]
     if steamid64:
@@ -57,7 +61,10 @@ async def switch_push(bot:Bot, ev: Event, steamid64:str, push_column: list[str],
         return await bot.send("其余绑定的steamid推送状态切换成功")
     else:
         push_names = ' / '.join(push_status[p] for p in fact_push_column)
-        return await bot.send(f"{push_names}推送状态切换成功")
+        if status:
+            return await bot.send(f"{push_names}推送状态成功开启")
+        else:
+            return await bot.send(f"{push_names}推送状态成功关闭")
 
 
 @push_SV.on_command("开启推送")
