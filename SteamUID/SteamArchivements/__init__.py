@@ -106,6 +106,4 @@ async def game_archivements(bot: Bot, ev: Event):
         status_game = None
         
     # 6) 发送图片
-    buf = BytesIO()
-    img.save(buf, format="JPEG", quality=pic_quality, subsampling=0)
-    await bot.send(MessageSegment.image(buf.getvalue()))
+    await bot.send(MessageSegment.image(img))
