@@ -180,6 +180,37 @@ async def poll_and_push_achievements() -> None:
             return
 
         steamid_all = await SteamArchivementInfo.get_all_archivement_info()
+
+        # 自动初始化缺少基线的成就推送用户
+        tracked_steamids = {s.steamid64 for s in steamid_all}
+        all_binds = await SteamBind.get_all_archivement_push_binds()
+        for bind in all_binds:
+            if bind.steamid64 in tracked_steamids:
+                continue
+            try:
+                user_info = json.loads(
+                    await SteamIDInfo.get_steamuserinfo(bind.steamid64) or "{}"
+                )
+                gameid = user_info.get("gameid", "")
+                if not gameid:
+                    continue
+                resp = await get_archivement_info(gameid, bind.steamid64)
+                await SteamArchivementInfo.upsert_archivement_data(
+                    bind.steamid64,
+                    gameid,
+                    json.dumps(resp, ensure_ascii=False),
+                )
+                logger.info(
+                    f"[SteamPoll] 自动初始化成就基线 appid={gameid} "
+                    f"steamid={bind.steamid64}"
+                )
+            except Exception as error:
+                logger.warning(
+                    f"[SteamPoll] 自动初始化成就基线失败 "
+                    f"steamid={bind.steamid64}: {error!r}"
+                )
+
+        steamid_all = await SteamArchivementInfo.get_all_archivement_info()
         if not steamid_all:
             return
 
@@ -222,7 +253,7 @@ async def poll_and_push_achievements() -> None:
                 archivement_name = ach.get("name", "无名称")
                 archivement_desc = ach.get("description", "无描述")
                 text_msg = (
-                    f"{steamid64} 解锁成就：\n"
+                    f"{gamer_name} 解锁成就：\n"
                     f"游戏：{game_name}\n"
                     f"成就：{archivement_name}\n"
                     f"描述：{archivement_desc}"

@@ -329,6 +329,24 @@ class SteamBind(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def get_all_archivement_push_binds(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+    ) -> list["SteamBind"]:
+        """获取所有开启了成就推送的绑定（按 steamid64 去重）"""
+        stmt = select(cls).where(cls.push_archivement == True)  # noqa: E712
+        result = await session.execute(stmt)
+        binds = result.scalars().all()
+        seen = set()
+        unique: list["SteamBind"] = []
+        for b in binds:
+            if b.steamid64 not in seen:
+                seen.add(b.steamid64)
+                unique.append(b)
+        return unique
+
+    @classmethod
+    @with_session
     async def set_push_status(
         cls: Type[T_SteamBind],
         session: AsyncSession,
