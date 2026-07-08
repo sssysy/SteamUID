@@ -20,7 +20,7 @@
 >
 > 插件检测 steam 状态需要将 steam 资料设置为公开
 >
-> 🚧 项目快速迭代中，漏洞可能较多，欢迎反馈。新功能敬请期待 🚧
+> 🚧 项目快速迭代中，有漏洞可提issue或pr 🚧
 
 ## 丨使用限制
 
@@ -35,7 +35,12 @@
 
 ## 丨命令列表
 
-### 基础命令
+### steam帮助
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQmlCSUowU2ZIT1Q2clc2UzQ3UDNNWkFjMlFfanNSSWVpTHc0WmphQ1pqQ1JvP2U9S0dmZjYz.jpg" width="480" alt="Steam帮助菜单"></a>
+
+### 文字版
+
+#### 基础命令
 | 命令 | 说明 |
 |------|:------:|
 | `steam帮助` | 查看帮助菜单 |
@@ -43,7 +48,7 @@
 | `steam解绑` | 解绑steam |
 | `steam查看` | 查看已绑定的steamid64列表 |
 
-### 推送相关
+#### 推送相关
 | 命令 | 说明 |
 |------|:------:|
 | `steam开启推送` | 开启全部steam状态推送功能 |
@@ -55,7 +60,7 @@
 | `steam开启成就推送` | 开启成就推送功能 |
 | `steam关闭成就推送` | 关闭成就推送功能 |
 
-### 游戏库相关
+#### 游戏库相关
 | 命令 | 说明 |
 |------|:------:|
 | `steam游戏墙`         |      查看自己游戏墙       |
@@ -65,14 +70,17 @@
 
 ## 效果图
 
-<div align="center">
+### steam游戏成就
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRHR5UVVwYVVENFJhX2UxakdHblNIeUFRVVoxcDVZMGpxRkpBWmYtRGhQRENjP2U9RTdMMlJk.png" width="160"/>
 
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRHR5UVVwYVVENFJhX2UxakdHblNIeUFRVVoxcDVZMGpxRkpBWmYtRGhQRENjP2U9RTdMMlJk.png" width="160" />
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQWVnNm85WjBHc1NyZWhvWHJJaVFLdUFiZEJqb3ZlQ1JHMXlNdUNLenk3TlY0P2U9cXlpTWdS.png" width="160" />
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2lrOERKZ1VIZFE1bkl1S2dOTzRDeUFjQlB1SmRyYlM0SlhjcGdLSTU0bGFvP2U9bm1ja0gy.png" width="160" />
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160" />
+### steam成就推送
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQWVnNm85WjBHc1NyZWhvWHJJaVFLdUFiZEJqb3ZlQ1JHMXlNdUNLenk3TlY0P2U9cXlpTWdS.png" width="160"/>
 
-</div>
+### steam开始游戏 / 结束游戏推送
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2lrOERKZ1VIZFE1bkl1S2dOTzRDeUFjQlB1SmRyYlM0SlhjcGdLSTU0bGFvP2U9bm1ja0gy.png" width="160"/>
+
+### steam游戏墙
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160"/>
 
 ## 丨其他
 
