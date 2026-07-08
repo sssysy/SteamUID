@@ -1,39 +1,12 @@
-from typing import Any, ClassVar, Dict, List, Optional, Set, Type, TypeVar, Union
+from typing import Any, ClassVar, Dict, Optional, Set, Type, TypeVar
 
 from sqlmodel import Field, select
 from sqlalchemy import delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gsuid_core.bot import Bot
-from gsuid_core.gss import gss
-from gsuid_core.logger import logger
-from gsuid_core.models import Event, Message
-from gsuid_core.message_models import ButtonType
-from gsuid_core.webconsole.mount_app import PageSchema, GsAdminModel, site
-from gsuid_core.utils.database.startup import exec_list
 from gsuid_core.utils.database.base_models import BaseIDModel, with_session
 
-# 补齐新增列与索引
-exec_list.extend(
-    [
-        # SteamIDInfo 新增列
-        "ALTER TABLE steamidinfo ADD COLUMN steamid64 VARCHAR",
-        "ALTER TABLE steamidinfo ADD COLUMN steamuserinfo VARCHAR",
-        # SteamBind 新增列（表已存在但列不全时补齐，列已存在会被 try/except 忽略）
-        'ALTER TABLE steambind ADD COLUMN steamid64 VARCHAR',
-        'ALTER TABLE steambind ADD COLUMN bot_id VARCHAR',
-        'ALTER TABLE steambind ADD COLUMN user_id VARCHAR',
-        'ALTER TABLE steambind ADD COLUMN "WS_BOT_ID" VARCHAR',
-        'ALTER TABLE steambind ADD COLUMN group_id VARCHAR',
-        'ALTER TABLE steambind ADD COLUMN bot_self_id VARCHAR',
-        'ALTER TABLE steambind ADD COLUMN user_type VARCHAR',
-        # 推送开关列
-        'ALTER TABLE steambind ADD COLUMN push_start_game BOOLEAN DEFAULT 1',
-        'ALTER TABLE steambind ADD COLUMN push_end_game BOOLEAN DEFAULT 1',
-        'ALTER TABLE steambind ADD COLUMN push_archivement BOOLEAN DEFAULT 1',
-        'ALTER TABLE steambind ADD COLUMN is_main_id BOOLEAN DEFAULT 0',
-    ]
-)
+from . import migrations
 
 T_SteamBind = TypeVar("T_SteamBind", bound="SteamBind")
 T_SteamIDInfo = TypeVar("T_SteamIDInfo", bound="SteamIDInfo")
@@ -63,8 +36,8 @@ class SteamIDInfo(BaseIDModel, table=True):
         else:
             session.add(
                 cls(
-                    steamid64=steamid64,
-                    steamuserinfo=steamuserinfo,
+                    steamid64=steamid64, # type: ignore
+                    steamuserinfo=steamuserinfo, # type: ignore
                 )
             )
         return 0
@@ -199,71 +172,10 @@ class SteamBind(BaseIDModel, table=True):
     push_archivement: bool = Field(default=True, title="推送成就")
     is_main_id: bool = Field(default=False, title="是否主ID")
 
-    async def send(
-        self,
-        reply: Optional[
-            Union[
-                Message,
-                List[Message],
-                List[str],
-                str,
-                bytes,
-            ]
-        ] = None,
-        option_list: Optional[ButtonType] = None,
-        unsuported_platform: bool = False,
-        sep: str = "\n",
-        command_tips: str = "请输入以下命令之一:",
-        command_start_text: str = "",
-        force_direct: bool = False,
-    ):
-        """复制 Subscribe.send 路由逻辑：优先 WS_BOT_ID，失效时按 bot_id 兜底"""
-        user_type = "direct" if force_direct else self.user_type
-        ev = Event(
-            bot_id=self.bot_id,
-            user_id=self.user_id,
-            bot_self_id=self.bot_self_id,
-            user_type=user_type,  # type: ignore
-            group_id=self.group_id,
-            real_bot_id=self.bot_id,
-            msg_id="",
-        )
-        params = {
-            "reply": reply,
-            "option_list": option_list,
-            "unsuported_platform": unsuported_platform,
-            "sep": sep,
-            "command_tips": command_tips,
-            "command_start_text": command_start_text,
-        }
-
-        if self.WS_BOT_ID:
-            if self.WS_BOT_ID in gss.active_bot:
-                BOT = gss.active_bot[self.WS_BOT_ID]
-                bot = Bot(BOT, ev)
-                await bot.send_option(**params)
-            else:
-                # WS_BOT_ID 失效，按 bot_id 兜底查找活跃 Bot（不回写数据库，简化处理）
-                found = False
-                for ws_bot_id, _bot in gss.active_bot.items():
-                    if _bot.bot_id == self.bot_id:
-                        logger.info(
-                            f"[SteamBind] WS_BOT_ID {self.WS_BOT_ID} 已失效，临时切换到 {ws_bot_id}"
-                        )
-                        bot = Bot(_bot, ev)
-                        await bot.send_option(**params)
-                        found = True
-                        break
-                if not found:
-                    logger.error(
-                        f"[SteamBind] 机器人{self.WS_BOT_ID}不存在, 该消息无法发送!"
-                    )
-                    return -1
-        else:
-            for bot_id in gss.active_bot:
-                BOT = gss.active_bot[bot_id]
-                bot = Bot(BOT, ev)
-                await bot.send_option(**params)
+    async def send(self, reply=None, **kwargs):
+        """薄委托，路由逻辑见 push_sender.send_to_bind"""
+        from ..sender import send_to_bind
+        return await send_to_bind(self, reply, **kwargs)
 
     @classmethod
     @with_session
@@ -280,7 +192,7 @@ class SteamBind(BaseIDModel, table=True):
         is_main_id: bool = False,
     ) -> int:
         """写入绑定关系（同一 user + steamid 已存在则更新）"""
-        # 如果设置为主ID，先将该用户在【同群】绑定的 is_main_id 清零
+        # 设置主ID前，先将该用户在同群绑定的 is_main_id 清零
         if is_main_id:
             user_stmt = select(cls).where(
                 cls.bot_id == bot_id,
@@ -303,7 +215,8 @@ class SteamBind(BaseIDModel, table=True):
         result = await session.execute(stmt)
         existing = result.scalars().first()
 
-        if existing is not None:# 更新绑定不需要修改推送状态
+        if existing is not None:
+            # 更新绑定不修改推送状态
             existing.WS_BOT_ID = WS_BOT_ID
             existing.bot_self_id = bot_self_id
             existing.is_main_id = is_main_id
@@ -396,7 +309,7 @@ class SteamBind(BaseIDModel, table=True):
         )
         result = await session.execute(stmt)
         if result.rowcount and result.rowcount > 0:  # type: ignore
-            # 如果删除的是主ID，自动提升本群最近绑定的ID为主ID
+            # 删除的是主ID时，自动提升本群最近绑定的ID为主ID
             if was_main:
                 next_stmt = select(cls).where(
                     cls.bot_id == bot_id,
@@ -413,6 +326,24 @@ class SteamBind(BaseIDModel, table=True):
         return -1
 
     PUSH_COLUMNS: ClassVar[Set[str]] = {"push_start_game", "push_end_game", "push_archivement"}
+
+    @classmethod
+    @with_session
+    async def get_all_archivement_push_binds(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+    ) -> list["SteamBind"]:
+        """获取所有开启了成就推送的绑定（按 steamid64 去重）"""
+        stmt = select(cls).where(cls.push_archivement == True)  # noqa: E712
+        result = await session.execute(stmt)
+        binds = result.scalars().all()
+        seen = set()
+        unique: list["SteamBind"] = []
+        for b in binds:
+            if b.steamid64 not in seen:
+                seen.add(b.steamid64)
+                unique.append(b)
+        return unique
 
     @classmethod
     @with_session
@@ -492,7 +423,7 @@ class SteamBind(BaseIDModel, table=True):
         0: 成功
         -1: 未找到指定绑定
         """
-        # 先清零该用户在同群的所有绑定
+        # 先清零该用户在同群的所有 is_main_id
         user_stmt = select(cls).where(
             cls.bot_id == bot_id,
             cls.user_id == user_id,
@@ -542,32 +473,4 @@ class SteamBind(BaseIDModel, table=True):
         return result.scalars().first()
 
 
-@site.register_admin
-class SteamIDInfoAdmin(GsAdminModel):
-    pk_name = "id"
-    page_schema = PageSchema(
-        label="steamid轮询记录",
-        icon="fa fa-database",
-    )  # type: ignore
-
-    model = SteamIDInfo
-
-@site.register_admin
-class SteamBindAdmin(GsAdminModel):
-    pk_name = "id"
-    page_schema = PageSchema(
-        label="steam绑定管理",
-        icon="fa fa-database",
-    )  # type: ignore
-
-    model = SteamBind
-
-@site.register_admin
-class SteamArchivementInfoAdmin(GsAdminModel):
-    pk_name = "id"
-    page_schema = PageSchema(
-        label="Steam成就记录",
-        icon="fa fa-database",
-    )  # type: ignore
-
-    model = SteamArchivementInfo
+from . import admin  # noqa: F401, E402

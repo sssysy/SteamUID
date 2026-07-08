@@ -82,14 +82,6 @@
     "desc": "查询游戏成就并控制成就推送",
     "data": [
       {
-        "name": "成就总览(待更新)",
-        "desc": "查看自己最近游戏的成就",
-        "eg": "成就",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
         "name": "游戏成就",
         "desc": "查看指定游戏的成就",
         "eg": "游戏成就1282270",

@@ -1,201 +1,90 @@
-import json
-
-from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
+from gsuid_core.logger import logger
 from gsuid_core.models import Event
-from ..utils.database.models import SteamIDInfo, SteamBind
-from ..utils.api import get_user_Summaries
-from . import login
+from gsuid_core.sv import SV
+
 from ..SteamConfig import SteamConfig
+from ..utils.exceptions import SteamError, SteamValidationError
 from ..utils.utils import auto2steamid64
+from . import login
+from .bind_service import do_bind, do_unbind, format_bind_list, switch_main_id
 
 bind_sv = SV("绑定账号")
-
-async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
-    """拉取缓存 Steam 用户信息"""
-    if not steamid_info:
-        return False
-    player = steamid_info[0]
-    await SteamIDInfo.upsert_steamuserinfo(
-        steamid64, json.dumps(player, ensure_ascii=False)
-    )
-    return True
-
-
-def steamid_visible(player: dict) -> str:
-    """判断 steamid 是否可见"""
-    visible = player.get("communityvisibilitystate", 4)
-    if visible == 1:
-        return "注意：当前绑定steamid状态未公开，无法获取状态变更信息！"
-    elif visible == 2:
-        return "注意：当前绑定steamid状态仅限好友查看，可能无法获取状态变更信息！"
-    else:
-        return ""
-
-
-async def do_bind(bot: Bot, ev: Event, steamid64: str, is_main_id: bool = True):
-    """绑定 steam 主函数"""
-    if not steamid64 or not steamid64.isdigit():
-        return await bot.send("请输入正确的64位steamid")
-    # id 已被绑定
-    existing = await SteamBind.get_bind_by_steamid(steamid64)
-    if existing:
-        # 已订阅
-        is_self = any(
-            sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
-            for sub in existing
-        )
-        if is_self: # 是自己
-            is_binding_here = any(
-                sub.group_id == ev.group_id
-                for sub in existing if sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
-            )
-            if is_binding_here: # 在这个群内绑定过
-                return await bot.send("你已在该群绑定该steamid！")
-            else: # 没绑定过就继续
-                pass
-        else: # 被其他人绑定
-            return await bot.send("该steamid已被他人绑定！")
-
-    # 取 steamid 信息
-    steamid_info = await get_user_Summaries(steamid64)
-    if not await update_steam_info(steamid64, steamid_info):
-        return await bot.send("该steamid不存在")
-
-    # 写绑定
-    await SteamBind.upsert_bind(
-        steamid64=steamid64,
-        bot_id=ev.bot_id,
-        user_id=ev.user_id,
-        user_type=ev.user_type,
-        WS_BOT_ID=ev.WS_BOT_ID,
-        group_id=ev.group_id,
-        bot_self_id=ev.bot_self_id,
-        is_main_id=is_main_id,
-    )
-    await bot.send(f"绑定 steamid: {steamid64} 成功", True)
-
-    # 判断资料公开性，如果没公开就提醒一次用户
-    visible = steamid_visible(steamid_info[0])
-    if visible:
-        await bot.send(visible)
-
 
 
 @bind_sv.on_command(("绑定", "登录", "登陆", "bind"))
 async def steambind(bot: Bot, ev: Event):
-    text = ev.text.strip()
-    steamid64 = auto2steamid64(text)
-    # 手动绑定
-    if steamid64:
-        if SteamConfig.get_config("OnlyOpenID").data:
-            return await bot.send("仅允许网页登录，不支持手动绑定steamid！")
-        else:
-            await do_bind(bot, ev, steamid64)
-
-    # 自动绑定
-    else:
-        steamid64 = await login.request_openid_login(bot, ev)
+    try:
+        text = ev.text.strip()
+        steamid64 = auto2steamid64(text)
         if steamid64:
-            await do_bind(bot, ev, steamid64)
+            if SteamConfig.get_config("OnlyOpenID").data:
+                raise SteamValidationError("仅允许网页登录，不支持手动绑定steamid！")
+        else:
+            steamid64 = await login.request_openid_login(bot, ev)
+        if steamid64:
+            success_msg, warning = await do_bind(ev, steamid64)
+            await bot.send(success_msg, True)
+            if warning:
+                await bot.send(warning)
+    except SteamError as e:
+        await bot.send(str(e))
+    except Exception as e:
+        logger.exception(f"[SteamBind] 绑定命令异常: {e}")
+        await bot.send(f"发生未知错误: {e}")
 
-
-async def do_unbind(bot: Bot, ev: Event, steamid64: str):
-    """解绑主函数"""
-    if not steamid64 or not steamid64.isdigit():
-        return await bot.send("请输入正确的64位steamid")
-
-    # 删除绑定（返回 0 成功 / -1 未找到）
-    result = await SteamBind.delete_bind(
-        steamid64=steamid64,
-        bot_id=ev.bot_id,
-        user_id=ev.user_id,
-        user_type=ev.user_type,
-        group_id=ev.group_id,
-    )
-    if result != 0:
-        return await bot.send("未找到绑定的项目")
-
-    # 检查是否需要删除steamid缓存
-    remaining = await SteamBind.get_bind_by_steamid(steamid64)
-    if not remaining:
-        await SteamIDInfo.delete_steamuserinfo(steamid64)
-
-    await bot.send(f"解绑 steamid: {steamid64} 成功")
 
 @bind_sv.on_command(("解绑", "unbind", "退出登录", "退出登陆"))
 async def steamunbind(bot: Bot, ev: Event):
-    text = ev.text.strip()
-    steamid64 = auto2steamid64(text)
-    # 手动解绑
-    if steamid64:
-        await do_unbind(bot, ev, steamid64)
-    # 自动解绑
-    else:
-        await bot.send("请在接下来登录一次要解绑的 steam 以继续")
-        steamid64 = await login.request_openid_login(bot, ev)
+    try:
+        text = ev.text.strip()
+        steamid64 = auto2steamid64(text)
+        if not steamid64:
+            await bot.send("请在接下来登录一次要解绑的 steam 以继续")
+            steamid64 = await login.request_openid_login(bot, ev)
         if steamid64:
-            await do_unbind(bot, ev, steamid64)
+            msg = await do_unbind(ev, steamid64)
+            await bot.send(msg)
+    except SteamError as e:
+        await bot.send(str(e))
+    except Exception as e:
+        logger.exception(f"[SteamBind] 解绑命令异常: {e}")
+        await bot.send(f"发生未知错误: {e}")
 
 
 @bind_sv.on_command("查看")
 async def steamview(bot: Bot, ev: Event):
-    at = ev.at
-    if at:
-        ev.user_id = at
-
-    subs = await SteamBind.get_binds_by_user(
-        bot_id=ev.bot_id,
-        user_id=ev.user_id,
-        user_type=ev.user_type,
-    )
-    if not subs:
-        return await bot.send("未绑定任何 steamid")
-
-    now_id_list = []
-    other_id_list = []
-    for sub in subs:
-        tag = " [主]" if (sub.is_main_id and sub.group_id == ev.group_id) else ""
-        entry = f"{sub.steamid64}{tag}"
-        if sub.group_id == ev.group_id:
-            now_id_list.append(entry)
+    try:
+        at = ev.at
+        if at:
+            ev.user_id = at
+        show_all = ev.text.strip() == "全部"
+        send_msg = await format_bind_list(
+            ev.bot_id, ev.user_id, ev.user_type, show_all, ev.group_id
+        )
+        if send_msg is None:
+            await bot.send("未绑定任何 steamid")
         else:
-            other_id_list.append(entry)
+            await bot.send(send_msg)
 
-    now_id_list = list(set(now_id_list))
-    other_id_list = list(set(other_id_list))
+    except SteamError as e:
+        await bot.send(str(e))
+    except Exception as e:
+        logger.exception(f"[SteamBind] 查看命令异常: {e}")
+        await bot.send(f"发生未知错误: {e}")
 
-    if not now_id_list and not other_id_list:
-        return await bot.send("未绑定任何 steamid")
-    
-    send_msg = f"[steam] -=绑定列表=-\n{"-"*20}\n"
-    if now_id_list:
-        send_msg += f"此群已绑定的steamid：\n{'\n'.join(now_id_list) }\n{"-"*20}\n"
-    if other_id_list and ev.text.strip() == "全部":
-        send_msg += f"其他地方已绑定的steamid：\n{'\n'.join(other_id_list) }\n{"-"*20}\n"
-
-    await bot.send(send_msg)
 
 @bind_sv.on_command("切换")
 async def switchsteamid(bot: Bot, ev: Event):
-    text = ev.text.strip()
-    steamid64 = auto2steamid64(text)
-    if not steamid64:
-        return await bot.send("请输入正确的steamid或好友码")
-    all_binds = await SteamBind.get_binds_by_user(
-        bot_id=ev.bot_id,
-        user_id=ev.user_id,
-        user_type=ev.user_type,
-    )
-    all_steamid64 = [bind.steamid64 for bind in all_binds]
-    if steamid64 not in all_steamid64:
-        return await bot.send("未绑定当前steamid!")
-
-    await SteamBind.set_main_id(
-        steamid64=steamid64,
-        bot_id=ev.bot_id,
-        user_id=ev.user_id,
-        user_type=ev.user_type,
-        group_id=ev.group_id,
-    )
-    await bot.send(f"切换 steamid: {steamid64} 成功")
+    try:
+        text = ev.text.strip()
+        steamid64 = auto2steamid64(text)
+        if not steamid64:
+            raise SteamValidationError("请输入正确的steamid或好友码")
+        msg = await switch_main_id(ev, steamid64)
+        await bot.send(msg)
+    except SteamError as e:
+        await bot.send(str(e))
+    except Exception as e:
+        logger.exception(f"[SteamBind] 切换命令异常: {e}")
+        await bot.send(f"发生未知错误: {e}")
