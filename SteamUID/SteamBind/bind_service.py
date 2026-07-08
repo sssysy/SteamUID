@@ -5,6 +5,7 @@ from gsuid_core.models import Event
 from ..utils.api import get_user_Summaries
 from ..utils.database.models import SteamIDInfo, SteamBind
 from ..utils.exceptions import SteamValidationError
+from ..utils.utils import steamid64_to_friend_code
 
 
 async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
@@ -154,3 +155,65 @@ async def switch_main_id(ev: Event, steamid64: str) -> str:
         group_id=ev.group_id,
     )
     return f"切换 steamid: {steamid64} 成功"
+
+
+async def get_bind_card_data(
+    bot_id: str,
+    user_id: str,
+    user_type: str,
+    group_id: str | None,
+    show_all: bool = True,
+) -> tuple[list[dict], list[dict]]:
+    """
+    获取绑定列表的卡片渲染数据。
+
+    返回 (本群绑定列表, 其他群绑定列表)，每项包含:
+        steamid64, name, avatar_url, avatar_hash, friend_code, is_main, warning
+    """
+    subs = await SteamBind.get_binds_by_user(
+        bot_id=bot_id, user_id=user_id, user_type=user_type,
+    )
+    if not subs:
+        return [], []
+
+    now_items: list[dict] = []
+    other_items: list[dict] = []
+
+    for sub in subs:
+        # 读取缓存的玩家信息
+        info_json = await SteamIDInfo.get_steamuserinfo(sub.steamid64)
+        if info_json:
+            info = json.loads(info_json)
+        else:
+            # 缓存缺失，从 API 获取
+            steamid_info = await get_user_Summaries(sub.steamid64)
+            if steamid_info:
+                info = steamid_info[0]
+                await SteamIDInfo.upsert_steamuserinfo(
+                    sub.steamid64, json.dumps(info, ensure_ascii=False)
+                )
+            else:
+                info = {}
+
+        name = info.get("personaname", "未知用户")
+        avatar_url = info.get("avatarfull", info.get("avatarmedium", ""))
+        avatar_hash = info.get("avatarhash", sub.steamid64)
+        warning = check_steamid_visible(info)
+
+        item = {
+            "steamid64": sub.steamid64,
+            "name": name,
+            "avatar_url": avatar_url,
+            "avatar_hash": avatar_hash,
+            "friend_code": steamid64_to_friend_code(sub.steamid64),
+            "is_main": bool(sub.is_main_id and sub.group_id == group_id),
+            "warning": warning,
+        }
+
+        if sub.group_id == group_id:
+            now_items.append(item)
+        else:
+            if show_all:
+                other_items.append(item)
+
+    return now_items, other_items

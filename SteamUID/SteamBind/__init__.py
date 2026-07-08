@@ -1,15 +1,48 @@
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
+from ..utils.PIL.draw import draw_bind_list_photo
 from ..utils.exceptions import SteamError, SteamValidationError
-from ..utils.utils import auto2steamid64
+from ..utils.utils import auto2steamid64, steamid64_to_friend_code
 from . import login
-from .bind_service import do_bind, do_unbind, format_bind_list, switch_main_id
+from .bind_service import (
+    do_bind,
+    do_unbind,
+    get_bind_card_data,
+    switch_main_id,
+)
 
 bind_sv = SV("绑定账号")
+
+
+async def _send_bind_card(
+    bot: Bot,
+    ev: Event,
+    *,
+    fallback_msg: str | None = None,
+    new_bind_steamid: str | None = None,
+    unbind_banner: dict | None = None,
+    show_all: bool = True,
+) -> None:
+    """获取绑定数据并渲染发送卡片图片，渲染失败时回退到文字"""
+    try:
+        now_items, other_items = await get_bind_card_data(
+            ev.bot_id, ev.user_id, ev.user_type, ev.group_id, show_all
+        )
+        img = await draw_bind_list_photo(
+            now_items, other_items,
+            new_bind_steamid=new_bind_steamid,
+            unbind_banner=unbind_banner,
+        )
+        await bot.send(MessageSegment.image(img))
+    except Exception as e:
+        logger.warning(f"[SteamBind] 渲染绑定卡片失败，回退到文字: {e}")
+        if fallback_msg:
+            await bot.send(fallback_msg)
 
 
 @bind_sv.on_command(("绑定", "登录", "登陆", "bind"))
@@ -24,9 +57,12 @@ async def steambind(bot: Bot, ev: Event):
             steamid64 = await login.request_openid_login(bot, ev)
         if steamid64:
             success_msg, warning = await do_bind(ev, steamid64)
-            await bot.send(success_msg, True)
+            fallback = success_msg
             if warning:
-                await bot.send(warning)
+                fallback += f"\n{warning}"
+            await _send_bind_card(
+                bot, ev, fallback_msg=fallback, new_bind_steamid=steamid64
+            )
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
@@ -43,8 +79,26 @@ async def steamunbind(bot: Bot, ev: Event):
             await bot.send("请在接下来登录一次要解绑的 steam 以继续")
             steamid64 = await login.request_openid_login(bot, ev)
         if steamid64:
+            # 解绑前获取玩家信息用于横幅
+            from ..utils.database.models import SteamIDInfo
+            import json as _json
+
+            info_json = await SteamIDInfo.get_steamuserinfo(steamid64)
+            if info_json:
+                info = _json.loads(info_json)
+            else:
+                from ..utils.api import get_user_Summaries
+
+                sid_info = await get_user_Summaries(steamid64)
+                info = sid_info[0] if sid_info else {}
+
+            banner = {
+                "name": info.get("personaname", "未知用户"),
+                "friend_code": steamid64_to_friend_code(steamid64),
+            }
+
             msg = await do_unbind(ev, steamid64)
-            await bot.send(msg)
+            await _send_bind_card(bot, ev, fallback_msg=msg, unbind_banner=banner)
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
@@ -59,13 +113,14 @@ async def steamview(bot: Bot, ev: Event):
         if at:
             ev.user_id = at
         show_all = ev.text.strip() == "全部"
-        send_msg = await format_bind_list(
-            ev.bot_id, ev.user_id, ev.user_type, show_all, ev.group_id
+        now_items, other_items = await get_bind_card_data(
+            ev.bot_id, ev.user_id, ev.user_type, ev.group_id, show_all
         )
-        if send_msg is None:
+        if not now_items and not other_items:
             await bot.send("未绑定任何 steamid")
         else:
-            await bot.send(send_msg)
+            img = await draw_bind_list_photo(now_items, other_items)
+            await bot.send(MessageSegment.image(img))
 
     except SteamError as e:
         await bot.send(str(e))

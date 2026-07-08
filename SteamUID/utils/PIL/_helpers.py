@@ -53,6 +53,14 @@ def _center_text_x(center_x: int, text: str, font: ImageFont.FreeTypeFont) -> in
     return center_x - int(font.getlength(text) // 2)
 
 
+def text_y_for_center(
+    center_y: float, font: ImageFont.FreeTypeFont, text: str = "测"
+) -> float:
+    """计算 draw.text 的 y 坐标，使文字视觉中心位于 center_y"""
+    bbox = font.getbbox(text)
+    return center_y - (bbox[1] + bbox[3]) / 2
+
+
 def draw_vertical_gradient(
     canvas: Image.Image,
     width: int,

@@ -52,12 +52,19 @@ async def batch_download_images(
     return paths
 
 
+_BASE_STEAM_ID64 = 76561197960265728
+
+
+def steamid64_to_friend_code(steamid64: str) -> str:
+    """将 steamid64 转换为好友码（账号ID）"""
+    return str(int(steamid64) - _BASE_STEAM_ID64)
+
+
 def auto2steamid64(count: str | None) -> str | None:
     """把好友码/steamid64自动变化成steamid64"""
-    BASE_STEAM_ID64 = 76561197960265728
     if count is None or count.strip() == "" or not count.isdigit():
         return None
     count = count.strip()
-    if int(count) < BASE_STEAM_ID64:
-        count = str(BASE_STEAM_ID64 + int(count))
+    if int(count) < _BASE_STEAM_ID64:
+        count = str(_BASE_STEAM_ID64 + int(count))
     return count
