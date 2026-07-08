@@ -45,6 +45,7 @@ async def draw_game_status_photo(
 ) -> Image.Image | None:
     if game_background is None:
         return None
+    S = 2.0
     theme = _GAME_STATUS_THEMES["start" if is_playing else "end"]
 
     bg_cache = cache_path_for_url(game_background, appid)
@@ -53,10 +54,11 @@ async def draw_game_status_photo(
 
     avatar_cache = CACHE_DIR / f"{avatar_hash}.jpg"
     avatar = await _load_or_download(avatar_url, avatar_cache)
-    new_w = round(avatar.width * 85 / avatar.height)
-    avatar = avatar.resize((new_w, 85), Image.Resampling.LANCZOS)
+    avatar_h = round(85 * S)
+    new_w = round(avatar.width * avatar_h / avatar.height)
+    avatar = avatar.resize((new_w, avatar_h), Image.Resampling.LANCZOS)
 
-    canvas_h = H_bg + 85
+    canvas_h = H_bg + avatar_h
     canvas = Image.new("RGBA", (W_bg, canvas_h))
     draw_vertical_gradient(canvas, W_bg, canvas_h, theme["gradient_top"], theme["gradient_bottom"])
 
@@ -66,9 +68,10 @@ async def draw_game_status_photo(
     canvas = Image.alpha_composite(canvas, overlay)
 
     draw = ImageDraw.Draw(canvas)
-    draw.text((100, H_bg + 5), username, font=core_font(25), fill=theme["username_color"])
-    draw.text((100, H_bg + 40), theme["subtitle"], font=core_font(15), fill=theme["sub_text_color"])
-    draw.text((100, H_bg + 60), game_name, font=core_font(15), fill=theme["sub_text_color"])
+    text_x = round(100 * S)
+    draw.text((text_x, H_bg + round(5 * S)), username, font=core_font(round(25 * S)), fill=theme["username_color"])
+    draw.text((text_x, H_bg + round(40 * S)), theme["subtitle"], font=core_font(round(15 * S)), fill=theme["sub_text_color"])
+    draw.text((text_x, H_bg + round(60 * S)), game_name, font=core_font(round(15 * S)), fill=theme["sub_text_color"])
 
     return canvas
 
@@ -81,6 +84,7 @@ async def draw_archivements_photo(
         game_name: str,
         archivement_desc: str,
 ) -> Image.Image:
+    S = 2.0
     username_color = (0xCE, 0xE8, 0xB1)
     game_name_color = (0x90, 0xBA, 0x3C)
     white = (0xFF, 0xFF, 0xFF)
@@ -99,37 +103,40 @@ async def draw_archivements_photo(
     arch_cache = CACHE_DIR / f"{arch_hash}.jpg"
     archivement_img = await _load_or_download(archivement_img_url, arch_cache)
 
-    W, H = 600, 168
+    W, H = round(600 * S), round(168 * S)
     canvas = Image.new("RGBA", (W, H))
     draw_vertical_gradient(canvas, W, H, gradient_top, gradient_bottom)
 
-    archivement_img = archivement_img.resize((128, 128), Image.Resampling.LANCZOS)
-    canvas.paste(archivement_img, (20, 20), archivement_img)
+    ach_size = round(128 * S)
+    archivement_img = archivement_img.resize((ach_size, ach_size), Image.Resampling.LANCZOS)
+    canvas.paste(archivement_img, (round(20 * S), round(20 * S)), archivement_img)
 
-    gamer_img = gamer_img.resize((48, 48), Image.Resampling.LANCZOS)
-    canvas.paste(gamer_img, (173, 20), gamer_img)
+    gamer_size = round(48 * S)
+    gamer_img = gamer_img.resize((gamer_size, gamer_size), Image.Resampling.LANCZOS)
+    canvas.paste(gamer_img, (round(173 * S), round(20 * S)), gamer_img)
 
     draw = ImageDraw.Draw(canvas)
 
-    font_gamer = _font_with_height(42)
-    draw.text((236, 12), gamer_name, font=font_gamer, fill=username_color)
+    font_gamer = _font_with_height(round(42 * S))
+    draw.text((round(236 * S), round(12 * S)), gamer_name, font=font_gamer, fill=username_color)
 
     # "在 {game_name} 解锁了成就" —— 混色绘制
-    font_game_line = _font_with_height(20)
+    font_game_line = _font_with_height(round(20 * S))
     prefix = "在 "
     suffix = " 解锁了成就"
-    x_start = 173
-    draw.text((x_start, 73), prefix, font=font_game_line, fill=white)
+    x_start = round(173 * S)
+    line_y = round(73 * S)
+    draw.text((x_start, line_y), prefix, font=font_game_line, fill=white)
     offset1 = font_game_line.getlength(prefix)
-    draw.text((x_start + offset1, 73), game_name, font=font_game_line, fill=game_name_color)
+    draw.text((x_start + offset1, line_y), game_name, font=font_game_line, fill=game_name_color)
     offset2 = font_game_line.getlength(prefix + game_name)
-    draw.text((x_start + offset2, 73), suffix, font=font_game_line, fill=white)
+    draw.text((x_start + offset2, line_y), suffix, font=font_game_line, fill=white)
 
-    font_arch_name = _font_with_height(25)
-    draw.text((173, 98), archivement_name, font=font_arch_name, fill=white)
+    font_arch_name = _font_with_height(round(25 * S))
+    draw.text((x_start, round(98 * S)), archivement_name, font=font_arch_name, fill=white)
 
-    font_desc = _font_with_height(20)
-    draw.text((173, 133), archivement_desc, font=font_desc, fill=desc_color)
+    font_desc = _font_with_height(round(20 * S))
+    draw.text((x_start, round(133 * S)), archivement_desc, font=font_desc, fill=desc_color)
 
     return canvas
 
@@ -176,7 +183,7 @@ async def draw_archivement_info(
     locked_list: list[tuple[str, str, str]] | None = None,
 ) -> Image.Image:
     """绘制 Steam 风格成就列表，未解锁成就另起一行渲染"""
-    s = 1.0
+    s = 2.0
 
     A_W = round(505 * s);  B_W = round(485 * s)
     B_x = (A_W - B_W) // 2
