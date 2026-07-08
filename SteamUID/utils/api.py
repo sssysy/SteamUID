@@ -33,6 +33,7 @@ async def get_game_info(appid: str) -> dict:
         return data.get(appid, {})
     
 async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
+    """取玩家游戏库"""
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetOwnedGames}"
     params = {

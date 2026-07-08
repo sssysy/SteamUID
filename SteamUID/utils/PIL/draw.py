@@ -143,6 +143,9 @@ _ACH_DESC        = (0x8f, 0x98, 0xa0)
 _ACH_GAME_NAME   = (0xff, 0xff, 0xff)
 _ACH_PLACEHOLDER = (0x3a, 0x4f, 0x5e, 0xff)
 _ACH_COLS        = 4
+_ACH_BAR_BG      = (0x3b, 0x4f, 0x5e, 255)
+_ACH_BAR_FILL    = (0x1a, 0x9f, 0xff, 255)
+_ACH_BAR_TEXT    = (0xac, 0xd0, 0xf4, 255)
 
 
 async def _safe_load_ach_icon(
@@ -179,8 +182,14 @@ async def draw_archivement_info(
     B_x = (A_W - B_W) // 2
     B_radius = C_radius = round(10 * s)
     game_top = round(10 * s);  game_h = round(25 * s)
-    sub_top = game_top + game_h + round(10 * s);  sub_h = round(20 * s)
-    grid_top = round(80 * s);  cell = round(100 * s)
+    prog_gap_top = round(8 * s)
+    prog_text_h = round(14 * s)
+    prog_gap_mid = round(5 * s)
+    prog_bar_h = round(6 * s)
+    prog_gap_bot = round(8 * s)
+    prog_section_h = prog_gap_top + prog_text_h + prog_gap_mid + prog_bar_h + prog_gap_bot
+    sub_top = game_top + game_h + prog_section_h;  sub_h = round(20 * s)
+    grid_top = sub_top + sub_h + round(10 * s);  cell = round(100 * s)
     col_gap = row_gap = round(15 * s)
     grid_left_pad = round(20 * s);  grid_bottom_pad = round(15 * s)
     icon_size = round(48 * s);  icon_top_pad = round(8 * s)
@@ -224,6 +233,34 @@ async def draw_archivement_info(
         (_center_text_x(B_center_x, game_disp, font_game), game_top),
         game_disp, font=font_game, fill=_ACH_GAME_NAME,
     )
+
+    # ── 进度条 ──
+    n_total = n_unlocked + n_locked
+    pct = n_unlocked / n_total if n_total > 0 else 0.0
+    font_prog = _font_with_height(prog_text_h)
+    prog_left = B_x + round(20 * s)
+    prog_right = B_x + B_W - round(20 * s)
+    prog_bar_top = game_top + game_h + prog_gap_top + prog_text_h + prog_gap_mid
+
+    prog_label = f"已获得 {n_unlocked} 项成就，共 {n_total} 项"
+    pct_label = f"({round(pct * 100)}%)"
+    draw.text((prog_left, game_top + game_h + prog_gap_top),
+              prog_label, font=font_prog, fill=_ACH_BAR_TEXT)
+    pct_x = prog_right - int(font_prog.getlength(pct_label))
+    draw.text((pct_x, game_top + game_h + prog_gap_top),
+              pct_label, font=font_prog, fill=_ACH_BAR_TEXT)
+
+    bar_radius = max(prog_bar_h // 2, 1)
+    draw.rounded_rectangle(
+        (prog_left, prog_bar_top, prog_right, prog_bar_top + prog_bar_h),
+        radius=bar_radius, fill=_ACH_BAR_BG,
+    )
+    fill_w = round((prog_right - prog_left) * pct)
+    if fill_w > 0:
+        draw.rounded_rectangle(
+            (prog_left, prog_bar_top, prog_left + fill_w, prog_bar_top + prog_bar_h),
+            radius=bar_radius, fill=_ACH_BAR_FILL,
+        )
 
     sub_text = "游戏成就列表"
     draw.text(
