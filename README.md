@@ -1,7 +1,7 @@
 # steamUID
 
 <p align="center">
-  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="ICON.gif" width="256" height="256" alt="SteamUID"></a>
+  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQk10SGVBTlRQalRiVFM0TUdKRGV6UkFacXppQ0JVd0VZZzFXRmVYdnJ6UXFjP2U9TzZQejBi.gif" width="256" height="256" alt="SteamUID"></a>
 </p>
 <h1 align="center">SteamUID 0.1.0</h1>
 <h4 align="center">基于 gsuid_core 的 steam 状态推送插件</h4>
@@ -58,7 +58,21 @@
 ### 游戏库相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam游戏墙` | 查看自己游戏墙 |
+| `steam游戏墙`         |      查看自己游戏墙       |
+| `steam游戏成就123456` | 查看appid123456的成就详情 |
+
+
+
+## 效果图
+
+<div align="center">
+
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRHR5UVVwYVVENFJhX2UxakdHblNIeUFRVVoxcDVZMGpxRkpBWmYtRGhQRENjP2U9RTdMMlJk.png" width="160" />
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQWVnNm85WjBHc1NyZWhvWHJJaVFLdUFiZEJqb3ZlQ1JHMXlNdUNLenk3TlY0P2U9cXlpTWdS.png" width="160" />
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2lrOERKZ1VIZFE1bkl1S2dOTzRDeUFjQlB1SmRyYlM0SlhjcGdLSTU0bGFvP2U9bm1ja0gy.png" width="160" />
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160" />
+
+</div>
 
 ## 丨其他
 
@@ -71,3 +85,4 @@
 - [Wuyi 无疑](https://github.com/KimigaiiWuyi)
 - [gsuid_core](https://github.com/Genshin-bots/gsuid_core)
 - [Steam Web API](https://developer.valvesoftware.com/wiki/Steam_Web_API)
+- steam游戏墙参考自 [steam_wall](https://github.com/zhMoody/steam_wall)
