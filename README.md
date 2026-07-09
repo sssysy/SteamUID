@@ -82,6 +82,22 @@
 ### steam游戏墙
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160"/>
 
+
+## 计划功能
+
+- [ ] 支持设置所有状态推送推送默认值
+- [ ] 玩家上下线状态推送
+- [ ] 带游玩时长的游戏库存图片
+- [ ] 游戏降价 / 打折信息订阅推送
+- [ ] 支持绑定交易报价链接
+- [ ] steam玩什么 (随机抽游戏)
+- [ ] 游戏名 / 成就名本地化名字获取
+- [ ] 总结推送功能 (定时总结周期内游戏情况而不每次状态变化都推送)
+- [ ] 群游玩时长排行榜
+
+
+
+
 ## 丨其他
 
 - 本项目仅供学习使用，请勿用于商业用途
