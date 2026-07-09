@@ -84,8 +84,27 @@ async def process_game_status_push(push_list, game_info_map) -> None:
         send_msg = await _render_game_status_message(
             is_playing, appid, info, old_info, game_avatar
         )
-        await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
         await _dispatch_to_subs(subs, send_msg, push_column, steamid64)
+
+
+async def update_achievement_baselines(push_list) -> None:
+    """根据 gameid 变化更新成就基线，与游戏状态推送开关解耦。
+
+    仅受"获得成就"全局开关控制，不受"开始游戏"/"结束游戏"推送开关影响。
+    """
+    enabled_events = get_enabled_push_events()
+    if PUSH_EVENTS["push_archivement"] not in enabled_events:
+        return
+    for info, old_info in push_list:
+        steamid64 = info.get("steamid")
+        if not steamid64:
+            continue
+        subs = await SteamBind.get_bind_by_steamid(steamid64)
+        if not subs or not any(sub.push_archivement for sub in subs):
+            continue
+        is_playing = bool(info.get("gameid", ""))
+        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
+        await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
 async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar):
@@ -169,6 +188,7 @@ async def poll_and_push_game_status() -> None:
         push_list, update_list = await detect_status_changes(resp)
         game_info_map = await prefetch_game_info(push_list)
         await process_game_status_push(push_list, game_info_map)
+        await update_achievement_baselines(push_list)
         await flush_status_updates(update_list)
     except Exception as error:
         logger.warning(f"[SteamPoll] 游戏状态轮询失败: {error!r}")
@@ -195,6 +215,10 @@ async def poll_and_push_achievements() -> None:
                 if not gameid:
                     continue
                 resp = await get_archivement_info(gameid, bind.steamid64)
+
+                if not resp.get("success", False):
+                    raise Exception(f"拉取成就信息失败 {resp.get('error', '')}")
+                
                 await SteamArchivementInfo.upsert_archivement_data(
                     bind.steamid64,
                     gameid,
@@ -220,6 +244,10 @@ async def poll_and_push_achievements() -> None:
 
             try:
                 resp = await get_archivement_info(appid, steamid64)
+                if not resp.get("success", False):
+                    await SteamArchivementInfo.delete_archivement_data(steamid64) # 删除记录防止下次轮询
+                    raise Exception(f"拉取成就信息失败 {resp.get('error', '')}")
+                
             except Exception as error:
                 logger.warning(
                     f"[SteamPoll] 拉取成就信息失败 appid={appid} steamid64={steamid64}:  {error!r}"
