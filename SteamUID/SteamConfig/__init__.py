@@ -15,6 +15,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "Steam Web API Key",
         "前往 https://steamcommunity.com/dev/apikey 申请",
         "",
+        secret=True,
     ),
     "APIBaseURL": GsStrConfig(
         "SteamAPIBaseURL",
