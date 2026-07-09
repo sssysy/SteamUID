@@ -48,14 +48,23 @@ CONFIG_DEFAULT: dict[str, GSC] = {
     ),
     "PushSwitch": GsListStrConfig(
         "推送总开关",
-        "选择开启的推送事件",
+        "选择开启的推送事件，关闭的事件将不会推送(无论用户设置是否开启)",
         ["开始游戏","结束游戏","获得成就"],
         options=[
             "开始游戏",
             "结束游戏",
             "获得成就",
         ]
-    )
+    ),
+    "PushDefault": GsListStrConfig(
+        "默认开启推送事件",
+        "用户绑定steam账号后对应steam账号默认开启的推送事件",
+        options=[
+            "开始游戏",
+            "结束游戏",
+            "获得成就",
+        ]
+    ),
 
 }
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)

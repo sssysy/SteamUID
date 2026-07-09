@@ -6,6 +6,8 @@ from ..utils.api import get_user_Summaries
 from ..utils.database.models import SteamIDInfo, SteamBind
 from ..utils.exceptions import SteamValidationError
 from ..utils.utils import steamid64_to_friend_code
+from ..SteamConfig import SteamConfig
+
 
 
 async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
@@ -27,6 +29,13 @@ def check_steamid_visible(player: dict) -> str:
     else:
         return ""
 
+def get_push_default(name: str) -> bool:
+    """获取默认开启推送事件"""
+    pushdefault = SteamConfig.get_config("PushDefault").data
+    if name in pushdefault:
+        return True
+    else:
+        return False
 
 async def do_bind(
     ev: Event, steamid64: str, is_main_id: bool = True
@@ -64,6 +73,9 @@ async def do_bind(
         group_id=ev.group_id,
         bot_self_id=ev.bot_self_id,
         is_main_id=is_main_id,
+        push_start_game=get_push_default("开始游戏"),
+        push_end_game=get_push_default("结束游戏"),
+        push_archivement=get_push_default("获得成就"),
     )
     success_msg = f"绑定 steamid: {steamid64} 成功"
 
@@ -100,6 +112,7 @@ async def format_bind_list(
     show_all: bool,
     group_id: str | None = None,
 ) -> str | None:
+    """格式化绑定列表"""
     subs = await SteamBind.get_binds_by_user(
         bot_id=bot_id,
         user_id=user_id,

@@ -190,6 +190,9 @@ class SteamBind(BaseIDModel, table=True):
         group_id: Optional[str] = None,
         bot_self_id: Optional[str] = None,
         is_main_id: bool = False,
+        push_start_game: bool = True,
+        push_end_game: bool = True,
+        push_archivement: bool = True,
     ) -> int:
         """写入绑定关系（同一 user + steamid 已存在则更新）"""
         # 设置主ID前，先将该用户在同群绑定的 is_main_id 清零
@@ -231,9 +234,9 @@ class SteamBind(BaseIDModel, table=True):
                     WS_BOT_ID=WS_BOT_ID,
                     group_id=group_id,
                     bot_self_id=bot_self_id,
-                    push_start_game=True,
-                    push_end_game=True,
-                    push_archivement=True,
+                    push_start_game=push_start_game,
+                    push_end_game=push_end_game,
+                    push_archivement=push_archivement,
                     is_main_id=is_main_id,
                 )
             )
