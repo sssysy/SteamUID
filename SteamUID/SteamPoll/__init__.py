@@ -18,3 +18,10 @@ async def get_user_Summaries_job():
 )
 async def check_archivement():
     await poll_service.poll_and_push_achievements()
+
+@scheduler.scheduled_job(
+    'interval',
+    hours=SteamConfig.get_config("GameSaleInterval").data,
+)
+async def check_game_sale():
+    await poll_service.poll_and_push_game_sale()

@@ -36,37 +36,50 @@
 ## 丨命令列表
 
 ### steam帮助
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQmlCSUowU2ZIT1Q2clc2UzQ3UDNNWkFjMlFfanNSSWVpTHc0WmphQ1pqQ1JvP2U9S0dmZjYz.jpg" width="480" alt="Steam帮助菜单"></a>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQV9pdEVIS2NsaFRKVUtBT1R2Z2JGT0FSX2xJbnB4MEVtRkgtamNLdEc3ZUc0P2U9ZEVHZWxC.jpg" width="480" alt="Steam帮助菜单"></a>
 
-### 文字版
+### 命令说明
 
-#### 基础命令
+#### 绑定账号
 | 命令 | 说明 |
 |------|:------:|
-| `steam帮助` | 查看帮助菜单 |
-| `steam绑定` | 绑定steam |
-| `steam解绑` | 解绑steam |
-| `steam查看` | 查看已绑定的steamid64列表 |
+| `steam绑定` | 使用 OpenID 方式绑定 steam |
+| `steam绑定12345678` | 使用好友码 / steamid 绑定 steam|
+| `steam解绑` | 使用 OpenID 方式解绑 steam |
+| `steam解绑12345678` | 使用好友码 / steamid 解绑 steam|
+| `steam查看` | 查看自己当前群绑定 steam |
+| `steam查看全部` | 查看自己所有绑定 steam |
 
-#### 推送相关
+#### 游戏状态
 | 命令 | 说明 |
 |------|:------:|
-| `steam开启推送` | 开启全部steam状态推送功能 |
-| `steam关闭推送` | 关闭全部steam状态推送功能 |
-| `steam开启开始游戏推送` | 开启开始游戏状态推送功能 |
-| `steam关闭开始游戏推送` | 关闭开始游戏状态推送功能 |
-| `steam开启结束游戏推送` | 开启结束游戏状态推送功能 |
-| `steam关闭结束游戏推送` | 关闭结束游戏状态推送功能 |
-| `steam开启成就推送` | 开启成就推送功能 |
-| `steam关闭成就推送` | 关闭成就推送功能 |
+| `steam开启推送` | 开启自己的所有推送功能 |
+| `steam关闭推送` | 关闭自己的所有推送功能 |
+| `steam开启开始游戏推送` | 开启自己的开始游戏推送功能 |
+| `steam关闭开始游戏推送` | 关闭自己的开始游戏推送功能 |
+| `steam开启结束游戏推送` | 开启自己的结束游戏推送功能 |
+| `steam关闭结束游戏推送` | 关闭自己的结束游戏推送功能 |
+| `steam推送状态` | 查看自己的推送开关状态 |
 
-#### 游戏库相关
+#### 库存相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam游戏墙`         |      查看自己游戏墙       |
+| `steam游戏墙123456`  | 查询指定steam的游戏墙    |
 | `steam游戏成就123456` | 查看appid123456的成就详情 |
+| `steam开启成就推送` | 开启自己的成就推送功能 |
+| `steam关闭成就推送` | 关闭自己的成就推送功能 |
 
+#### 商店相关
+| 命令 | 说明 |
+|------|:------:|
+| `steam订阅降价123456` | 订阅商店游戏降价信息 |
+| `steam取消订阅降价123456` | 取消订阅商店游戏降价信息 |
+| `steam订阅降价查看` | 查看订阅的商店游戏降价信息 |
 
+#### 其他服务
+| 命令 | 说明 |
+|------|:------:|
+| `steam帮助` | 呼出本插件帮助菜单 |
 
 ## 效果图
 
@@ -88,7 +101,7 @@
 - [x] 支持设置所有状态推送推送默认值
 - [ ] 玩家上下线状态推送
 - [ ] 带游玩时长的游戏库存图片
-- [ ] 游戏降价 / 打折信息订阅推送
+- [x] 游戏降价 / 打折信息订阅推送
 - [ ] 支持绑定交易报价链接
 - [ ] steam玩什么 (随机抽游戏)
 - [ ] 游戏名 / 成就名本地化名字获取

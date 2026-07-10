@@ -33,8 +33,8 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "http://127.0.0.1:8765",
     ),
     "PollInterval": GsIntConfig(
-        "轮询间隔",
-        "轮询间隔，单位秒。修改后需重启 GsCore 生效",
+        "用户状态轮询间隔",
+        "用户状态轮询间隔，单位秒。修改后需重启 GsCore 生效",
         20,
     ),
     "ArchivementsPollInterval": GsIntConfig(
@@ -66,6 +66,16 @@ CONFIG_DEFAULT: dict[str, GSC] = {
             "结束游戏",
             "获得成就",
         ]
+    ),
+    "pricecc": GsStrConfig(
+        "steam地区代码",
+        "监听游戏降价的steam地区，默认中国大陆。其他国家代码请参照 ISO 3166-1 alpha-2",
+        "cn"
+    ),
+    "GameSaleInterval": GsIntConfig(
+        "游戏降价轮询间隔",
+        "游戏降价轮询间隔，单位小时。修改后需重启 GsCore 生效",
+        6,
     ),
 
 }

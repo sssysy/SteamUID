@@ -11,6 +11,7 @@ from . import migrations
 T_SteamBind = TypeVar("T_SteamBind", bound="SteamBind")
 T_SteamIDInfo = TypeVar("T_SteamIDInfo", bound="SteamIDInfo")
 T_SteamArchivementInfo = TypeVar("T_SteamArchivementInfo", bound="SteamArchivementInfo")
+T_SteamPriceInfo = TypeVar("T_SteamPriceInfo", bound="SteamPriceInfo")
 
 class SteamIDInfo(BaseIDModel, table=True):
     __table_args__: Dict[str, Any] = {"extend_existing": True}
@@ -152,6 +153,110 @@ class SteamArchivementInfo(BaseIDModel, table=True):
         cls: Type[T_SteamArchivementInfo],
         session: AsyncSession,
     ) -> list["SteamArchivementInfo"]:
+        stmt = select(cls)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+class SteamPriceInfo(BaseIDModel, table=True):
+    """Steam降价订阅表：记录需要轮询价格的 appid 及其最新价格数据"""
+    __table_args__: Dict[str, Any] = {"extend_existing": True}
+
+    appid: str = Field(default=None, index=True, unique=True, title="游戏AppID")
+    price_data: str = Field(default=None, title="价格数据JSON")
+
+    @classmethod
+    @with_session
+    async def subscribe(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+        appid: str,
+        price_data: str = "{}",
+    ) -> int:
+        """订阅降价：若已存在则更新价格数据，否则新增。返回 0 表示成功。"""
+        stmt = select(cls).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is not None:
+            existing.price_data = price_data
+            session.add(existing)
+        else:
+            session.add(cls(appid=appid, price_data=price_data))  # type: ignore
+        return 0
+
+    @classmethod
+    @with_session
+    async def unsubscribe(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+        appid: str,
+    ) -> int:
+        """取消降价订阅。0: 成功, -1: 未找到"""
+        stmt = delete(cls).where(cls.appid == appid)  # type: ignore
+        result = await session.execute(stmt)
+        if result.rowcount and result.rowcount > 0:  # type: ignore
+            return 0
+        return -1
+
+    @classmethod
+    @with_session
+    async def is_subscribed(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+        appid: str,
+    ) -> bool:
+        """检查某 appid 是否已被订阅"""
+        stmt = select(cls.id).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        return result.scalars().first() is not None
+
+    @classmethod
+    @with_session
+    async def get_price_data(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+        appid: str,
+    ) -> str | None:
+        """获取指定 appid 的价格数据 JSON"""
+        stmt = select(cls.price_data).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def update_price_data(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+        appid: str,
+        price_data: str,
+    ) -> int:
+        """更新指定 appid 的价格数据。0: 成功, -1: 未找到"""
+        stmt = select(cls).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is None:
+            return -1
+        existing.price_data = price_data
+        session.add(existing)
+        return 0
+
+    @classmethod
+    @with_session
+    async def get_all_appids(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+    ) -> list[str]:
+        """获取所有已订阅的 appid 列表（供定时任务轮询使用）"""
+        stmt = select(cls.appid)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
+    async def get_all_price_subs(
+        cls: Type[T_SteamPriceInfo],
+        session: AsyncSession,
+    ) -> list["SteamPriceInfo"]:
+        """获取所有订阅记录（含价格数据）"""
         stmt = select(cls)
         result = await session.execute(stmt)
         return list(result.scalars().all())
@@ -476,4 +581,4 @@ class SteamBind(BaseIDModel, table=True):
         return result.scalars().first()
 
 
-from . import admin  # noqa: F401, E402
+from . import admin # 注册到管理员

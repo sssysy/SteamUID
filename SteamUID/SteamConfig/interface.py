@@ -17,8 +17,9 @@ class SteamAPI:
     # 获取游戏当前在线人数
     api_GetNumberOfCurrentPlayers = "/ISteamUserStats/GetNumberOfCurrentPlayers/v1/"
 
-    # 获取游戏详情
+    # 获取游戏详情 / 价格
     store_GetGameDetails = "/api/appdetails"
+
 
     # 游戏封面图api
     @staticmethod

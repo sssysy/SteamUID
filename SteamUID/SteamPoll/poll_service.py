@@ -2,18 +2,22 @@ import json
 
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
+from gsuid_core.subscribe import gs_subscribe
 from PIL import Image
+from gsuid_core.utils.message import Message
 
 from ..utils.api import (
     get_user_Summaries,
     get_game_info,
     get_archivement_info,
     get_archivement_img,
+    get_price_data,
 )
 from ..utils.database.models import (
     SteamIDInfo,
     SteamBind,
     SteamArchivementInfo,
+    SteamPriceInfo,
 )
 from ..utils.PIL.draw import draw_game_status_photo, draw_archivements_photo
 from ..utils.steam_status import (
@@ -24,6 +28,7 @@ from ..utils.steam_status import (
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
+    """对比新旧状态，返回需要推送的列表和需要更新的列表"""
     push_list = []
     update_list = []
     for info in resp:
@@ -42,6 +47,7 @@ async def detect_status_changes(resp) -> tuple[list, list]:
 
 
 async def prefetch_game_info(push_list) -> dict[str, dict]:
+    """批量拉取推送列表中涉及的游戏元数据"""
     appids = set()
     for info, old_info in push_list:
         if info.get("gameid", ""):
@@ -61,6 +67,7 @@ async def prefetch_game_info(push_list) -> dict[str, dict]:
 
 
 async def process_game_status_push(push_list, game_info_map) -> None:
+    """处理游戏状态变化推送，渲染图片并发送给订阅用户"""
     enabled_events = get_enabled_push_events()
     for info, old_info in push_list:
         steamid64 = info.get("steamid")
@@ -88,10 +95,7 @@ async def process_game_status_push(push_list, game_info_map) -> None:
 
 
 async def update_achievement_baselines(push_list) -> None:
-    """根据 gameid 变化更新成就基线，与游戏状态推送开关解耦。
-
-    仅受"获得成就"全局开关控制，不受"开始游戏"/"结束游戏"推送开关影响。
-    """
+    """根据 gameid 变化更新成就基线，开始玩时初始化数据，结束玩时删除基线。"""
     enabled_events = get_enabled_push_events()
     if PUSH_EVENTS["push_archivement"] not in enabled_events:
         return
@@ -108,6 +112,7 @@ async def update_achievement_baselines(push_list) -> None:
 
 
 async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar):
+    """渲染游戏状态推送图片或生成文本消息"""
     if is_playing:
         game_name = info.get("gameextrainfo")
         text_msg = f"{info.get('personaname')} 正在玩 {game_name}"
@@ -137,6 +142,7 @@ async def _render_game_status_message(is_playing, appid, info, old_info, game_av
 async def _update_achievement_tracking(
     is_playing, appid, steamid64, enabled_events
 ) -> None:
+    """更新单个用户的成就追踪数据"""
     if PUSH_EVENTS["push_archivement"] not in enabled_events:
         return
 
@@ -157,6 +163,7 @@ async def _update_achievement_tracking(
 
 
 async def _dispatch_to_subs(subs, send_msg, push_column, steamid64) -> None:
+    """将推送消息发送给开启了相应推送开关的订阅用户"""
     for sub in subs:
         if not getattr(sub, push_column):
             continue
@@ -167,6 +174,7 @@ async def _dispatch_to_subs(subs, send_msg, push_column, steamid64) -> None:
 
 
 async def flush_status_updates(update_list) -> None:
+    """将有变化的状态数据写回数据库"""
     for steamid64, info in update_list:
         await SteamIDInfo.upsert_steamuserinfo(
             steamid64, json.dumps(info, ensure_ascii=False)
@@ -174,6 +182,7 @@ async def flush_status_updates(update_list) -> None:
 
 
 async def poll_and_push_game_status() -> None:
+    """游戏状态轮询主入口：拉取状态、检测变化、推送、更新基线、落盘。"""
     try:
         steamid_all = await SteamIDInfo.get_all_steamid64()
         if not steamid_all:
@@ -195,6 +204,7 @@ async def poll_and_push_game_status() -> None:
 
 
 async def poll_and_push_achievements() -> None:
+    """成就轮询主入口：检测新解锁成就并推送给订阅用户。"""
     try:
         if not is_push_event_enabled(PUSH_EVENTS["push_archivement"]):
             return
@@ -327,3 +337,104 @@ async def poll_and_push_achievements() -> None:
             )
     except Exception as error:
         logger.warning(f"[SteamPoll] 成就轮询失败: {error!r}")
+
+
+#-----------------------------------------------------
+# 游戏降价轮询
+#-----------------------------------------------------
+
+async def detect_price_drops(new_prices: dict) -> tuple[list, list]:
+    """对比新旧价格，返回降价列表和需要更新的列表"""
+    drops = []
+    update_list = []
+    all_subs = await SteamPriceInfo.get_all_price_subs()
+    old_map = {sub.appid: sub.price_data for sub in all_subs}
+
+    for appid, new_entry in new_prices.items():
+        if not new_entry.get("success"):
+            continue
+        new_overview = new_entry.get("data", {}).get("price_overview")
+        if not new_overview:
+            continue
+
+        old_overview = json.loads(old_map.get(appid) or "{}")
+        old_final = old_overview.get("final")
+        new_final = new_overview.get("final")
+
+        if (
+            old_final is not None
+            and new_final is not None
+            and new_final < old_final
+        ):
+            drops.append((appid, old_overview, new_overview))
+
+        update_list.append((appid, new_overview))
+
+    return drops, update_list
+
+
+async def process_game_sale_push(drops: list) -> None:
+    """处理游戏降价推送，发送消息给订阅用户"""
+    if not drops:
+        return
+
+    all_subs = await gs_subscribe.get_subscribe(task_name="steam商店降价订阅")
+    if not all_subs:
+        return
+
+    subs_by_appid: dict[str, list] = {}
+    for sub in all_subs:
+        if sub.uid:
+            subs_by_appid.setdefault(sub.uid, []).append(sub)
+
+    for appid, old_overview, new_overview in drops:
+        subs = subs_by_appid.get(appid)
+        if not subs:
+            continue
+        send_msg = _render_sale_message(appid, old_overview, new_overview)
+        for sub in subs:
+            try:
+                await sub.send([MessageSegment.at(sub.user_id), send_msg])
+            except Exception as error:
+                logger.warning(
+                    f"[SteamPoll] 推送降价失败 appid={appid}: {error!r}"
+                )
+
+
+def _render_sale_message(appid, old_overview, new_overview) -> Message:
+    """生成降价推送文本消息"""
+    text = MessageSegment.text(f"游戏 {appid} 降价！\n"
+           f"旧价：{old_overview.get('final_formatted', 'N/A')}\n"
+           f"现价：{new_overview.get('final_formatted', 'N/A')}\n"
+           f"折扣：{new_overview.get('discount_percent', 'N/A')}%\n"
+           f"点击查看: https://store.steampowered.com/app/{appid}")
+    return text
+
+
+
+async def flush_price_updates(update_list: list) -> None:
+    """将最新价格数据写回数据库"""
+    for appid, new_overview in update_list:
+        await SteamPriceInfo.update_price_data(
+            appid, json.dumps(new_overview, ensure_ascii=False)
+        )
+
+
+async def poll_and_push_game_sale() -> None:
+    """游戏降价轮询主入口：拉取价格、检测降价、推送、落盘。"""
+    try:
+        appids = await SteamPriceInfo.get_all_appids()
+        if not appids:
+            return
+
+        try:
+            new_prices = await get_price_data(appids)
+        except Exception as error:
+            logger.warning(f"[SteamPoll] 拉取价格数据失败: {error!r}")
+            return
+
+        drops, update_list = await detect_price_drops(new_prices)
+        await process_game_sale_push(drops)
+        await flush_price_updates(update_list)
+    except Exception as error:
+        logger.warning(f"[SteamPoll] 游戏降价轮询失败: {error!r}")

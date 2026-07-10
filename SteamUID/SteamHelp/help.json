@@ -1,10 +1,18 @@
 {
   "绑定账号": {
-    "desc": "绑定时如果不知道好友码就留空发送，会发起网页登录",
+    "desc": "",
     "data": [
       {
         "name": "绑定",
-        "desc": "绑定 steam 账号,后可接好友码",
+        "desc": "使用 OpenID 方式绑定 steam",
+        "eg": "绑定",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "绑定12345678",
+        "desc": "使用好友码 / steamid 绑定 steam",
         "eg": "绑定12345678",
         "need_ck": false,
         "need_sk": false,
@@ -12,7 +20,15 @@
       },
       {
         "name": "解绑",
-        "desc": "解绑 steam 账号,后可接好友码",
+        "desc": "使用 OpenID 方式解绑 steam",
+        "eg": "解绑",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "解绑12345678",
+        "desc": "使用好友码 / steamid 解绑 steam",
         "eg": "解绑12345678",
         "need_ck": false,
         "need_sk": false,
@@ -36,20 +52,20 @@
       }
     ]
   },
-  "推送服务": {
+  "游戏状态": {
     "desc": "控制已绑定 steam 账号状态变化推送",
     "data": [
       {
-        "name": "开启(xx)推送",
-        "desc": "开启自己在群聊 / 私聊的推送功能",
+        "name": "开启推送",
+        "desc": "开启自己的所有推送功能",
         "eg": "开启推送",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
-        "name": "关闭(xx)推送",
-        "desc": "关闭自己在群聊 / 私聊的推送功能",
+        "name": "关闭推送",
+        "desc": "关闭自己的所有推送功能",
         "eg": "关闭推送",
         "need_ck": false,
         "need_sk": false,
@@ -65,8 +81,8 @@
       }
     ]
   },
-  "游戏库服务": {
-    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面",
+  "库存相关": {
+    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面，待解决",
     "data": [
       {
         "name": "游戏墙",
@@ -75,12 +91,7 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      }
-    ]
-  },
-  "成就服务": {
-    "desc": "查询游戏成就并控制成就推送",
-    "data": [
+      },
       {
         "name": "游戏成就",
         "desc": "查看指定游戏的成就",
@@ -107,12 +118,41 @@
       }
     ]
   },
+  "商店相关": {
+    "desc": "订阅商店游戏降价信息等",
+    "data": [
+      {
+        "name": "订阅降价",
+        "desc": "订阅商店游戏降价信息",
+        "eg": "订阅降价2614070",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅降价",
+        "desc": "取消订阅商店游戏降价信息",
+        "eg": "取消订阅降价2614070",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅降价查看",
+        "desc": "查看订阅的商店游戏降价信息",
+        "eg": "订阅降价查看2614070",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "其他服务": {
     "desc": "一些杂项服务",
     "data": [
       {
         "name": "帮助",
-        "desc": "呼出该帮助界面",
+        "desc": "呼出本插件帮助菜单",
         "eg": "帮助",
         "need_ck": false,
         "need_sk": false,
