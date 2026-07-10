@@ -60,6 +60,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
     "PushDefault": GsListStrConfig(
         "默认开启推送事件",
         "用户绑定steam账号后对应steam账号默认开启的推送事件",
+        ["开始游戏","结束游戏","获得成就"],
         options=[
             "开始游戏",
             "结束游戏",
