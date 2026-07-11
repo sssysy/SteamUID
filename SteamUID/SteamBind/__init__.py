@@ -111,6 +111,8 @@ async def steamview(bot: Bot, ev: Event):
     try:
         at = ev.at
         if at:
+            if not SteamConfig.get_config("AllowAt").data:
+                raise SteamValidationError("管理员未开放 @ 他人查询功能")
             ev.user_id = at
         show_all = ev.text.strip() == "全部"
         now_items, other_items = await get_bind_card_data(

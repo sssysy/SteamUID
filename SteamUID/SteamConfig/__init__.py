@@ -77,7 +77,16 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "游戏降价轮询间隔，单位小时。修改后需重启 GsCore 生效",
         6,
     ),
-
+    "AllowAddFriends": GsBoolConfig(
+        "允许添加 steam 好友",
+        "开启后将支持用户通过 '@用户 steam加好友' 功能获取对方 steam 好友码",
+        False,
+    ),
+    "AllowAt": GsBoolConfig(
+        "允许 @ 他人获取他人信息",
+        "开启后将支持用户通过 '@用户 + steam xxx' 功能获取对方信息",
+        False,
+    ),
 }
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)
 SteamConfig = StringConfig("SteamConfig",CONFIG_PATH / 'config.json',CONFIG_DEFAULT)

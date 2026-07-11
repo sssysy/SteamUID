@@ -157,6 +157,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "@xx 加好友",
+        "desc": "获取被 @ 用户的好友码",
+        "eg": "加好友",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   }
