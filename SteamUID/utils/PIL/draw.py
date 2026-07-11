@@ -14,6 +14,7 @@ from ._helpers import (
     draw_vertical_gradient,
     text_y_for_center,
 )
+from ..utils import maybe_hide_steamid
 
 _GAME_STATUS_THEMES: dict[str, dict] = {
     "start": {
@@ -489,7 +490,7 @@ async def draw_bind_list_photo(
 
     # === 解绑横幅 ===
     if unbind_banner:
-        banner_text = f"{unbind_banner['name']} ({unbind_banner['friend_code']}) 解绑成功"
+        banner_text = f"{unbind_banner['name']} ({maybe_hide_steamid(unbind_banner['friend_code'])}) 解绑成功"
         bw = draw.textlength(banner_text, font_banner) + A(24)
         bh = A(28)
         bx = (W_act - bw) / 2
@@ -558,8 +559,8 @@ async def draw_bind_list_photo(
 
             # 两行文字垂直居中
             name_text = item.get("name", "未知用户")
-            friend_text = f"({item['friend_code']})"
-            steamid_text = f"SteamID: {item['steamid64']}"
+            friend_text = f"({maybe_hide_steamid(item['friend_code'])})"
+            steamid_text = f"SteamID: {maybe_hide_steamid(item['steamid64'])}"
 
             line1_h = _bind_font_text_height(font_name)
             line2_h = _bind_font_text_height(font_id)

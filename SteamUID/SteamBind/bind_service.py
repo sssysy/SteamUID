@@ -5,7 +5,7 @@ from gsuid_core.models import Event
 from ..utils.api import get_user_Summaries
 from ..utils.database.models import SteamIDInfo, SteamBind
 from ..utils.exceptions import SteamValidationError
-from ..utils.utils import steamid64_to_friend_code
+from ..utils.utils import steamid64_to_friend_code, maybe_hide_steamid
 from ..SteamConfig import SteamConfig
 
 
@@ -77,7 +77,7 @@ async def do_bind(
         push_end_game=get_push_default("结束游戏"),
         push_archivement=get_push_default("获得成就"),
     )
-    success_msg = f"绑定 steamid: {steamid64} 成功"
+    success_msg = f"绑定 steamid: {maybe_hide_steamid(steamid64)} 成功"
 
     warning = check_steamid_visible(steamid_info[0])
     return success_msg, warning
@@ -102,7 +102,7 @@ async def do_unbind(ev: Event, steamid64: str) -> str:
     if not remaining:
         await SteamIDInfo.delete_steamuserinfo(steamid64)
 
-    return f"解绑 steamid: {steamid64} 成功"
+    return f"解绑 steamid: {maybe_hide_steamid(steamid64)} 成功"
 
 
 async def format_bind_list(
@@ -125,7 +125,7 @@ async def format_bind_list(
     other_id_list = []
     for sub in subs:
         tag = " [主]" if (sub.is_main_id and sub.group_id == group_id) else ""
-        entry = f"{sub.steamid64}{tag}"
+        entry = f"{maybe_hide_steamid(sub.steamid64)}{tag}"
         if sub.group_id == group_id:
             now_id_list.append(entry)
         else:
@@ -167,7 +167,7 @@ async def switch_main_id(ev: Event, steamid64: str) -> str:
         user_type=ev.user_type,
         group_id=ev.group_id,
     )
-    return f"切换 steamid: {steamid64} 成功"
+    return f"切换 steamid: {maybe_hide_steamid(steamid64)} 成功"
 
 
 async def get_bind_card_data(

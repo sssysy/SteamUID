@@ -68,3 +68,17 @@ def auto2steamid64(count: str | None) -> str | None:
     if int(count) < _BASE_STEAM_ID64:
         count = str(_BASE_STEAM_ID64 + int(count))
     return count
+
+def HideStr(text: str) -> str:
+    """12345678 -> 1*****78"""
+    if len(text) < 4:
+        return "*" * len(text)
+    return text[0] + "*" * (len(text) - 3) + text[-2:]
+
+
+def maybe_hide_steamid(text: str) -> str:
+    """根据 HideSteamID 配置决定是否对 steamid / 好友码套用 HideStr"""
+    from ..SteamConfig import SteamConfig
+    if SteamConfig.get_config("HideSteamID").data:
+        return HideStr(text)
+    return text

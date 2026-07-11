@@ -87,6 +87,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后将支持用户通过 '@用户 + steam xxx' 功能获取对方信息",
         False,
     ),
+    "HideSteamID": GsBoolConfig(
+        "隐藏 steamid / 好友码",
+        "开启后将会在可能出现 steamid / 好友码的地方隐藏相关数字的中间部分",
+        False,
+    ),
 }
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)
 SteamConfig = StringConfig("SteamConfig",CONFIG_PATH / 'config.json',CONFIG_DEFAULT)

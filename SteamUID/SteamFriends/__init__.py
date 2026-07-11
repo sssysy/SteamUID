@@ -8,7 +8,7 @@ from gsuid_core.sv import SV, get_plugin_available_prefix
 
 from ..utils.database.models import SteamBind
 from ..SteamConfig import SteamConfig
-from ..utils.utils import steamid64_to_friend_code
+from ..utils.utils import steamid64_to_friend_code, maybe_hide_steamid
 from ..utils.exceptions import SteamValidationError
 
 friends_SV = SV("steam好友相关")
@@ -38,7 +38,7 @@ async def add_friend(bot: Bot, ev: Event):
 
                     if resp.text.strip() in ("同意", "允许", "通过", "批准", "放行") and resp.user_id == ev.at and resp.group_id == ev.group_id:
 
-                        await bot.send([MessageSegment.at(ev.user_id), MessageSegment.text(f"对方已同意你的好友请求。\n请添加以下好友码：{steamid64_to_friend_code(steamid64)}")])
+                        await bot.send([MessageSegment.at(ev.user_id), MessageSegment.text(f"对方已同意你的好友请求。\n请添加以下好友码：{maybe_hide_steamid(steamid64_to_friend_code(steamid64))}")])
                         break
 
                     elif resp.text.strip() in ("拒绝", "不允许", "不批准", "不放行", "不通过") and resp.user_id == ev.at and resp.group_id == ev.group_id:

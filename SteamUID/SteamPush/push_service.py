@@ -3,6 +3,7 @@ from gsuid_core.models import Event
 from ..utils.database.models import SteamBind
 from ..utils.exceptions import SteamValidationError
 from ..utils.steam_status import PUSH_EVENTS, get_enabled_push_events
+from ..utils.utils import maybe_hide_steamid
 
 
 async def switch_push(
@@ -63,7 +64,7 @@ async def switch_push(
                 error_ids.add(sub)
 
     if error_ids:
-        failed_ids = "\n".join(error_ids)
+        failed_ids = "\n".join(maybe_hide_steamid(sid) for sid in error_ids)
         messages.append(f"{failed_ids}\n推送状态切换失败")
 
     success_count = len(subs) - len(error_ids)
