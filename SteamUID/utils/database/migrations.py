@@ -15,5 +15,8 @@ exec_list.extend(
         'ALTER TABLE steambind ADD COLUMN push_end_game BOOLEAN DEFAULT 1',
         'ALTER TABLE steambind ADD COLUMN push_archivement BOOLEAN DEFAULT 1',
         'ALTER TABLE steambind ADD COLUMN is_main_id BOOLEAN DEFAULT 0',
+        # 缓存表补齐 updated_at 列（旧库可能已建表但无此列）
+        "ALTER TABLE steamapicache ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE steamarchivementcache ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
     ]
 )

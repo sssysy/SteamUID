@@ -92,6 +92,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后将会在可能出现 steamid / 好友码的地方隐藏相关数字的中间部分",
         False,
     ),
+    "CacheTime": GsIntConfig(
+        "缓存时间",
+        "缓存json(游戏成就信息 / 游戏详情信息等)时间，单位天。修改后需重启 GsCore 生效",
+        3,
+    ),
 }
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)
 SteamConfig = StringConfig("SteamConfig",CONFIG_PATH / 'config.json',CONFIG_DEFAULT)
