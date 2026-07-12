@@ -43,7 +43,7 @@ async def get_game_info(appid: str) -> dict:
     url = f"{base_url}{SteamAPI.store_GetGameDetails}"
     params = {
         "appids": appid,
-        "l": "zh-cn",
+        "l": "schinese",
     }
     async with httpx.AsyncClient() as client:
         response = await client.get(url, params=params)
@@ -77,7 +77,7 @@ async def get_archivement_info(appid: str, steamid64: str):
         "key": api_key,
         "appid": appid,
         "steamid": steamid64,
-        "l": "zh-CN",
+        "l": "schinese",
     }    
     async with httpx.AsyncClient() as client:
         response = await client.get(url, params=params)

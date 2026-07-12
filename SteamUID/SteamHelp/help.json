@@ -165,6 +165,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "清除全部缓存",
+        "desc": "清除全部缓存",
+        "eg": "清除全部缓存",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   }

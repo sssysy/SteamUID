@@ -85,6 +85,17 @@ class SteamApiCache(BaseIDModel, table=True):
         result = await session.execute(stmt)
         return result.rowcount or 0  # type: ignore
 
+    @classmethod
+    @with_session
+    async def delete_all(
+        cls: Type[T_SteamApiCache],
+        session: AsyncSession,
+    ) -> int:
+        """删除全部缓存，返回删除行数。"""
+        stmt = delete(cls)  # type: ignore
+        result = await session.execute(stmt)
+        return result.rowcount or 0  # type: ignore
+
 
 class SteamArchivementCache(BaseIDModel, table=True):
     """Steam成就Schema缓存表（内部表，不注册到控制台）。
@@ -156,5 +167,16 @@ class SteamArchivementCache(BaseIDModel, table=True):
     ) -> int:
         """删除 updated_at 早于 before 的所有缓存行，返回删除行数。"""
         stmt = delete(cls).where(cls.updated_at < before)  # type: ignore
+        result = await session.execute(stmt)
+        return result.rowcount or 0  # type: ignore
+
+    @classmethod
+    @with_session
+    async def delete_all(
+        cls: Type[T_SteamArchivementCache],
+        session: AsyncSession,
+    ) -> int:
+        """删除全部缓存，返回删除行数。"""
+        stmt = delete(cls)  # type: ignore
         result = await session.execute(stmt)
         return result.rowcount or 0  # type: ignore
