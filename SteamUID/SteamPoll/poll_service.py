@@ -89,7 +89,7 @@ async def process_game_status_push(push_list, game_info_map) -> None:
             continue
 
         send_msg = await _render_game_status_message(
-            is_playing, appid, info, old_info, game_avatar
+            is_playing, appid, info, old_info, game_avatar, game_data
         )
         await _dispatch_to_subs(subs, send_msg, push_column, steamid64)
 
@@ -111,13 +111,12 @@ async def update_achievement_baselines(push_list) -> None:
         await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
-async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar):
+async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar, game_data):
     """渲染游戏状态推送图片或生成文本消息"""
+    game_name = game_data.get("name") or (info.get("gameextrainfo") if is_playing else old_info.get("gameextrainfo"))
     if is_playing:
-        game_name = info.get("gameextrainfo")
         text_msg = f"{info.get('personaname')} 正在玩 {game_name}"
     else:
-        game_name = old_info.get("gameextrainfo")
         text_msg = f"{info.get('personaname')} 结束游戏 {game_name}"
 
     try:
@@ -193,7 +192,7 @@ async def poll_and_push_game_status() -> None:
         except Exception as error:
             logger.warning(f"[SteamPoll] 拉取玩家摘要失败: {error!r}")
             return
-
+        
         push_list, update_list = await detect_status_changes(resp)
         game_info_map = await prefetch_game_info(push_list)
         await process_game_status_push(push_list, game_info_map)
