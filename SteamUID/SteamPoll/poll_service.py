@@ -280,7 +280,17 @@ async def poll_and_push_achievements() -> None:
                 continue
 
             subs = await SteamBind.get_bind_by_steamid(steamid64)
-            game_name = new_archivement_info.get('gameName', '未知游戏')
+            # 优先从 store API 获取中文名，GetPlayerAchievements 的 gameName 始终为英文
+            try:
+                game_info = await get_game_info(appid)
+                game_name = (
+                    game_info.get("data", {}).get("name", "")
+                    if game_info and game_info.get("success")
+                    else ""
+                )
+            except Exception:
+                game_name = ""
+            game_name = game_name or new_archivement_info.get('gameName', '未知游戏')
 
             gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
             gamer_name = gamer_info.get("personaname", steamid64)

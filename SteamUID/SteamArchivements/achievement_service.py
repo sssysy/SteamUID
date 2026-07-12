@@ -3,6 +3,7 @@ from PIL import Image
 from ..utils.api import (
     get_archivement_info,
     get_archivement_schema,
+    get_game_info,
 )
 from ..utils.exceptions import SteamValidationError, SteamRenderError
 from ..utils.PIL.draw import draw_archivement_info
@@ -38,7 +39,17 @@ async def fetch_achievement_lists(appid: str, steamid64: str) -> dict:
     if not unlocked_list and not locked_list:
         raise SteamValidationError("该游戏暂无成就数据")
 
-    game_name = playerstats.get("gameName", "") or appid
+    # 优先从 store API 获取中文名，GetPlayerAchievements 的 gameName 始终为英文
+    try:
+        game_info = await get_game_info(appid)
+        game_name = (
+            game_info.get("data", {}).get("name", "")
+            if game_info and game_info.get("success")
+            else ""
+        )
+    except Exception:
+        game_name = ""
+    game_name = game_name or playerstats.get("gameName", "") or appid
 
     return {
         "unlocked": unlocked_list,
