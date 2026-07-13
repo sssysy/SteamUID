@@ -3,6 +3,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
+from gsuid_core.utils.database.models import CoreUser
 
 from ..utils.exceptions import SteamError, SteamValidationError
 # from ..utils.target import resolve_target_steamid64
@@ -25,9 +26,15 @@ async def group_ranking(bot: Bot, ev: Event):
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        text = f"本群游戏时长排行：\n"
+        text = "本群游戏时长排行：\n"
         for i, item in enumerate(top5, 1):
-            text += f"{i}. {item['user_id']} ({time_convert_s(item['total_duration'])})\n"
+            users = await CoreUser.select_rows(user_id=item["user_id"])
+            if users and users[0].user_name:
+                name = users[0].user_name
+            else:
+                name = item["user_id"]
+
+            text += f"{i}. {name} ({time_convert_s(item['total_duration'])})\n"
 
         await bot.send(text)
 
