@@ -33,6 +33,7 @@
 
 ### steam帮助(图片更新可能不及时)
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2FlcEk0R3k1TFRMR2tzLWZmUUJHNkFXRFJCRXZobV9JbHh2MWZ5Rlplb2RrP2U9ejJzWGx5.jpg" width="480" alt="Steam帮助菜单">
+
 ### 命令说明
 
 #### 绑定账号
@@ -90,16 +91,16 @@
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRHR5UVVwYVVENFJhX2UxakdHblNIeUFRVVoxcDVZMGpxRkpBWmYtRGhQRENjP2U9RTdMMlJk.png" width="160"/>
 
 ### steam成就推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRDVmeDFrYTF2RlI2aXo2RklpNFlSQkFkUHFGQ1FwaloteW8wZllfbkpVQXhFP2U9Ynd5bXBh.png" width="160"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRDVmeDFrYTF2RlI2aXo2RklpNFlSQkFkUHFGQ1FwaloteW8wZllfbkpVQXhFP2U9Ynd5bXBh.png" width="320"/>
 
 ### steam开始游戏 / 结束游戏推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQUEtZEVQOXV3blRwMjJaN2R0MVFXNEFaZUMtVTVsOWdQZjFRSmZGSUd5UlIwP2U9elRLQmdu.png" width="160"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQUEtZEVQOXV3blRwMjJaN2R0MVFXNEFaZUMtVTVsOWdQZjFRSmZGSUd5UlIwP2U9elRLQmdu.png" width="320"/>
 
 ### steam游戏墙
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160"/>
 
 ## steam玩什么
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQjcxemRIckRxTlI0ZGYwVmhpQm5YUkFkR0lzZjAzVktic2x2ZTQ3VUNSYnNRP2U9WXhMVUhP.jpg" width="160">
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQjcxemRIckRxTlI0ZGYwVmhpQm5YUkFkR0lzZjAzVktic2x2ZTQ3VUNSYnNRP2U9WXhMVUhP.jpg" width="320">
 
 
 
