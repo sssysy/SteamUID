@@ -76,6 +76,27 @@ def HideStr(text: str) -> str:
     return text[0] + "*" * (len(text) - 3) + text[-2:]
 
 
+def time_convert_s(seconds: int) -> str:
+    """将秒数转换为人类可读的时长，如 1天2小时30分45秒"""
+    if seconds < 0:
+        seconds = 0
+    days = seconds // 86400
+    hours = (seconds % 86400) // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days}天")
+    if hours > 0:
+        parts.append(f"{hours}小时")
+    if minutes > 0:
+        parts.append(f"{minutes}分")
+    if secs > 0 or not parts:
+        parts.append(f"{secs}秒")
+    return "".join(parts)
+
+
 def maybe_hide_steamid(text: str) -> str:
     """根据 HideSteamID 配置决定是否对 steamid / 好友码套用 HideStr"""
     from ..SteamConfig import SteamConfig

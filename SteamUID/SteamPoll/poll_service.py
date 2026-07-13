@@ -1,4 +1,5 @@
 import json
+import time
 
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
@@ -18,6 +19,7 @@ from ..utils.database.models import (
     SteamBind,
     SteamArchivementInfo,
     SteamPriceInfo,
+    SteamPlayRecord,
 )
 from ..utils.PIL.draw import draw_game_status_photo, draw_archivements_photo
 from ..utils.steam_status import (
@@ -173,13 +175,32 @@ async def _dispatch_to_subs(subs, send_msg, push_column, steamid64) -> None:
 
 
 async def flush_status_updates(update_list) -> None:
-    """将有变化的状态数据写回数据库"""
+    """将有变化的状态数据写回状态轮询数据库"""
     for steamid64, info in update_list:
         await SteamIDInfo.upsert_steamuserinfo(
             steamid64, json.dumps(info, ensure_ascii=False)
         )
 
-
+async def update_game_record(push_list) -> None:
+    """写入游戏记录数据库"""
+    now = int(time.time())
+    for info, old_info in push_list:
+        steamid64 = info.get("steamid")
+        if not steamid64:
+            continue
+        old_appid = old_info.get("gameid", "")
+        new_appid = info.get("gameid", "")
+        # 结束旧游戏（覆盖"切换游戏"与"退出游戏"两种场景）
+        if old_appid:
+            ret = await SteamPlayRecord.upsert_record(steamid64, old_appid, end_ts=now)
+            if ret != 0:
+                logger.warning(
+                    f"[SteamPoll] 结束游玩记录失败: steamid={steamid64} appid={old_appid}"
+                )
+        # 开始新游戏
+        if new_appid:
+            await SteamPlayRecord.upsert_record(steamid64, new_appid, now)
+            
 async def poll_and_push_game_status() -> None:
     """游戏状态轮询主入口：拉取状态、检测变化、推送、更新基线、落盘。"""
     try:
@@ -198,6 +219,8 @@ async def poll_and_push_game_status() -> None:
         await process_game_status_push(push_list, game_info_map)
         await update_achievement_baselines(push_list)
         await flush_status_updates(update_list)
+        await update_game_record(push_list)
+        
     except Exception as error:
         logger.warning(f"[SteamPoll] 游戏状态轮询失败: {error!r}")
 

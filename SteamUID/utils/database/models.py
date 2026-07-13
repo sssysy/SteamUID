@@ -12,6 +12,7 @@ T_SteamBind = TypeVar("T_SteamBind", bound="SteamBind")
 T_SteamIDInfo = TypeVar("T_SteamIDInfo", bound="SteamIDInfo")
 T_SteamArchivementInfo = TypeVar("T_SteamArchivementInfo", bound="SteamArchivementInfo")
 T_SteamPriceInfo = TypeVar("T_SteamPriceInfo", bound="SteamPriceInfo")
+T_SteamPlayRecord = TypeVar("T_SteamPlayRecord", bound="SteamPlayRecord")
 
 class SteamIDInfo(BaseIDModel, table=True):
     __table_args__: Dict[str, Any] = {"extend_existing": True}
@@ -383,6 +384,18 @@ class SteamBind(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def get_binds_by_group(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        group_id: str,
+    ) -> list["SteamBind"]:
+        """按群查所有绑定（用于排行榜：群 → steamid列表 → user_id映射）"""
+        stmt = select(cls).where(cls.group_id == group_id)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
     async def delete_bind(
         cls: Type[T_SteamBind],
         session: AsyncSession,
@@ -579,6 +592,126 @@ class SteamBind(BaseIDModel, table=True):
         )
         result = await session.execute(stmt)
         return result.scalars().first()
+
+
+class SteamPlayRecord(BaseIDModel, table=True):
+    """Steam游戏游玩记录表（用于游戏排行榜及衍生功能）"""
+    __table_args__: Dict[str, Any] = {"extend_existing": True}
+
+    steamid64: str = Field(default=None, index=True, title="SteamID64")
+    appid: str = Field(default=None, index=True, title="游戏AppID")
+    start_ts: int = Field(default=None, title="开始游戏时间(Unix时间戳)")
+    end_ts: Optional[int] = Field(default=None, title="结束游戏时间(Unix时间戳,NULL=进行中)")
+
+    @classmethod
+    @with_session
+    async def upsert_record(
+        cls: Type[T_SteamPlayRecord],
+        session: AsyncSession,
+        steamid64: str,
+        appid: str,
+        start_ts: Optional[int] = None,
+        end_ts: Optional[int] = None,
+    ) -> int:
+        """
+        写入游玩记录（upsert）。
+        - 不传 end_ts（开始游戏）：新增一条记录，start_ts 必填。
+        - 传了 end_ts（结束游戏）：按 steamid64 + appid + end_ts IS NULL
+          定位进行中的记录并写入 end_ts，start_ts 此时忽略。
+        一个玩家同一时间在同一个 appid 只会有一条 end_ts 为 NULL 的记录，
+        因此该定位方式不会产生歧义。
+        返回 0 表示成功，-1 表示结束游戏时未找到进行中的记录。
+        """
+        if end_ts is None:
+            session.add(
+                cls(
+                    steamid64=steamid64,  # type: ignore
+                    appid=appid,  # type: ignore
+                    start_ts=start_ts,  # type: ignore
+                    end_ts=None,  # type: ignore
+                )
+            )
+            return 0
+
+        # 结束游戏：查找进行中的记录
+        stmt = (
+            select(cls)
+            .where(
+                cls.steamid64 == steamid64,
+                cls.appid == appid,
+                cls.end_ts.is_(None),  # type: ignore
+            )
+            .order_by(cls.id.desc())  # type: ignore
+        )
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is None:
+            return -1
+        existing.end_ts = end_ts
+        session.add(existing)
+        return 0
+
+    @classmethod
+    @with_session
+    async def delete_record(
+        cls: Type[T_SteamPlayRecord],
+        session: AsyncSession,
+        record_id: int,
+    ) -> int:
+        """
+        按主键删除一条游玩记录。
+        0: 成功
+        -1: 未找到匹配记录
+        """
+        stmt = delete(cls).where(cls.id == record_id)  # type: ignore
+        result = await session.execute(stmt)
+        if result.rowcount and result.rowcount > 0:  # type: ignore
+            return 0
+        return -1
+
+    @classmethod
+    @with_session
+    async def get_records(
+        cls: Type[T_SteamPlayRecord],
+        session: AsyncSession,
+        steamid64: Optional[str] = None,
+        appid: Optional[str] = None,
+        end_before: Optional[int] = None,
+        end_after: Optional[int] = None,
+    ) -> list["SteamPlayRecord"]:
+        """
+        按条件查询游玩记录列表。所有参数可选，传入的条件以 AND 组合。
+        steamid64 / appid 精确匹配；end_before / end_after 对 end_ts 做范围过滤（含边界）。
+        end_ts 为 NULL 的记录不会出现在按时间范围过滤的结果中。
+        """
+        stmt = select(cls)
+        if steamid64 is not None:
+            stmt = stmt.where(cls.steamid64 == steamid64)
+        if appid is not None:
+            stmt = stmt.where(cls.appid == appid)
+        if end_before is not None:
+            stmt = stmt.where(cls.end_ts <= end_before)  # type: ignore
+        if end_after is not None:
+            stmt = stmt.where(cls.end_ts >= end_after)  # type: ignore
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
+    async def get_records_by_steamids(
+        cls: Type[T_SteamPlayRecord],
+        session: AsyncSession,
+        steamid64s: list[str],
+    ) -> list["SteamPlayRecord"]:
+        """按 steamid64 列表批量查询已结束的游玩记录（end_ts 为 NULL 的进行中记录不返回）"""
+        if not steamid64s:
+            return []
+        stmt = select(cls).where(
+            cls.steamid64.in_(steamid64s),  # type: ignore
+            cls.end_ts.is_not(None),  # type: ignore
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
 
 from . import admin # 注册到管理员
