@@ -18,29 +18,39 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         secret=True,
     ),
     "APIBaseURL": GsStrConfig(
-        "SteamAPIBaseURL",
+        "SteamAPI反代URL",
         "steamAPI基础URL，用于反代",
         "https://api.steampowered.com",
     ),
     "storeBaseURL": GsStrConfig(
-        "Steam商店BaseURL",
+        "Steam商店反代URL",
         "steam商店基础URL，用于反代",
         "https://store.steampowered.com",
     ),
-    "gscoreBaseURL": GsStrConfig(
-        "steam登录基础URL",
-        "应为 gscore 的公网地址或穿透地址",
-        "http://127.0.0.1:8765",
-    ),
     "PollInterval": GsIntConfig(
-        "用户状态轮询间隔",
-        "用户状态轮询间隔，单位秒。修改后需重启 GsCore 生效",
+        "用户状态轮询间隔 (秒)",
+        "用户状态轮询间隔。修改后需重启 GsCore 生效",
         20,
     ),
     "ArchivementsPollInterval": GsIntConfig(
-        "成就轮询间隔",
-        "成就轮询间隔，单位秒。修改后需重启 GsCore 生效",
+        "成就轮询间隔 (秒)",
+        "成就轮询间隔。修改后需重启 GsCore 生效",
         60,
+    ),
+    "CacheTime": GsIntConfig(
+        "缓存过期时间 (天)",
+        "缓存json(游戏成就信息 / 游戏详情信息等)时间。修改后需重启 GsCore 生效",
+        3,
+    ),
+    "GameSaleInterval": GsIntConfig(
+        "游戏降价轮询间隔 (小时)",
+        "游戏降价轮询间隔。修改后需重启 GsCore 生效",
+        6,
+    ),
+    "gscoreBaseURL": GsStrConfig(
+        "steamOpenid登录基础URL",
+        "应为 gscore 的公网地址或穿透地址",
+        "http://127.0.0.1:8765",
     ),
     "OnlyOpenID": GsBoolConfig(
         "仅允许网页登录",
@@ -72,11 +82,6 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "监听游戏降价的steam地区，默认中国大陆。其他国家代码请参照 ISO 3166-1 alpha-2",
         "cn"
     ),
-    "GameSaleInterval": GsIntConfig(
-        "游戏降价轮询间隔",
-        "游戏降价轮询间隔，单位小时。修改后需重启 GsCore 生效",
-        6,
-    ),
     "AllowAddFriends": GsBoolConfig(
         "允许添加 steam 好友",
         "开启后将支持用户通过 '@用户 steam加好友' 功能获取对方 steam 好友码",
@@ -92,11 +97,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后将会在可能出现 steamid / 好友码的地方隐藏相关数字的中间部分",
         False,
     ),
-    "CacheTime": GsIntConfig(
-        "缓存时间",
-        "缓存json(游戏成就信息 / 游戏详情信息等)时间，单位天。修改后需重启 GsCore 生效",
-        3,
-    ),
 }
+
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)
 SteamConfig = StringConfig("SteamConfig",CONFIG_PATH / 'config.json',CONFIG_DEFAULT)

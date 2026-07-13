@@ -23,7 +23,7 @@ async def get_user_Summaries(steamid64: str | list[str]) -> list:
         data = response.json()
         return data.get("response", {}).get("players", [])
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5) as client:
         tasks = [fetch_batch(client, batch) for batch in batches]
         results = await asyncio.gather(*tasks)
 
@@ -45,7 +45,7 @@ async def get_game_info(appid: str) -> dict:
         "appids": appid,
         "l": "schinese",
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
         data = response.json()
         result = data.get(appid, {})
@@ -64,7 +64,7 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
         "include_appinfo": True,
         "include_played_free_games": True,
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
         data = response.json()
         return data.get("response", {})
@@ -79,7 +79,7 @@ async def get_archivement_info(appid: str, steamid64: str):
         "steamid": steamid64,
         "l": "schinese",
     }    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
         data = response.json()
         return data.get("playerstats", {})
@@ -110,7 +110,7 @@ async def get_archivement_schema(appid: str) -> list[dict]:
         "appid": appid,
         "l": "schinese",
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
         data = response.json()
         achievements = data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
@@ -137,7 +137,7 @@ async def get_price_data(appid: str | list[str]) -> dict:
         response = await client.get(url, params=params)
         return response.json()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5) as client:
         tasks = [fetch_batch(client, batch) for batch in batches]
         results = await asyncio.gather(*tasks)
 

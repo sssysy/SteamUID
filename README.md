@@ -22,16 +22,12 @@
 >
 > 🚧 项目快速迭代中，有漏洞可提issue或pr 🚧
 
-## 丨使用限制
+## 丨使用前注意
 
 > [!CAUTION]
-> 本项目内的所有模板文件，以及任何用于 UI 渲染的相关资源，**未经原作者书面授权，不得以任何形式拷贝、二次修改或重新发布**。该限制涵盖但不局限于以下场景：
->
-> - 上传至公开仓库或个人网站托管
-> - 转载、二次散布或在社群中分享原始 / 修改版文件
-> - 打包或内嵌进其他插件、应用、项目使用
->
-> 如需取得授权，请联系 [Wuyi 无疑](https://github.com/KimigaiiWuyi)。
+> 使用前请务必阅读以下事项，否则会导致此插件无法正常工作
+> - 使用本插件前请先确保框架机器可以正常访问 **steam 官方服务器**，若无法访问请务必配置反向代理([参考](https://github.com/XasYer/steam-plugin#%E4%BD%BF%E7%94%A8cloudflare%E6%90%AD%E5%BB%BA%E5%8F%8D%E4%BB%A3-%E8%BF%9E%E6%8E%A5%E4%B8%8D%E4%B8%8Asteam%E6%83%85%E5%86%B5%E4%B8%8B%E7%9A%84%E5%A4%87%E9%80%89))并在设置中配置**SteamAPI反代URL** 和 **Steam商店反代URL**。
+> - 首次启用本插件务必在设置中填写**Steam API Key**，否则插件无法工作！。
 
 ## 丨命令列表
 
@@ -86,7 +82,7 @@
 | 命令 | 说明 |
 |------|:------:|
 | `steam帮助` | 呼出本插件帮助菜单 |
-| `清除全部缓存` | 清除全部缓存 |
+| `steam清除全部缓存` | 清除全部缓存 |
 
 ## 效果图
 
@@ -130,7 +126,8 @@
 
 ## 致谢
 
-- [Wuyi 无疑](https://github.com/KimigaiiWuyi)
-- [gsuid_core](https://github.com/Genshin-bots/gsuid_core)
-- [Steam Web API](https://developer.valvesoftware.com/wiki/Steam_Web_API)
+- 此插件依赖框架作者 [Wuyi 无疑](https://github.com/KimigaiiWuyi)
+- 此插件依赖自框架 [gsuid_core](https://github.com/Genshin-bots/gsuid_core)
+- 所有请求格式来自 [Steam Web API](https://developer.valvesoftware.com/wiki/Steam_Web_API)
 - steam游戏墙参考自 [steam_wall](https://github.com/zhMoody/steam_wall)
+- steam反代教程来自 [Yunzai-steam-plugin](https://github.com/XasYer/steam-plugin)
