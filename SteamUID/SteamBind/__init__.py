@@ -61,7 +61,7 @@ async def steambind(bot: Bot, ev: Event):
             if warning:
                 fallback += f"\n{warning}"
             await _send_bind_card(
-                bot, ev, fallback_msg=fallback, new_bind_steamid=steamid64
+                bot, ev, fallback_msg=fallback, new_bind_steamid=steamid64, show_all=False
             )
     except SteamError as e:
         await bot.send(str(e))
@@ -98,7 +98,7 @@ async def steamunbind(bot: Bot, ev: Event):
             }
 
             msg = await do_unbind(ev, steamid64)
-            await _send_bind_card(bot, ev, fallback_msg=msg, unbind_banner=banner)
+            await _send_bind_card(bot, ev, fallback_msg=msg, unbind_banner=banner, show_all=False)
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
