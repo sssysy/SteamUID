@@ -35,8 +35,8 @@
 
 ## 丨命令列表
 
-### steam帮助
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQV9pdEVIS2NsaFRKVUtBT1R2Z2JGT0FSX2xJbnB4MEVtRkgtamNLdEc3ZUc0P2U9ZEVHZWxC.jpg" width="480" alt="Steam帮助菜单"></a>
+### steam帮助(图片更新可能不及时)
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2FlcEk0R3k1TFRMR2tzLWZmUUJHNkFXRFJCRXZobV9JbHh2MWZ5Rlplb2RrP2U9ejJzWGx5.jpg" width="480" alt="Steam帮助菜单"></a>
 
 ### 命令说明
 
@@ -68,6 +68,7 @@
 | `steam游戏成就123456` | 查看appid123456的成就详情 |
 | `steam开启成就推送` | 开启自己的成就推送功能 |
 | `steam关闭成就推送` | 关闭自己的成就推送功能 |
+| `steam玩什么` | 从自己的游戏库随机挑3个游戏 |
 
 #### 商店相关
 | 命令 | 说明 |
@@ -81,8 +82,6 @@
 |------|:------:|
 | `@xx steam加好友123456` | 获取被 @ 用户的好友码 |
 | `steam群排行` | 查看群游玩时长排行榜 |
-
-
 
 #### 其他服务
 | 命令 | 说明 |
@@ -104,6 +103,10 @@
 ### steam游戏墙
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160"/>
 
+## steam玩什么
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQjcxemRIckRxTlI0ZGYwVmhpQm5YUkFkR0lzZjAzVktic2x2ZTQ3VUNSYnNRP2U9WXhMVUhP.jpg" width="160">
+
+
 
 ## 计划功能
 
@@ -111,10 +114,10 @@
 - [ ] 玩家上下线状态推送
 - [ ] 带游玩时长的游戏库存图片
 - [x] 游戏降价 / 打折信息订阅推送
-- [ ] steam玩什么 (随机抽游戏)
+- [x] steam玩什么 (随机抽游戏)
 - [x] 游戏名 / 成就名本地化名字获取
 - [ ] 总结推送功能 (定时总结周期内游戏情况而不每次状态变化都推送)
-- [ ] 群游玩时长排行榜
+- [x] 群游玩时长排行榜
 - [x] 隐藏 steamid / 好友码
 
 
@@ -124,7 +127,7 @@
 
 - 本项目仅供学习使用，请勿用于商业用途
 - [GPL-3.0 License](LICENSE)
-
+- 部分功能没有写绘图，以后再说
 
 ## 致谢
 

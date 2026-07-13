@@ -38,7 +38,7 @@ async def group_ranking(bot: Bot, ev: Event):
         await bot.send(f"发生未知错误: {e}")
 
 """
-============后续写==============
+============鸽了=============
 
 @ranking_sv.on_command(("我的排行", "我的排名"))
 async def my_ranking(bot: Bot, ev: Event):

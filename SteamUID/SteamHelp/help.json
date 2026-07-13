@@ -115,6 +115,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "玩什么",
+        "desc": "从自己的游戏库随机挑3个游戏",
+        "eg": "玩什么",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

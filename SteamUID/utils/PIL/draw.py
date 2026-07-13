@@ -611,3 +611,195 @@ async def draw_bind_list_photo(
         cur_y += _BIND_SECTION_GAP
 
     return canvas
+
+
+# ==================== 玩什么推荐卡片 ====================
+
+_PLAY_BG_TOP       = (0x17, 0x1a, 0x21)
+_PLAY_BG_BOTTOM    = (0x1b, 0x28, 0x38)
+_PLAY_CARD_BG: tuple[int, int, int, int]       = (0x2a, 0x47, 0x5e, 255)
+_PLAY_CARD_BG_ALT: tuple[int, int, int, int]   = (0x1e, 0x36, 0x4a, 255)
+_PLAY_WHITE: tuple[int, int, int, int]         = (0xff, 0xff, 0xff, 255)
+_PLAY_GRAY: tuple[int, int, int, int]          = (0x8f, 0x98, 0xa0, 255)
+_PLAY_BLUE: tuple[int, int, int, int]          = (0x66, 0xc0, 0xf4, 255)
+_PLAY_PLACEHOLDER: tuple[int, int, int, int]   = (0x3a, 0x4f, 0x5e, 255)
+_PLAY_DIVIDER: tuple[int, int, int, int]       = (0x3d, 0x5c, 0x78, 255)
+
+_PLAY_SCALE = 2.0
+_PLAY_LOGICAL_W = 600
+
+
+def _play_A(v: float) -> int:
+    """逻辑像素 -> 实际像素"""
+    return round(v * _PLAY_SCALE)
+
+
+def _play_fmt_playtime(minutes: int) -> str:
+    """格式化游玩时长"""
+    if minutes <= 0:
+        return "未游玩"
+    if minutes < 60:
+        return f"{minutes} 分钟"
+    hours = minutes / 60
+    if hours < 100:
+        return f"{hours:.1f} 小时"
+    return f"{round(hours)} 小时"
+
+
+async def _play_load_cover(
+    cover_url: str, appid: str, target_w: int, target_h: int
+) -> Image.Image:
+    """下载游戏封面并缩放到目标尺寸；失败返回纯色占位图。"""
+    if not cover_url:
+        return Image.new("RGBA", (target_w, target_h), _PLAY_PLACEHOLDER)
+    cache_path = cache_path_for_url(cover_url, appid)
+    try:
+        img = await _load_or_download(cover_url, cache_path)
+    except Exception:
+        return Image.new("RGBA", (target_w, target_h), _PLAY_PLACEHOLDER)
+    img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+    return img
+
+
+def _play_paste_rounded_top(
+    canvas: Image.Image,
+    img: Image.Image,
+    pos: tuple[int, int],
+    radius: int,
+) -> None:
+    """将 img 粘贴到 canvas，仅圆角化顶部两角，底部保持直角。"""
+    w, h = img.size
+    mask = Image.new("L", (w, h), 0)
+    md = ImageDraw.Draw(mask)
+    md.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=255)
+    md.rectangle((0, radius, w, h), fill=255)
+    canvas.paste(img, pos, mask)
+
+
+async def draw_what_to_play(picks: list[dict]) -> Image.Image:
+    """
+    绘制"今天玩什么"推荐卡片。
+
+    参数:
+        picks: [{"appid": str, "name": str, "playtime": int, "cover_url": str}, ...]
+               长度 1-3
+
+    返回:
+        PIL.Image.Image —— RGBA 画布
+    """
+    A = _play_A
+
+    # —— 布局常量（逻辑像素）——
+    SIDE_PAD       = 20
+    CARD_GAP       = 10
+    CARD_W         = 180
+    CARD_RADIUS    = 10
+    COVER_PAD      = 6
+    COVER_RADIUS   = 6
+    TOP_PAD        = 24
+    BOTTOM_PAD     = 24
+    TITLE_H        = 40
+    SUBTITLE_H     = 20
+    TITLE_GAP      = 8
+    SECTION_GAP    = 20
+    NAME_TOP_PAD   = 10
+    NAME_H         = 22
+    NAME_PLAY_GAP  = 4
+    PLAYTIME_H     = 16
+    NAME_BOT_PAD   = 4
+
+    # 派生尺寸
+    cover_w = CARD_W - 2 * COVER_PAD          # 168
+    cover_h = round(cover_w * 1.5)            # 252 (2:3)
+    name_area_h = NAME_TOP_PAD + NAME_H + NAME_PLAY_GAP + PLAYTIME_H + NAME_BOT_PAD  # 56
+    card_h = COVER_PAD + cover_h + name_area_h  # 314
+    canvas_h = TOP_PAD + TITLE_H + TITLE_GAP + SUBTITLE_H + SECTION_GAP + card_h + BOTTOM_PAD
+
+    W_act = A(_PLAY_LOGICAL_W)
+    H_act = A(canvas_h)
+
+    # —— 创建画布 + 渐变背景 ——
+    canvas = Image.new("RGBA", (W_act, H_act))
+    draw_vertical_gradient(canvas, W_act, H_act, _PLAY_BG_TOP, _PLAY_BG_BOTTOM)
+    draw = ImageDraw.Draw(canvas)
+
+    # —— 字体 ——
+    font_title    = core_font(A(30))
+    font_subtitle = core_font(A(14))
+    font_name     = core_font(A(16))
+    font_playtime = core_font(A(12))
+
+    # —— 标题 ——
+    title_text = "今天玩什么"
+    title_x = (W_act - draw.textlength(title_text, font_title)) / 2
+    title_y = text_y_for_center(A(TOP_PAD) + A(TITLE_H) / 2, font_title, title_text)
+    draw.text((title_x, title_y), title_text, font=font_title, fill=_PLAY_BLUE)
+
+    # —— 副标题 ——
+    subtitle_text = "从你的游戏库中随机推荐"
+    sub_x = (W_act - draw.textlength(subtitle_text, font_subtitle)) / 2
+    sub_y = text_y_for_center(
+        A(TOP_PAD + TITLE_H + TITLE_GAP) + A(SUBTITLE_H) / 2,
+        font_subtitle, subtitle_text,
+    )
+    draw.text((sub_x, sub_y), subtitle_text, font=font_subtitle, fill=_PLAY_GRAY)
+
+    # —— 分割线 ——
+    divider_y = A(TOP_PAD + TITLE_H + TITLE_GAP + SUBTITLE_H + SECTION_GAP // 2)
+    draw.line(
+        [(A(SIDE_PAD), divider_y), (A(_PLAY_LOGICAL_W - SIDE_PAD), divider_y)],
+        fill=_PLAY_DIVIDER, width=A(1),
+    )
+
+    # —— 并发下载封面 ——
+    cover_target_w = A(cover_w)
+    cover_target_h = A(cover_h)
+    covers = await asyncio.gather(
+        *[_play_load_cover(
+            g["cover_url"], g["appid"], cover_target_w, cover_target_h
+        ) for g in picks]
+    )
+
+    # —— 绘制卡片 ——
+    cards_top = A(TOP_PAD + TITLE_H + TITLE_GAP + SUBTITLE_H + SECTION_GAP)
+
+    for i, game in enumerate(picks):
+        cx = A(SIDE_PAD) + A(i * (CARD_W + CARD_GAP))
+        cy = cards_top
+        cw = A(CARD_W)
+        ch = A(card_h)
+
+        # 卡片背景（圆角矩形）
+        card_bg = _PLAY_CARD_BG if i % 2 == 0 else _PLAY_CARD_BG_ALT
+        draw.rounded_rectangle(
+            (cx, cy, cx + cw, cy + ch), radius=A(CARD_RADIUS), fill=card_bg,
+        )
+
+        # 封面图（顶部圆角）
+        cover = covers[i]
+        cover_x = cx + A(COVER_PAD)
+        cover_y = cy + A(COVER_PAD)
+        _play_paste_rounded_top(canvas, cover, (cover_x, cover_y), A(COVER_RADIUS))
+
+        # 游戏名
+        name_text = _truncate_to_width(
+            game["name"], font_name, cw - 2 * A(COVER_PAD),
+        )
+        name_center_x = cx + cw // 2
+        name_cy = cover_y + cover_target_h + A(NAME_TOP_PAD) + A(NAME_H) / 2
+        name_y = text_y_for_center(name_cy, font_name, name_text)
+        draw.text(
+            (_center_text_x(name_center_x, name_text, font_name), name_y),
+            name_text, font=font_name, fill=_PLAY_WHITE,
+        )
+
+        # 游玩时长
+        playtime_text = _play_fmt_playtime(game["playtime"])
+        playtime_cy = name_cy + A(NAME_H) / 2 + A(NAME_PLAY_GAP) + A(PLAYTIME_H) / 2
+        playtime_y = text_y_for_center(playtime_cy, font_playtime, playtime_text)
+        draw.text(
+            (_center_text_x(name_center_x, playtime_text, font_playtime), playtime_y),
+            playtime_text, font=font_playtime, fill=_PLAY_GRAY,
+        )
+
+    return canvas
