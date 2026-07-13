@@ -652,14 +652,13 @@ async def _play_load_cover(
     """下载游戏封面并缩放到目标尺寸；失败返回纯色占位图。"""
     if not cover_url:
         return Image.new("RGBA", (target_w, target_h), _PLAY_PLACEHOLDER)
-    cache_path = cache_path_for_url(cover_url, appid)
     try:
+        cache_path = cache_path_for_url(cover_url, appid)
         img = await _load_or_download(cover_url, cache_path)
+        img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
     except Exception:
         return Image.new("RGBA", (target_w, target_h), _PLAY_PLACEHOLDER)
-    img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
     return img
-
 
 def _play_paste_rounded_top(
     canvas: Image.Image,

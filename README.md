@@ -36,8 +36,7 @@
 ## 丨命令列表
 
 ### steam帮助(图片更新可能不及时)
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2FlcEk0R3k1TFRMR2tzLWZmUUJHNkFXRFJCRXZobV9JbHh2MWZ5Rlplb2RrP2U9ejJzWGx5.jpg" width="480" alt="Steam帮助菜单"></a>
-
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2FlcEk0R3k1TFRMR2tzLWZmUUJHNkFXRFJCRXZobV9JbHh2MWZ5Rlplb2RrP2U9ejJzWGx5.jpg" width="480" alt="Steam帮助菜单">
 ### 命令说明
 
 #### 绑定账号

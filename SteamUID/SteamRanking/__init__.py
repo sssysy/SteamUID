@@ -35,7 +35,7 @@ async def group_ranking(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamRanking - 群排行] 未知错误: {e!r}")
-        await bot.send(f"发生未知错误: {e}")
+        await bot.send("发生未知错误，请联系管理员查看控制台")
 
 """
 ============鸽了=============

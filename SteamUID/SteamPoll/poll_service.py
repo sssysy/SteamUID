@@ -183,28 +183,24 @@ async def flush_status_updates(update_list) -> None:
 
 async def update_game_record(push_list) -> None:
     """写入游戏记录数据库"""
+    now = int(time.time())
     for info, old_info in push_list:
         steamid64 = info.get("steamid")
         if not steamid64:
             continue
-        is_playing = bool(info.get("gameid", ""))
-        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
-        if not appid:
-            continue
-        if is_playing:
-            # 开始游戏
-            start_ts = int(time.time())
-            await SteamPlayRecord.upsert_record(
-                steamid64, appid, start_ts
-            )
-        else:
-            # 结束游戏
-            end_ts = int(time.time())
-            await SteamPlayRecord.upsert_record(
-                steamid64, appid, end_ts=end_ts
-            )
-
-
+        old_appid = old_info.get("gameid", "")
+        new_appid = info.get("gameid", "")
+        # 结束旧游戏（覆盖"切换游戏"与"退出游戏"两种场景）
+        if old_appid:
+            ret = await SteamPlayRecord.upsert_record(steamid64, old_appid, end_ts=now)
+            if ret != 0:
+                logger.warning(
+                    f"[SteamPoll] 结束游玩记录失败: steamid={steamid64} appid={old_appid}"
+                )
+        # 开始新游戏
+        if new_appid:
+            await SteamPlayRecord.upsert_record(steamid64, new_appid, now)
+            
 async def poll_and_push_game_status() -> None:
     """游戏状态轮询主入口：拉取状态、检测变化、推送、更新基线、落盘。"""
     try:

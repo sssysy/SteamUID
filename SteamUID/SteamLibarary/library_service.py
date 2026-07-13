@@ -62,24 +62,30 @@ async def build_random_pick(steamid64: str) -> bytes:
 
     library = await get_steamlibrary_by_steamid64(api_key, steamid64)
     games = library.get("games")
+    if games is None:
+        raise SteamValidationError("获取 steam 游戏库列表失败")
     if not games:
         raise SteamValidationError("该 steam 账号暂无游戏库存")
-
     pick_count = min(3, len(games))
     picks = random.sample(games, pick_count)
 
-    game_data: list[dict] = []
     for game in picks:
         appid = str(game.get("appid", ""))
         name = game.get("name", "未知游戏")
-        playtime = game.get("playtime_forever", 0) or 0
+        playtime = (
+            game.get("playtime_forever", 0) or
+            game.get("playtime_windows_forever", 0) +
+            game.get("playtime_mac_forever", 0) +
+            game.get("playtime_linux_forever", 0) +
+            game.get("playtime_deck_forever", 0)
+        )
         cover_url = SteamAPI.GetGameCoverImageURL(appid, variant='library_600x900')
         game_data.append({
             "appid": appid,
             "name": name,
             "playtime": playtime,
             "cover_url": cover_url,
-        })
+        })        })
 
     img = await draw_what_to_play(game_data)
     img = img.convert("RGB")
