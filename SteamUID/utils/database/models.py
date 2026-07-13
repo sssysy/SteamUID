@@ -384,6 +384,18 @@ class SteamBind(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def get_binds_by_group(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        group_id: str,
+    ) -> list["SteamBind"]:
+        """按群查所有绑定（用于排行榜：群 → steamid列表 → user_id映射）"""
+        stmt = select(cls).where(cls.group_id == group_id)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
     async def delete_bind(
         cls: Type[T_SteamBind],
         session: AsyncSession,
@@ -681,6 +693,23 @@ class SteamPlayRecord(BaseIDModel, table=True):
             stmt = stmt.where(cls.end_ts <= end_before)  # type: ignore
         if end_after is not None:
             stmt = stmt.where(cls.end_ts >= end_after)  # type: ignore
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
+    async def get_records_by_steamids(
+        cls: Type[T_SteamPlayRecord],
+        session: AsyncSession,
+        steamid64s: list[str],
+    ) -> list["SteamPlayRecord"]:
+        """按 steamid64 列表批量查询已结束的游玩记录（end_ts 为 NULL 的进行中记录不返回）"""
+        if not steamid64s:
+            return []
+        stmt = select(cls).where(
+            cls.steamid64.in_(steamid64s),  # type: ignore
+            cls.end_ts.is_not(None),  # type: ignore
+        )
         result = await session.execute(stmt)
         return list(result.scalars().all())
 

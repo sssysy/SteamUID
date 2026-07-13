@@ -147,6 +147,27 @@
       }
     ]
   },
+  "社交相关": {
+    "desc": "加好友和排行榜功能",
+    "data": [
+      {
+        "name": "加好友",
+        "desc": "获取被 @ 用户的好友码",
+        "eg": "加好友",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群排行",
+        "desc": "查看群游玩时长排行榜",
+        "eg": "群排行",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "其他服务": {
     "desc": "一些杂项服务",
     "data": [
@@ -154,14 +175,6 @@
         "name": "帮助",
         "desc": "呼出本插件帮助菜单",
         "eg": "帮助",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "@xx 加好友",
-        "desc": "获取被 @ 用户的好友码",
-        "eg": "加好友",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
