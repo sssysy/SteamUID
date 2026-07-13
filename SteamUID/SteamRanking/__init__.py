@@ -28,7 +28,7 @@ async def group_ranking(bot: Bot, ev: Event):
 
         text = "本群游戏时长排行：\n"
         for i, item in enumerate(top5, 1):
-            users = await CoreUser.select_rows(user_id=item["user_id"])
+            users = await CoreUser.select_rows(user_id=item["user_id"], group_id=ev.group_id)
             if users and users[0].user_name:
                 name = users[0].user_name
             else:
