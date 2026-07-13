@@ -68,6 +68,7 @@ async def build_random_pick(steamid64: str) -> bytes:
         raise SteamValidationError("该 steam 账号暂无游戏库存")
     pick_count = min(3, len(games))
     picks = random.sample(games, pick_count)
+    game_data = []
 
     for game in picks:
         appid = str(game.get("appid", ""))
@@ -85,7 +86,7 @@ async def build_random_pick(steamid64: str) -> bytes:
             "name": name,
             "playtime": playtime,
             "cover_url": cover_url,
-        })        })
+        })
 
     img = await draw_what_to_play(game_data)
     img = img.convert("RGB")
