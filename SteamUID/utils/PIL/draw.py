@@ -1,7 +1,9 @@
 import asyncio
 from math import ceil
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+from gsuid_core.logger import logger
 from gsuid_core.utils.fonts.fonts import core_font
 
 from ._helpers import (
@@ -14,6 +16,8 @@ from ._helpers import (
     draw_vertical_gradient,
     text_y_for_center,
 )
+
+_DEFAULT_ACHIEVEMENT_ICON = Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
 from ..utils import maybe_hide_steamid
 
 _GAME_STATUS_THEMES: dict[str, dict] = {
@@ -100,12 +104,17 @@ async def draw_archivements_photo(
     gamer_cache = CACHE_DIR / f"{gamer_hash}.jpg"
     gamer_img = await _load_or_download(gamer_img_url, gamer_cache)
 
-    if not archivement_img_url:
-        raise ValueError("archivement_img_url is empty")
-
-    arch_hash = archivement_img_url.rstrip("/").split("/")[-1]
-    arch_cache = CACHE_DIR / f"{arch_hash}.jpg"
-    archivement_img = await _load_or_download(archivement_img_url, arch_cache)
+    try:
+        if not archivement_img_url:
+            raise ValueError("archivement_img_url is empty")
+        arch_hash = archivement_img_url.rstrip("/").split("/")[-1]
+        arch_cache = CACHE_DIR / f"{arch_hash}.jpg"
+        archivement_img = await _load_or_download(archivement_img_url, arch_cache)
+    except Exception:
+        logger.warning(
+            f"[SteamUID] 成就图片下载失败，使用默认图标代替: {archivement_img_url}"
+        )
+        archivement_img = Image.open(_DEFAULT_ACHIEVEMENT_ICON).convert("RGBA")
 
     W, H = round(600 * s), round(168 * s)
     canvas = Image.new("RGBA", (W, H))
