@@ -9,7 +9,7 @@ from ..utils.utils import maybe_hide_steamid
 async def switch_push(
     ev: Event, steamid64: str, push_columns: list[str], enabled: bool
 ) -> str:
-    """切换推送状态，成功返回结果消息，校验失败 raise SteamValidationError"""
+    """切换推送状态，成功返回结果消息"""
     messages: list[str] = []
 
     if enabled:

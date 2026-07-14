@@ -168,8 +168,16 @@
       },
       {
         "name": "群排行",
-        "desc": "查看群游玩时长排行榜",
+        "desc": "查看群游玩时长排行榜（按用户）",
         "eg": "群排行",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群游戏排行",
+        "desc": "查看群游玩时长排行榜（按游戏）",
+        "eg": "群游戏排行",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false

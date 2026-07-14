@@ -1,22 +1,10 @@
 from ..utils.exceptions import SteamError
 from ..utils.database.models import SteamBind, SteamPlayRecord
+from ..utils.api import get_game_info
 
 
 async def get_group_ranking_list(group_id: str) -> list[dict]:
-    """获取群排名列表
-
-    流程：
-    1. 从 SteamBind 取群内所有绑定 → 构建 steamid64 → user_id 映射
-    2. 收集所有 steamid64，批量查询已结束的游玩记录
-    3. 计算每条记录时长 (end_ts - start_ts)，按 user_id 累加
-    4. 按总时长降序排序
-
-    Returns:
-        list[dict]: 每项包含:
-            - user_id (str): 平台用户ID
-            - total_duration (int): 总游戏时长（秒）
-            - steamid64s (list[str]): 该用户绑定的所有SteamID
-    """
+    """获取群排名列表"""
     # 第1步：取群绑定列表，构建映射
     binds = await SteamBind.get_binds_by_group(group_id)
     if not binds:
@@ -61,5 +49,55 @@ async def get_group_ranking_list(group_id: str) -> list[dict]:
         for uid, duration in user_durations.items()
     ]
     ranking_list.sort(key=lambda x: x["total_duration"], reverse=True)
+
+    return ranking_list
+
+
+async def get_game_ranking_list(group_id: str) -> list[dict]:
+    """获取群内游戏排行列表（按游戏总时长降序，不区分用户）"""
+    # 第1步：取群绑定列表，收集所有 steamid64
+    binds = await SteamBind.get_binds_by_group(group_id)
+    if not binds:
+        return []
+
+    all_steamids: list[str] = []
+    seen: set[str] = set()
+    for bind in binds:
+        sid = bind.steamid64
+        if sid not in seen:
+            seen.add(sid)
+            all_steamids.append(sid)
+
+    # 第2步：批量查询已结束的游玩记录
+    records = await SteamPlayRecord.get_records_by_steamids(all_steamids)
+    if records is None:
+        raise SteamError("查询游玩记录失败，请稍后重试")
+
+    # 第3步：按 appid 累加时长，不区分用户
+    app_durations: dict[str, int] = {}
+    for record in records:
+        duration = record.end_ts - record.start_ts  # type: ignore
+        app_durations[record.appid] = app_durations.get(record.appid, 0) + duration
+
+    # 第4步：按总时长降序排序
+    sorted_apps = sorted(app_durations.items(), key=lambda x: x[1], reverse=True)
+
+    # 第5步：获取游戏名称
+    ranking_list: list[dict] = []
+    for appid, total_duration in sorted_apps:
+        game_name = appid
+        try:
+            info = await get_game_info(appid)
+            if info and info.get("success"):
+                name = info.get("data", {}).get("name", "")
+                if name:
+                    game_name = name
+        except Exception:
+            pass
+        ranking_list.append({
+            "appid": appid,
+            "game_name": game_name,
+            "total_duration": total_duration,
+        })
 
     return ranking_list
