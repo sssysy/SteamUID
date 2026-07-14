@@ -7,7 +7,7 @@ from gsuid_core.data_store import get_res_path
 from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.utils import download_pic_to_image
 
-CACHE_DIR: Path = get_res_path("SteamUID") / "imgs"
+CACHE_DIR: Path = get_res_path("SteamUID") / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 _BG_HASH_PATTERN = re.compile(r"/([0-9a-fA-F]{40})/")

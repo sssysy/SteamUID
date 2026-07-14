@@ -38,7 +38,7 @@ async def build_library_wall(steamid64: str) -> bytes:
         )
         played_times.append(played_time)
 
-    cache_path = get_res_path() / 'SteamUID' / 'cache' / 'librarycover'
+    cache_path = get_res_path("SteamUID") / "cache"
     cache_path.mkdir(parents=True, exist_ok=True)
     downloaded_paths = await batch_download_images(cdn_urls, str(cache_path))
     for i, url in enumerate(downloaded_paths):
