@@ -76,9 +76,23 @@ async def draw_game_status_photo(
     canvas = Image.alpha_composite(canvas, overlay)
 
     draw = ImageDraw.Draw(canvas)
-    draw.text((round(100 * s), H_bg + round(5 * s)), username, font=core_font(round(25 * s)), fill=theme["username_color"])
+
+    max_name_w = W_bg - round(100 * s)
+    font_username = core_font(round(25 * s))
+    draw.text(
+        (round(100 * s), H_bg + round(5 * s)),
+        _truncate_to_width(username, font_username, max_name_w),
+        font=font_username, fill=theme["username_color"],
+    )
+
     draw.text((round(100 * s), H_bg + round(40 * s)), theme["subtitle"], font=core_font(round(15 * s)), fill=theme["sub_text_color"])
-    draw.text((round(100 * s), H_bg + round(60 * s)), game_name, font=core_font(round(15 * s)), fill=theme["sub_text_color"])
+
+    font_game_st = core_font(round(15 * s))
+    draw.text(
+        (round(100 * s), H_bg + round(60 * s)),
+        _truncate_to_width(game_name, font_game_st, max_name_w),
+        font=font_game_st, fill=theme["sub_text_color"],
+    )
 
     return canvas
 
@@ -131,7 +145,12 @@ async def draw_archivements_photo(
     draw = ImageDraw.Draw(canvas)
 
     font_gamer = _font_with_height(round(42 * s))
-    draw.text((round(236 * s), round(12 * s)), gamer_name, font=font_gamer, fill=username_color)
+    max_gamer_w = W - round(236 * s)
+    draw.text(
+        (round(236 * s), round(12 * s)),
+        _truncate_to_width(gamer_name, font_gamer, max_gamer_w),
+        font=font_gamer, fill=username_color,
+    )
 
     # "在 {game_name} 解锁了成就" —— 混色绘制
     font_game_line = _font_with_height(round(20 * s))
@@ -139,17 +158,29 @@ async def draw_archivements_photo(
     suffix = " 解锁了成就"
     x_start = round(173 * s)
     y_line = round(73 * s)
+    max_game_line_w = W - x_start - font_game_line.getlength(prefix) - font_game_line.getlength(suffix)
+    game_name_disp = _truncate_to_width(game_name, font_game_line, max_game_line_w)
     draw.text((x_start, y_line), prefix, font=font_game_line, fill=white)
     offset1 = font_game_line.getlength(prefix)
-    draw.text((x_start + offset1, y_line), game_name, font=font_game_line, fill=game_name_color)
-    offset2 = font_game_line.getlength(prefix + game_name)
+    draw.text((x_start + offset1, y_line), game_name_disp, font=font_game_line, fill=game_name_color)
+    offset2 = font_game_line.getlength(prefix + game_name_disp)
     draw.text((x_start + offset2, y_line), suffix, font=font_game_line, fill=white)
 
     font_arch_name = _font_with_height(round(25 * s))
-    draw.text((round(173 * s), round(98 * s)), archivement_name, font=font_arch_name, fill=white)
+    max_arch_name_w = W - round(173 * s)
+    draw.text(
+        (round(173 * s), round(98 * s)),
+        _truncate_to_width(archivement_name, font_arch_name, max_arch_name_w),
+        font=font_arch_name, fill=white,
+    )
 
     font_desc = _font_with_height(round(20 * s))
-    draw.text((round(173 * s), round(133 * s)), archivement_desc, font=font_desc, fill=desc_color)
+    max_desc_w = W - round(173 * s)
+    draw.text(
+        (round(173 * s), round(133 * s)),
+        _truncate_to_width(archivement_desc, font_desc, max_desc_w),
+        font=font_desc, fill=desc_color,
+    )
 
     return canvas
 
