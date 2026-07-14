@@ -30,7 +30,7 @@ async def steamsubscribe(bot: Bot, ev: Event):
             return
 
         if not first_prices.get(appid, {}).get("data", []):
-            await bot.send(f"该游戏为免费游戏，无法订阅降级提醒")
+            await bot.send(f"该游戏为免费游戏，无法订阅降价提醒")
             return
         
         await SteamPriceInfo.subscribe(appid, json.dumps(first_prices.get(appid, {}).get("data", {}).get("price_overview", {})))
@@ -82,7 +82,7 @@ async def steam_query(bot: Bot, ev: Event):
             user_id=ev.user_id,
             bot_id=ev.bot_id,
             user_type=ev.user_type,
-            WS_BOT_ID=ev.ws_bot_id,
+            WS_BOT_ID=ev.WS_BOT_ID,
             )
         
         if not price_info:
