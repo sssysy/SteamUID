@@ -1,27 +1,20 @@
-from datetime import datetime, timedelta, timezone
-
-from gsuid_core.logger import logger
-
 from ..SteamConfig import SteamConfig
-from ..utils.database.models_cache import SteamApiCache, SteamArchivementCache
+from ..SteamCache.cache_service import purge_db_cache, purge_file_cache
 
 
 async def purge_stale_caches() -> None:
-    """清理过期缓存行：删除 updated_at 早于 CacheTime 天前的缓存。"""
+    """清理过期数据库缓存：删除超过 CacheTime 天的接口缓存和成就缓存。"""
     cache_days = SteamConfig.get_config("CacheTime").data
     if not cache_days or cache_days <= 0:
         return
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=cache_days)
+    await purge_db_cache(days=cache_days)
 
-    try:
-        deleted_api = await SteamApiCache.delete_stale(cutoff)
-        deleted_ach = await SteamArchivementCache.delete_stale(cutoff)
-        if deleted_api or deleted_ach:
-            logger.info(
-                f"[SteamPoll] 缓存清理完成: "
-                f"接口缓存删除 {deleted_api} 行, "
-                f"成就Schema缓存删除 {deleted_ach} 行"
-            )
-    except Exception as error:
-        logger.warning(f"[SteamPoll] 缓存清理失败: {error!r}")
+
+async def purge_stale_files() -> None:
+    """清理过期缓存文件：删除超过 FileCacheTime 天的缓存文件。"""
+    file_cache_days = SteamConfig.get_config("FileCacheTime").data
+    if not file_cache_days or file_cache_days <= 0:
+        return
+
+    await purge_file_cache(days=file_cache_days)

@@ -28,10 +28,20 @@ async def check_archivement():
 async def check_game_sale():
     await poll_service.poll_and_push_game_sale()
 
-# steam 缓存清理
+# steam 数据库缓存清理
 @scheduler.scheduled_job(
     'interval',
     days=SteamConfig.get_config("CacheTime").data,
 )
 async def purge_cache():
     await cache_poll.purge_stale_caches()
+
+# steam 缓存文件清理（FileCacheTime 为 0 时不启用）
+_file_cache_days = SteamConfig.get_config("FileCacheTime").data
+if _file_cache_days and _file_cache_days > 0:
+    @scheduler.scheduled_job(
+        'interval',
+        days=_file_cache_days,
+    )
+    async def purge_file_cache():
+        await cache_poll.purge_stale_files()

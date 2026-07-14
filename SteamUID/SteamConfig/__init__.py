@@ -38,9 +38,14 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         60,
     ),
     "CacheTime": GsIntConfig(
-        "缓存过期时间 (天)",
-        "缓存json(游戏成就信息 / 游戏详情信息等)时间。修改后需重启 GsCore 生效",
+        "数据接口缓存过期时间 (天)",
+        "缓存json(游戏成就信息 / 游戏详情信息等)过期时间。修改后需重启 GsCore 生效",
         3,
+    ),
+    "FileCacheTime": GsIntConfig(
+        "缓存文件过期时间 (天)",
+        "缓存文件过期时间，超过此天数的文件会删除，0不启用。修改后需重启 GsCore 生效",
+        0,
     ),
     "GameSaleInterval": GsIntConfig(
         "游戏降价轮询间隔 (小时)",
