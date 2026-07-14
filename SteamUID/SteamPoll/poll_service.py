@@ -286,87 +286,93 @@ async def poll_and_push_achievements() -> None:
                 )
                 continue
 
-            old_archivement_info = json.loads(steamid.archivement_data or "{}")
-            new_archivement_info = resp
-
-            old_achievements = {
-                a['apiname']: a
-                for a in old_archivement_info.get('achievements', [])
-            }
-            newly_achieved = [
-                a for a in new_archivement_info.get('achievements', [])
-                if a.get('achieved') == 1
-                and old_achievements.get(a['apiname'], {}).get('achieved') == 0
-            ]
-
-            if not newly_achieved:
-                continue
-
-            subs = await SteamBind.get_bind_by_steamid(steamid64)
-            # 优先从 store API 获取中文名，GetPlayerAchievements 的 gameName 始终为英文
             try:
-                game_info = await get_game_info(appid)
-                game_name = (
-                    game_info.get("data", {}).get("name", "")
-                    if game_info and game_info.get("success")
-                    else ""
-                )
-            except Exception:
-                game_name = ""
-            game_name = game_name or new_archivement_info.get('gameName', '未知游戏')
+                old_archivement_info = json.loads(steamid.archivement_data or "{}")
+                new_archivement_info = resp
 
-            gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
-            gamer_name = gamer_info.get("personaname", steamid64)
-            gamer_img_url = gamer_info.get("avatarfull", "")
+                old_achievements = {
+                    a['apiname']: a
+                    for a in old_archivement_info.get('achievements', [])
+                }
+                newly_achieved = [
+                    a for a in new_archivement_info.get('achievements', [])
+                    if a.get('achieved') == 1
+                    and old_achievements.get(a['apiname'], {}).get('achieved') == 0
+                ]
 
-            for ach in newly_achieved:
-                archivement_name = ach.get("name", "无名称")
-                archivement_desc = ach.get("description", "无描述")
-                text_msg = (
-                    f"{gamer_name} 解锁成就：\n"
-                    f"游戏：{game_name}\n"
-                    f"成就：{archivement_name}\n"
-                    f"描述：{archivement_desc}"
-                )
+                if not newly_achieved:
+                    continue
 
-                send_msg = None
+                subs = await SteamBind.get_bind_by_steamid(steamid64)
+                # 优先从 store API 获取中文名，GetPlayerAchievements 的 gameName 始终为英文
                 try:
-                    archivement_img_url = await get_archivement_img(
-                        appid, ach.get("apiname", "")
+                    game_info = await get_game_info(appid)
+                    game_name = (
+                        game_info.get("data", {}).get("name", "")
+                        if game_info and game_info.get("success")
+                        else ""
                     )
-                    IMG = await draw_archivements_photo(
-                        gamer_name=gamer_name,
-                        gamer_img_url=gamer_img_url,
-                        archivement_name=archivement_name,
-                        archivement_img_url=archivement_img_url,
-                        game_name=game_name,
-                        archivement_desc=archivement_desc,
-                    )
-                    if isinstance(IMG, Image.Image):
-                        send_msg = MessageSegment.image(IMG)
-                except Exception as error:
-                    logger.warning(
-                        f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
+                except Exception:
+                    game_name = ""
+                game_name = game_name or new_archivement_info.get('gameName', '未知游戏')
+
+                gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
+                gamer_name = gamer_info.get("personaname", steamid64)
+                gamer_img_url = gamer_info.get("avatarfull", "")
+
+                for ach in newly_achieved:
+                    archivement_name = ach.get("name", "无名称")
+                    archivement_desc = ach.get("description", "无描述")
+                    text_msg = (
+                        f"{gamer_name} 解锁成就：\n"
+                        f"游戏：{game_name}\n"
+                        f"成就：{archivement_name}\n"
+                        f"描述：{archivement_desc}"
                     )
 
-                if send_msg is None:
-                    send_msg = text_msg
-
-                for sub in subs:
-                    if not sub.push_archivement:
-                        continue
+                    send_msg = None
                     try:
-                        await sub.send(send_msg)
+                        archivement_img_url = await get_archivement_img(
+                            appid, ach.get("apiname", "")
+                        )
+                        IMG = await draw_archivements_photo(
+                            gamer_name=gamer_name,
+                            gamer_img_url=gamer_img_url,
+                            archivement_name=archivement_name,
+                            archivement_img_url=archivement_img_url,
+                            game_name=game_name,
+                            archivement_desc=archivement_desc,
+                        )
+                        if isinstance(IMG, Image.Image):
+                            send_msg = MessageSegment.image(IMG)
                     except Exception as error:
                         logger.warning(
-                            f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}"
+                            f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
                         )
 
-            await SteamArchivementInfo.upsert_archivement_data(
-                steamid64,
-                appid,
-                json.dumps(new_archivement_info, ensure_ascii=False),
-            )
+                    if send_msg is None:
+                        send_msg = text_msg
+
+                    for sub in subs:
+                        if not sub.push_archivement:
+                            continue
+                        try:
+                            await sub.send(send_msg)
+                        except Exception as error:
+                            logger.warning(
+                                f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}"
+                            )
+
+                await SteamArchivementInfo.upsert_archivement_data(
+                    steamid64,
+                    appid,
+                    json.dumps(new_archivement_info, ensure_ascii=False),
+                )
+            except Exception as error:
+                logger.warning(
+                    f"[SteamPoll] 处理用户成就失败 steamid={steamid64} appid={appid}: {error!r}"
+                )
+                continue
     except Exception as error:
         logger.warning(f"[SteamPoll] 成就轮询失败: {error!r}")
 

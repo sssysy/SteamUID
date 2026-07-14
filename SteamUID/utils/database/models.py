@@ -544,7 +544,20 @@ class SteamBind(BaseIDModel, table=True):
         0: 成功
         -1: 未找到指定绑定
         """
-        # 先清零该用户在同群的所有 is_main_id
+        # 先查找目标绑定是否存在
+        stmt = select(cls).where(
+            cls.steamid64 == steamid64,
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+            cls.group_id == group_id,
+        )
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is None:
+            return -1
+
+        # 目标存在，清零该用户在同群的所有 is_main_id
         user_stmt = select(cls).where(
             cls.bot_id == bot_id,
             cls.user_id == user_id,
@@ -557,17 +570,6 @@ class SteamBind(BaseIDModel, table=True):
             session.add(row)
 
         # 将指定绑定设为主ID
-        stmt = select(cls).where(
-            cls.steamid64 == steamid64,
-            cls.bot_id == bot_id,
-            cls.user_id == user_id,
-            cls.user_type == user_type,
-            cls.group_id == group_id,
-        )
-        result = await session.execute(stmt)
-        existing = result.scalars().first()
-        if existing is None:
-            return -1
         existing.is_main_id = True
         session.add(existing)
         return 0
