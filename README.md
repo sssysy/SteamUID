@@ -32,7 +32,7 @@
 ## 丨命令列表
 
 ### steam帮助(图片更新可能不及时)
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2FlcEk0R3k1TFRMR2tzLWZmUUJHNkFXRFJCRXZobV9JbHh2MWZ5Rlplb2RrP2U9ejJzWGx5.jpg" width="480" alt="Steam帮助菜单">
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQWI0VVFBSHdwQVJhaWpYSFhJYnNqOUFaaEtac1plTHdKb0NKTldZM2tOOWtzP2U9cERkcjRw.jpg" width="480" alt="Steam帮助菜单">
 
 ### 命令说明
 
@@ -80,6 +80,12 @@
 | `steam群排行` | 查看群游玩时长排行榜（按用户） |
 | `steam群游戏排行` | 查看群游玩时长排行榜（按游戏） |
 
+#### 用户相关
+| 命令 | 说明 |
+|------|:------:|
+| `steam状态` | 查看自己 / @的人的迷你资料卡片 |
+> 此命令依赖于 playwright 和 imageio-ffmpeg，若执行时提示依赖缺失，请手动安装提示的依赖。
+
 #### 其他服务
 | 命令 | 说明 |
 |------|:------:|
@@ -103,7 +109,13 @@
 ## steam玩什么
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQjcxemRIckRxTlI0ZGYwVmhpQm5YUkFkR0lzZjAzVktic2x2ZTQ3VUNSYnNRP2U9WXhMVUhP.jpg" width="320">
 
+## steam状态
 
+### 静态
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1hsRG8wd1BnV1RKeThwcXNhelRnaEFhckFTWV91Rzh0SUVESkxVOVE0Y0JnP2U9eWdyOTlN.jpg" width="320">
+
+### 动态
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ3otNHJhXzVKdFRaTmdEVGhqZ2N6aUFma29wWWJjOHlPX0pBY1hkazhsb0pNP2U9eW1IQzFp.gif" width="320">
 
 ## 计划功能
 
@@ -116,7 +128,7 @@
 - [ ] 总结推送功能 (定时总结周期内游戏情况而不每次状态变化都推送)
 - [x] 群游玩时长排行榜
 - [x] 隐藏 steamid / 好友码
-
+- [ ] steam游戏库价值计算
 
 
 

@@ -22,6 +22,10 @@ class SteamAPI:
 
     # 获取服务器状态
     api_GetServerInfo = "/ISteamWebAPIUtil/GetServerInfo/v1"
+
+    # 获取玩家装备项（背景/头像框/动画头像）
+    api_GetProfileItemsEquipped = "/IPlayerService/GetProfileItemsEquipped/v1/"
+
     # 游戏封面图api
     @staticmethod
     def GetGameCoverImageURL(appid: str, variant: str = "header") -> str:

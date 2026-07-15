@@ -146,3 +146,25 @@ async def get_price_data(appid: str | list[str]) -> dict:
     for prices in results:
         all_prices.update(prices)
     return all_prices
+
+
+async def get_profile_items_equipped(steamid64: str) -> dict:
+    """获取玩家装备项（头像框/动画头像/迷你资料背景）"""
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetProfileItemsEquipped}"
+    params = {"key": api_key, "steamid": steamid64, "l": "schinese"}
+    async with httpx.AsyncClient(timeout=5) as client:
+        response = await client.get(url, params=params)
+        data = response.json()
+        return data.get("response", {})
+
+
+async def get_miniprofile(steamid64: str) -> dict:
+    """获取 Steam miniprofile JSON 数据（等级/徽章/背景/头像）"""
+    community_url = SteamConfig.get_config("CommunityBaseURL").data
+    steamid32 = int(steamid64) - 76561197960265728
+    url = f"{community_url}/miniprofile/{steamid32}/json"
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(url, params={"l": "schinese"})
+        return response.json()

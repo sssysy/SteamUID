@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* === 1. Global Reset === */
+        /* 不使用 border-box：原始 Steam CSS 用默认 content-box，
+           playersection height:62px 是内容高度，不含 16px padding，
+           否则头像(90px)会溢出到下方详情区造成重叠 */
+        * { margin: 0; padding: 0; }
+        body {
+            background: transparent;
+            transform: scale(1.5);
+            transform-origin: top left;
+        }
+
+        /* === 2. Persona & Border Colors (shared_global.css L284-318) === */
+        .persona, a.persona, .persona a,
+        .friend_status_offline, .friend_status_offline div, .friend_status_offline a {
+            color: #898989;
+        }
+        .persona.online, a.persona.online, .persona.online a,
+        .friend_status_online, .friend_status_online div, .friend_status_online a {
+            color: #57cbde;
+        }
+        .persona.in-game, a.persona.in-game, .persona.in-game a,
+        .friend_status_in-game, .friend_status_in-game div, .friend_status_in-game a {
+            color: #90ba3c;
+        }
+        .persona.golden, a.persona.golden, .persona.golden a,
+        .friend_status_golden, .friend_status_golden div, .friend_status_golden a {
+            color: #e4ca63;
+        }
+        .border_color_offline { border-color: #898989; }
+        .border_color_online { border-color: #57cbde; }
+        .border_color_in-game { border-color: #90ba3c; }
+        .border_color_golden { border-color: #e4ca64; }
+
+        /* === 3. Text Shadow === */
+        .text_shadow { text-shadow: 1px 1px 4px #000; }
+
+        /* === 4. Miniprofile Container (shared_global.css L320-599) === */
+        .miniprofile_container {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            width: 328px;
+            font-family: "Motiva Sans", Sans-serif, Arial, Helvetica, sans-serif;
+            font-weight: normal;
+            background: radial-gradient(ellipse farthest-corner at 20% 30%, rgb(76, 80, 91) 0%, rgb(52, 55, 63) 50%, rgb(40, 44, 50) 100%);
+            isolation: isolate;  /* 创建层叠上下文，确保 z-index:-1 的背景层在容器背景之上 */
+        }
+
+        .miniprofile_playersection {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            z-index: 1;
+            height: 62px;
+            padding: 16px;
+        }
+
+        .miniprofile_playersection .playersection_avatar {
+            width: 90px;
+            height: 90px;
+            background: none;
+            border-bottom-width: 2px;
+            border-bottom-style: solid;
+        }
+
+        .miniprofile_playersection .playersection_avatar img {
+            width: 90px;
+            height: 90px;
+            box-sizing: border-box;
+            background: none;
+        }
+
+        .miniprofile_playersection .playersection_avatar_frame {
+            position: absolute;
+            z-index: 1;
+            width: 107px;
+            height: 107px;
+            top: 8px;
+            left: 8px;
+            pointer-events: none;
+        }
+        .miniprofile_playersection .playersection_avatar_frame > img {
+            width: 100%;
+            height: 100%;
+            background: none;
+        }
+
+        .miniprofile_playersection .player_content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-left: 16px;
+            text-shadow: 1px 1px 4px #000;
+        }
+
+        .miniprofile_playersection .player_content .persona {
+            font-size: 20px;
+        }
+
+        .miniprofile_playersection .player_content .persona,
+        .miniprofile_playersection .player_content .secondaryname {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 200px;
+        }
+
+        .miniprofile_playersection .player_content .friend_status_offline,
+        .miniprofile_playersection .player_content .friend_status_online,
+        .miniprofile_playersection .player_content .friend_status_in-game,
+        .miniprofile_playersection .player_content .friend_status_golden {
+            font-size: 10px;
+        }
+
+        .miniprofile_detailssection {
+            display: flex;
+            flex-direction: column;
+            padding: 16px 16px 8px 16px;
+        }
+
+        .miniprofile_detailssection.not_in_game {
+            padding-top: 24px;
+        }
+
+        .miniprofile_featuredcontainer {
+            display: flex;
+            flex-direction: row;
+            height: 34px;
+            padding-left: 16px;
+            margin-bottom: 8px;
+        }
+
+        .miniprofile_featuredcontainer .badge_icon {
+            width: 34px;
+            height: 34px;
+            position: relative;
+        }
+
+        .miniprofile_featuredcontainer .description {
+            margin-left: 12px;
+            margin-top: auto;
+            margin-bottom: auto;
+            font-size: 14px;
+            overflow: hidden;
+            white-space: nowrap;
+            font-family: "Motiva Sans", Arial, Helvetica, sans-serif;
+        }
+
+        .miniprofile_featuredcontainer .description .name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #b1b1b1;
+        }
+
+        .miniprofile_featuredcontainer .description .xp {
+            font-size: 12px;
+            color: #6b6a6a;
+        }
+
+        .miniprofile_featuredcontainer .friendPlayerLevel {
+            margin-top: 0;
+        }
+
+        .miniprofile_backdropblur {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .miniprofile_backdrop {
+            background: linear-gradient(to bottom, rgba(24, 26, 30, .7) 5%, rgba(24, 26, 30, .4) 95%);
+        }
+
+        .miniprofile_nameplatecontainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+        }
+
+        .miniprofile_nameplate {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top right;
+        }
+
+        /* === 5. FriendPlayerLevel Badges (shared_global.css L786-977) === */
+        .friendPlayerLevel {
+            display: inline-block;
+            font-size: 16px;
+            border-radius: 16px;
+            border: solid white 2px;
+            height: 28px;
+            width: 28px;
+            line-height: 28px;
+            text-align: center;
+            cursor: default;
+        }
+
+        .friendPlayerLevel .friendPlayerLevelNum {
+            color: #e5e5e5;
+        }
+
+        .friendPlayerLevel.lvl_0 { border-color: #9b9b9b; }
+        .friendPlayerLevel.lvl_10 { border-color: #c02942; }
+        .friendPlayerLevel.lvl_20 { border-color: #d95b43; }
+        .friendPlayerLevel.lvl_30 { border-color: #fecc23; }
+        .friendPlayerLevel.lvl_40 { border-color: #467a3c; }
+        .friendPlayerLevel.lvl_50 { border-color: #4e8ddb; }
+        .friendPlayerLevel.lvl_60 { border-color: #7652c9; }
+        .friendPlayerLevel.lvl_70 { border-color: #c252c9; }
+        .friendPlayerLevel.lvl_80 { border-color: #542437; }
+        .friendPlayerLevel.lvl_90 { border-color: #997c52; }
+
+        .friendPlayerLevel.lvl_100, .friendPlayerLevel.lvl_200,
+        .friendPlayerLevel.lvl_300, .friendPlayerLevel.lvl_400,
+        .friendPlayerLevel.lvl_500, .friendPlayerLevel.lvl_600,
+        .friendPlayerLevel.lvl_700, .friendPlayerLevel.lvl_800,
+        .friendPlayerLevel.lvl_900, .friendPlayerLevel.lvl_1000,
+        .friendPlayerLevel.lvl_1100, .friendPlayerLevel.lvl_1200,
+        .friendPlayerLevel.lvl_1300, .friendPlayerLevel.lvl_1400,
+        .friendPlayerLevel.lvl_1500, .friendPlayerLevel.lvl_1600,
+        .friendPlayerLevel.lvl_1700, .friendPlayerLevel.lvl_1800,
+        .friendPlayerLevel.lvl_1900, .friendPlayerLevel.lvl_2000,
+        .friendPlayerLevel.lvl_2100, .friendPlayerLevel.lvl_2200,
+        .friendPlayerLevel.lvl_2300, .friendPlayerLevel.lvl_2400,
+        .friendPlayerLevel.lvl_2500, .friendPlayerLevel.lvl_2600,
+        .friendPlayerLevel.lvl_2700, .friendPlayerLevel.lvl_2800,
+        .friendPlayerLevel.lvl_2900, .friendPlayerLevel.lvl_3000,
+        .friendPlayerLevel.lvl_3100, .friendPlayerLevel.lvl_3200,
+        .friendPlayerLevel.lvl_3300, .friendPlayerLevel.lvl_3400,
+        .friendPlayerLevel.lvl_3500, .friendPlayerLevel.lvl_3600,
+        .friendPlayerLevel.lvl_3700, .friendPlayerLevel.lvl_3800,
+        .friendPlayerLevel.lvl_3900, .friendPlayerLevel.lvl_4000,
+        .friendPlayerLevel.lvl_4100, .friendPlayerLevel.lvl_4200,
+        .friendPlayerLevel.lvl_4300, .friendPlayerLevel.lvl_4400,
+        .friendPlayerLevel.lvl_4500, .friendPlayerLevel.lvl_4600,
+        .friendPlayerLevel.lvl_4700, .friendPlayerLevel.lvl_4800,
+        .friendPlayerLevel.lvl_4900, .friendPlayerLevel.lvl_5000,
+        .friendPlayerLevel.lvl_5100, .friendPlayerLevel.lvl_5200,
+        .friendPlayerLevel.lvl_5300, .friendPlayerLevel.lvl_5400,
+        .friendPlayerLevel.lvl_5500, .friendPlayerLevel.lvl_5600,
+        .friendPlayerLevel.lvl_5700, .friendPlayerLevel.lvl_5800,
+        .friendPlayerLevel.lvl_5900, .friendPlayerLevel.lvl_6000,
+        .friendPlayerLevel.lvl_6100 {
+            border: none;
+            border-radius: 0;
+            background-repeat: no-repeat;
+            background-position: 0 0;
+            font-size: 14px;
+            height: 32px;
+            width: 32px;
+            line-height: 32px;
+            text-shadow: 1px 1px #1a1a1a;
+        }
+
+        .friendPlayerLevel.lvl_100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_hexagons.png'); }
+        .friendPlayerLevel.lvl_200 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_shields.png'); }
+        .friendPlayerLevel.lvl_300 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_books.png'); }
+        .friendPlayerLevel.lvl_400 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_chevrons.png'); }
+        .friendPlayerLevel.lvl_500 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_circle2.png'); }
+        .friendPlayerLevel.lvl_600 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_angle.png'); }
+        .friendPlayerLevel.lvl_700 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_flag.png'); }
+        .friendPlayerLevel.lvl_800 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_wings.png'); }
+        .friendPlayerLevel.lvl_900 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_arrows.png'); }
+        .friendPlayerLevel.lvl_1000 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_crystals.png'); }
+        .friendPlayerLevel.lvl_1100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_space.png'); }
+        .friendPlayerLevel.lvl_1200 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_waterelement.png'); }
+        .friendPlayerLevel.lvl_1300 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_fireelement.png'); }
+        .friendPlayerLevel.lvl_1400 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_earthelement.png'); }
+        .friendPlayerLevel.lvl_1500 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_airelement_1-2.png'); }
+        .friendPlayerLevel.lvl_1600 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_airelement_3-4.png'); }
+        .friendPlayerLevel.lvl_1700 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_airelement_5-6.png'); }
+        .friendPlayerLevel.lvl_1800 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_airelement_7-8.png'); }
+        .friendPlayerLevel.lvl_1900 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_airelement_9-10.png'); }
+        .friendPlayerLevel.lvl_2000 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_geo_1-2.png?v=2'); }
+        .friendPlayerLevel.lvl_2100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_geo_3-4.png?v=2'); }
+        .friendPlayerLevel.lvl_2200 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_geo_5-6.png?v=2'); }
+        .friendPlayerLevel.lvl_2300 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_geo_7-8.png?v=2'); }
+        .friendPlayerLevel.lvl_2400 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_geo_9-10.png?v=2'); }
+        .friendPlayerLevel.lvl_2500 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_mandala_1-2.png?v=2'); }
+        .friendPlayerLevel.lvl_2600 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_mandala_3-4.png?v=2'); }
+        .friendPlayerLevel.lvl_2700 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_mandala_5-6.png?v=2'); }
+        .friendPlayerLevel.lvl_2800 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_mandala_7-8.png?v=2'); }
+        .friendPlayerLevel.lvl_2900 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_mandala_9-10.png?v=2'); }
+        .friendPlayerLevel.lvl_3000 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_spiro_1-2.png?v=2'); }
+        .friendPlayerLevel.lvl_3100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_spiro_3-4.png?v=2'); }
+        .friendPlayerLevel.lvl_3200 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_spiro_5-6.png?v=2'); }
+        .friendPlayerLevel.lvl_3300 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_spiro_7-8.png?v=2'); }
+        .friendPlayerLevel.lvl_3400 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_spiro_9-10.png?v=2'); }
+        .friendPlayerLevel.lvl_3500 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_patterns_1-2.png?v=2'); }
+        .friendPlayerLevel.lvl_3600 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_patterns_3-4.png?v=2'); }
+        .friendPlayerLevel.lvl_3700 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_patterns_5-6.png?v=2'); }
+        .friendPlayerLevel.lvl_3800 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_patterns_7-8.png?v=2'); }
+        .friendPlayerLevel.lvl_3900 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_patterns_9-10.png?v=2'); }
+        .friendPlayerLevel.lvl_4000 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_shapes_1.png?v=2'); }
+        .friendPlayerLevel.lvl_4100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_shapes_2.png?v=2'); }
+        .friendPlayerLevel.lvl_4200 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_shapes_3.png?v=2'); }
+        .friendPlayerLevel.lvl_4300 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_shapes_4.png?v=2'); }
+        .friendPlayerLevel.lvl_4400 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_shapes_5.png?v=2'); }
+        .friendPlayerLevel.lvl_4500 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_grunge_1.png?v=2'); }
+        .friendPlayerLevel.lvl_4600 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_grunge_2.png?v=2'); }
+        .friendPlayerLevel.lvl_4700 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_grunge_3.png?v=2'); }
+        .friendPlayerLevel.lvl_4800 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_grunge_4.png?v=2'); }
+        .friendPlayerLevel.lvl_4900 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_grunge_5.png?v=2'); }
+        .friendPlayerLevel.lvl_5000 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_halftone_1.png?v=2'); }
+        .friendPlayerLevel.lvl_5100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_halftone_2.png?v=2'); }
+        .friendPlayerLevel.lvl_5200 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_halftone_3.png?v=2'); }
+        .friendPlayerLevel.lvl_5300 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5300_dashes.png'); }
+        .friendPlayerLevel.lvl_5400 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5400_crosshatch.png'); }
+        .friendPlayerLevel.lvl_5500 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5500_spiral.png'); }
+        .friendPlayerLevel.lvl_5600 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5600_leaves.png'); }
+        .friendPlayerLevel.lvl_5700 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5700_mountain.png'); }
+        .friendPlayerLevel.lvl_5800 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5800_rain.png'); }
+        .friendPlayerLevel.lvl_5900 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_5900_tornado.png'); }
+        .friendPlayerLevel.lvl_6000 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_6000_snowflake.png'); }
+        .friendPlayerLevel.lvl_6100 { background-image: url('https://community.fastly.steamstatic.com/public/shared/images/community/levels_6100_crown.png'); }
+
+        .friendPlayerLevel.lvl_plus_10 { background-position: 0 -32px; }
+        .friendPlayerLevel.lvl_plus_20 { background-position: 0 -64px; }
+        .friendPlayerLevel.lvl_plus_30 { background-position: 0 -96px; }
+        .friendPlayerLevel.lvl_plus_40 { background-position: 0 -128px; }
+        .friendPlayerLevel.lvl_plus_50 { background-position: 0 -160px; }
+        .friendPlayerLevel.lvl_plus_60 { background-position: 0 -192px; }
+        .friendPlayerLevel.lvl_plus_70 { background-position: 0 -224px; }
+        .friendPlayerLevel.lvl_plus_80 { background-position: 0 -256px; }
+        .friendPlayerLevel.lvl_plus_90 { background-position: 0 -288px; }
+    </style>
+</head>
+<body>
+    <div class="miniprofile_container">
+
+        <!-- Background Layer -->
+        <div class="miniprofile_nameplatecontainer">
+            {{background_inner_html}}
+        </div>
+
+        <!-- Player Info Layer -->
+        <div class="miniprofile_playersection text_shadow">
+            {{avatar_frame_html}}
+            <div class="playersection_avatar {{border_color_class}}">
+                <img src="{{avatar_url}}">
+            </div>
+            <div class="player_content">
+                <span class="persona {{persona_class}}">{{persona_name}}</span>
+                <span class="friend_status_{{status_class}}">{{status_text}}</span>
+            </div>
+        </div>
+
+        <!-- Details Layer -->
+        <div class="miniprofile_detailssection miniprofile_backdropblur not_in_game miniprofile_backdrop">
+            {{featured_badge_html}}
+            <div class="miniprofile_featuredcontainer">
+                <div class="friendPlayerLevel {{level_classes}}">
+                    <span class="friendPlayerLevelNum">{{level_num}}</span>
+                </div>
+                <div class="description">
+                    <div class="name">Steam 等级</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

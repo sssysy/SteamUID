@@ -27,6 +27,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "steam商店基础URL，用于反代",
         "https://store.steampowered.com",
     ),
+    "CommunityBaseURL": GsStrConfig(
+        "Steam社区反代URL",
+        "steam社区基础URL，用于miniprofile等社区接口",
+        "https://steamcommunity.com",
+    ),
     "PollInterval": GsIntConfig(
         "用户状态轮询间隔 (秒)",
         "用户状态轮询间隔。修改后需重启 GsCore 生效",
