@@ -153,7 +153,7 @@ async def get_profile_items_equipped(steamid64: str) -> dict:
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetProfileItemsEquipped}"
-    params = {"key": api_key, "steamid": steamid64, "language": "schinese"}
+    params = {"key": api_key, "steamid": steamid64, "l": "schinese"}
     async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
         data = response.json()
