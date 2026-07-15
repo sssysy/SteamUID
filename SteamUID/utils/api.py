@@ -166,5 +166,5 @@ async def get_miniprofile(steamid64: str) -> dict:
     steamid32 = int(steamid64) - 76561197960265728
     url = f"{community_url}/miniprofile/{steamid32}/json"
     async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(url)
+        response = await client.get(url, params={"l": "schinese"})
         return response.json()
