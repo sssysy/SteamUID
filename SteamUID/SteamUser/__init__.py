@@ -56,7 +56,7 @@ async def steamstatus(bot: Bot, ev: Event):
 
         # 4. 解析状态
         status, game_name = resolve_player_status(player)
-        if status == "in-game":
+        if status == "ingame":
             persona_cls, status_cls = "in-game", "in-game"
             status_text = f"游戏中：{game_name}" if game_name else "游戏中"
         elif status == "offline":

@@ -41,14 +41,3 @@ class SteamAPI:
         """
         url = f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/{variant}.jpg"
         return url
-
-    @staticmethod
-    def GetImageCDNURL(path: str) -> str:
-        """将 Steam API 返回的相对路径转为完整 CDN URL"""
-        if not path:
-            return ""
-        if path.startswith("http"):
-            return path
-        if path.startswith("/"):
-            return f"https://shared.fastly.steamstatic.com{path}"
-        return f"https://shared.fastly.steamstatic.com/{path}"
