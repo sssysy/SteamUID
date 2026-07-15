@@ -184,6 +184,19 @@
       }
     ]
   },
+  "用户相关": {
+    "desc": "查看 Steam 个人资料卡片",
+    "data": [
+      {
+        "name": "状态",
+        "desc": "查看指定steam的迷你资料卡片",
+        "eg": "状态123456",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "其他服务": {
     "desc": "一些杂项服务",
     "data": [

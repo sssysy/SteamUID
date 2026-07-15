@@ -22,6 +22,10 @@ class SteamAPI:
 
     # 获取服务器状态
     api_GetServerInfo = "/ISteamWebAPIUtil/GetServerInfo/v1"
+
+    # 获取玩家装备项（背景/头像框/动画头像）
+    api_GetProfileItemsEquipped = "/IPlayerService/GetProfileItemsEquipped/v1/"
+
     # 游戏封面图api
     @staticmethod
     def GetGameCoverImageURL(appid: str, variant: str = "header") -> str:
@@ -37,3 +41,14 @@ class SteamAPI:
         """
         url = f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/{variant}.jpg"
         return url
+
+    @staticmethod
+    def GetImageCDNURL(path: str) -> str:
+        """将 Steam API 返回的相对路径转为完整 CDN URL"""
+        if not path:
+            return ""
+        if path.startswith("http"):
+            return path
+        if path.startswith("/"):
+            return f"https://shared.fastly.steamstatic.com{path}"
+        return f"https://shared.fastly.steamstatic.com/{path}"
