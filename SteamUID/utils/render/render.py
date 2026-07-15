@@ -1,7 +1,7 @@
 import pathlib
 from typing import Any
+from ..exceptions import SteamError
 
-from playwright.async_api import async_playwright
 
 _TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_miniprofile.html"
 
@@ -30,40 +30,49 @@ async def render_html(
     返回:
         PNG 格式的图片字节数据
     """
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            viewport={"width": viewport_width, "height": viewport_height},
-            device_scale_factor=1,
-        )
-        page = await context.new_page()
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        raise SteamError("playwright 库未安装，此功能无法使用")
 
-        # 注入 HTML，等待网络资源加载完成
-        await page.set_content(html_content, wait_until="networkidle")
 
-        # 自动检测并等待视频就绪
-        has_video = await page.evaluate("!!document.querySelector('video')")
-        if has_video:
-            try:
-                await page.wait_for_function(
-                    "document.querySelector('video')?.readyState >= 2",
-                    timeout=5000,
-                )
-                # seek 到 1 秒处获取更具代表性的帧
-                await page.evaluate("""
-                    const v = document.querySelector('video');
-                    if (v && v.duration > 1) { v.currentTime = 1; }
-                """)
-                await page.wait_for_timeout(500)
-            except Exception:
-                pass  # 视频加载超时降级
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                viewport={"width": viewport_width, "height": viewport_height},
+                device_scale_factor=1,
+            )
+            page = await context.new_page()
 
-        # 截图指定元素
-        element = page.locator(selector)
-        screenshot_bytes = await element.screenshot(type="png")
+            # 注入 HTML，等待网络资源加载完成
+            await page.set_content(html_content, wait_until="networkidle")
 
-        await browser.close()
-        return screenshot_bytes
+            # 自动检测并等待视频就绪
+            has_video = await page.evaluate("!!document.querySelector('video')")
+            if has_video:
+                try:
+                    await page.wait_for_function(
+                        "document.querySelector('video')?.readyState >= 2",
+                        timeout=5000,
+                    )
+                    # seek 到 1 秒处获取更具代表性的帧
+                    await page.evaluate("""
+                        const v = document.querySelector('video');
+                        if (v && v.duration > 1) { v.currentTime = 1; }
+                    """)
+                    await page.wait_for_timeout(500)
+                except Exception:
+                    pass  # 视频加载超时降级
+
+            # 截图指定元素
+            element = page.locator(selector)
+            screenshot_bytes = await element.screenshot(type="png")
+
+            await browser.close()
+            return screenshot_bytes
+    except Exception as e:
+        raise SteamError(f"Playwright 渲染 HTML 失败: {e}")
 
 
 # ============================================================
