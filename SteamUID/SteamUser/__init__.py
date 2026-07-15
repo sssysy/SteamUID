@@ -14,7 +14,7 @@ from ..utils.api import (
     get_miniprofile,
 )
 from ..utils.steam_status import resolve_player_status
-from ..utils.render import render_miniprofile, render_html
+from ..utils.render import render_miniprofile, render_html, render_html_gif
 from ..utils.exceptions import SteamValidationError, SteamAPIError, SteamError
 
 user_sv = SV("steam用户相关")
@@ -136,7 +136,18 @@ async def steamstatus(bot: Bot, ev: Event):
         )
 
         html = render_miniprofile(data)
-        img_bytes = await render_html(html, ".miniprofile_container")
+
+        # 检测动态内容：视频背景 / GIF 动态头像 / GIF 动态头像框
+        has_dynamic = (
+            bool(bg_webm or bg_mp4)
+            or (bool(avatar_url) and avatar_url.endswith(".gif"))
+            or (bool(avatar_frame_url) and avatar_frame_url.endswith(".gif"))
+        )
+
+        if has_dynamic:
+            img_bytes = await render_html_gif(html, ".miniprofile_container")
+        else:
+            img_bytes = await render_html(html, ".miniprofile_container")
         await bot.send(MessageSegment.image(img_bytes))
     except SteamError as e:
         await bot.send(str(e))
