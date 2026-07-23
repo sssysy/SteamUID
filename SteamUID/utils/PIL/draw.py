@@ -48,17 +48,24 @@ async def draw_game_status_photo(
     game_background: str | None = None,
     is_playing: bool = True,
 ) -> Image.Image | None:
-    if game_background is None:
-        return None
     theme = _GAME_STATUS_THEMES["start" if is_playing else "end"]
 
     s = 2.0
 
-    bg_cache = cache_path_for_url(game_background, appid)
-    bg = await _load_or_download(game_background, bg_cache)
-    W_bg = round(bg.width * s)
-    H_bg = round(bg.height * s)
-    bg = bg.resize((W_bg, H_bg), Image.Resampling.LANCZOS)
+    # 尝试下载背景封面图，失败则跳过封面部分
+    bg = None
+    W_bg = round(460 * s)  # 默认宽度
+    H_bg = round(215 * s)  # 默认高度（与 header_image 比例接近）
+    if game_background is not None:
+        try:
+            bg_cache = cache_path_for_url(game_background, appid)
+            bg = await _load_or_download(game_background, bg_cache)
+            W_bg = round(bg.width * s)
+            H_bg = round(bg.height * s)
+            bg = bg.resize((W_bg, H_bg), Image.Resampling.LANCZOS)
+        except Exception as error:
+            logger.warning(f"[SteamUID] 游戏封面图下载失败 appid={appid}: {error!r}")
+            bg = None
 
     avatar_h = round(85 * s)
     avatar_cache = CACHE_DIR / f"{avatar_hash}.jpg"
@@ -66,30 +73,32 @@ async def draw_game_status_photo(
     new_w = round(avatar.width * avatar_h / avatar.height)
     avatar = avatar.resize((new_w, avatar_h), Image.Resampling.LANCZOS)
 
-    canvas_h = H_bg + avatar_h
+    canvas_h = (H_bg if bg is not None else 0) + avatar_h
     canvas = Image.new("RGBA", (W_bg, canvas_h))
     draw_vertical_gradient(canvas, W_bg, canvas_h, theme["gradient_top"], theme["gradient_bottom"])
 
     overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    overlay.paste(bg, (0, 0), bg)
-    overlay.paste(avatar, (0, H_bg), avatar)
+    if bg is not None:
+        overlay.paste(bg, (0, 0), bg)
+    overlay.paste(avatar, (0, canvas_h - avatar_h), avatar)
     canvas = Image.alpha_composite(canvas, overlay)
 
     draw = ImageDraw.Draw(canvas)
 
+    text_y_base = canvas_h - avatar_h
     max_name_w = W_bg - round(100 * s)
     font_username = core_font(round(25 * s))
     draw.text(
-        (round(100 * s), H_bg + round(5 * s)),
+        (round(100 * s), text_y_base + round(5 * s)),
         _truncate_to_width(username, font_username, max_name_w),
         font=font_username, fill=theme["username_color"],
     )
 
-    draw.text((round(100 * s), H_bg + round(40 * s)), theme["subtitle"], font=core_font(round(15 * s)), fill=theme["sub_text_color"])
+    draw.text((round(100 * s), text_y_base + round(40 * s)), theme["subtitle"], font=core_font(round(15 * s)), fill=theme["sub_text_color"])
 
     font_game_st = core_font(round(15 * s))
     draw.text(
-        (round(100 * s), H_bg + round(60 * s)),
+        (round(100 * s), text_y_base + round(60 * s)),
         _truncate_to_width(game_name, font_game_st, max_name_w),
         font=font_game_st, fill=theme["sub_text_color"],
     )
