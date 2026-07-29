@@ -20,14 +20,17 @@ async def group_ranking(bot: Bot, ev: Event):
             raise SteamValidationError("请在群聊中使用此功能")
 
         ranking_list = await get_group_ranking_list(ev.group_id)
-        top5 = ranking_list[:5]
+        if ev.text.strip() and isinstance(ev.text.strip(), int):
+            top = ranking_list[:int(ev.text.strip())]
+        else:
+            top = ranking_list[:5]
 
-        if not top5:
+        if not top:
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        text = f"本群游戏时长排行 Top：{len(top5)}\n"
-        for i, item in enumerate(top5, 1):
+        text = f"本群游戏时长排行 Top{len(top)}：\n"
+        for i, item in enumerate(top, 1):
             users = await CoreUser.select_rows(user_id=item["user_id"], group_id=ev.group_id)
             if users and users[0].user_name:
                 name = users[0].user_name
@@ -53,14 +56,17 @@ async def game_ranking(bot: Bot, ev: Event):
             raise SteamValidationError("请在群聊中使用此功能")
 
         ranking_list = await get_game_ranking_list(ev.group_id)
-        top10 = ranking_list[:10]
+        if ev.text.strip() and isinstance(ev.text.strip(), int):
+            top = ranking_list[:int(ev.text.strip())]
+        else:
+            top = ranking_list[:10]
 
-        if not top10:
+        if not top:
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        text = f"本群游戏时长排行 Top{len(top10)}：\n"
-        for i, item in enumerate(top10, 1):
+        text = f"本群游戏时长排行 Top{len(top)}：\n"
+        for i, item in enumerate(top, 1):
             text += f"{i}. {item['game_name']} ({time_convert_s(item['total_duration'])})\n"
 
         await bot.send(text)
