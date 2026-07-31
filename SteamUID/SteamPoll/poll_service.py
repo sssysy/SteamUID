@@ -1,5 +1,6 @@
 import json
 import time
+from collections import defaultdict
 
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
@@ -27,6 +28,7 @@ from ..utils.steam_status import (
     get_enabled_push_events,
     is_push_event_enabled,
 )
+from ..utils.utils import get_group_name
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
@@ -90,10 +92,17 @@ async def process_game_status_push(push_list, game_info_map) -> None:
         if not any(getattr(sub, push_column) for sub in subs):
             continue
 
-        send_msg = await _render_game_status_message(
-            is_playing, appid, info, old_info, game_avatar, game_data
-        )
-        await _dispatch_to_subs(subs, send_msg, push_column, steamid64)
+        # 按 group_id 分组，逐组渲染带对应群名的卡片
+        subs_by_group: dict[str | None, list] = defaultdict(list)
+        for sub in subs:
+            subs_by_group[sub.group_id].append(sub)
+
+        for group_id, group_subs in subs_by_group.items():
+            group_name = await get_group_name(group_id)
+            send_msg = await _render_game_status_message(
+                is_playing, appid, info, old_info, game_avatar, game_data, group_name
+            )
+            await _dispatch_to_subs(group_subs, send_msg, push_column, steamid64)
 
 
 async def update_achievement_baselines(push_list) -> None:
@@ -113,7 +122,7 @@ async def update_achievement_baselines(push_list) -> None:
         await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
-async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar, game_data):
+async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar, game_data, group_name=None):
     """渲染游戏状态推送图片或生成文本消息"""
     game_name = game_data.get("name") or (info.get("gameextrainfo") if is_playing else old_info.get("gameextrainfo"))
     if is_playing:
@@ -130,6 +139,7 @@ async def _render_game_status_message(is_playing, appid, info, old_info, game_av
             username=info.get("personaname"),
             game_background=game_avatar,
             is_playing=is_playing,
+            group_name=group_name,
         )
     except Exception as error:
         logger.warning(f"[SteamPoll] 绘图失败 appid={appid}: {error!r}")
@@ -304,6 +314,21 @@ async def poll_and_push_achievements() -> None:
                     continue
 
                 subs = await SteamBind.get_bind_by_steamid(steamid64)
+
+                # 按群分组，只保留开启了成就推送的订阅者
+                push_subs_by_group: dict[str | None, list] = defaultdict(list)
+                for sub in subs:
+                    if sub.push_archivement:
+                        push_subs_by_group[sub.group_id].append(sub)
+
+                if not any(push_subs_by_group.values()):
+                    continue
+
+                # 预取各群群名
+                group_name_cache: dict[str | None, str | None] = {}
+                for gid in push_subs_by_group:
+                    group_name_cache[gid] = await get_group_name(gid)
+
                 # 优先从 store API 获取中文名，GetPlayerAchievements 的 gameName 始终为英文
                 try:
                     game_info = await get_game_info(appid)
@@ -330,38 +355,40 @@ async def poll_and_push_achievements() -> None:
                         f"描述：{archivement_desc}"
                     )
 
-                    send_msg = None
-                    try:
-                        archivement_img_url = await get_archivement_img(
-                            appid, ach.get("apiname", "")
-                        )
-                        IMG = await draw_archivements_photo(
-                            gamer_name=gamer_name,
-                            gamer_img_url=gamer_img_url,
-                            archivement_name=archivement_name,
-                            archivement_img_url=archivement_img_url,
-                            game_name=game_name,
-                            archivement_desc=archivement_desc,
-                        )
-                        if isinstance(IMG, Image.Image):
-                            send_msg = MessageSegment.image(IMG)
-                    except Exception as error:
-                        logger.warning(
-                            f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
-                        )
+                    for group_id, group_subs in push_subs_by_group.items():
+                        group_name = group_name_cache[group_id]
 
-                    if send_msg is None:
-                        send_msg = text_msg
-
-                    for sub in subs:
-                        if not sub.push_archivement:
-                            continue
+                        send_msg = None
                         try:
-                            await sub.send(send_msg)
+                            archivement_img_url = await get_archivement_img(
+                                appid, ach.get("apiname", "")
+                            )
+                            IMG = await draw_archivements_photo(
+                                gamer_name=gamer_name,
+                                gamer_img_url=gamer_img_url,
+                                archivement_name=archivement_name,
+                                archivement_img_url=archivement_img_url,
+                                game_name=game_name,
+                                archivement_desc=archivement_desc,
+                                group_name=group_name,
+                            )
+                            if isinstance(IMG, Image.Image):
+                                send_msg = MessageSegment.image(IMG)
                         except Exception as error:
                             logger.warning(
-                                f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}"
+                                f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
                             )
+
+                        if send_msg is None:
+                            send_msg = text_msg
+
+                        for sub in group_subs:
+                            try:
+                                await sub.send(send_msg)
+                            except Exception as error:
+                                logger.warning(
+                                    f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}"
+                                )
 
                 await SteamArchivementInfo.upsert_archivement_data(
                     steamid64,

@@ -37,6 +37,22 @@ _GAME_STATUS_THEMES: dict[str, dict] = {
     },
 }
 
+_GROUP_NAME_GRAY = (0xB0, 0xB0, 0xB0)  # 群名灰色小字颜色
+
+
+def _format_group_suffix(
+    group_name: str, font: ImageFont.FreeTypeFont, max_width: float
+) -> str | None:
+    """将群名格式化为 '(群名)' 并截断到 max_width 内。返回 None 表示空间不足。"""
+    if not group_name:
+        return None
+    paren_w = font.getlength("()")
+    inner_max = max_width - paren_w
+    if inner_max <= 0:
+        return None
+    truncated = _truncate_to_width(group_name, font, inner_max)
+    return f"({truncated})"
+
 
 async def draw_game_status_photo(
     *,
@@ -47,6 +63,7 @@ async def draw_game_status_photo(
     username: str,
     game_background: str | None = None,
     is_playing: bool = True,
+    group_name: str | None = None,
 ) -> Image.Image | None:
     theme = _GAME_STATUS_THEMES["start" if is_playing else "end"]
 
@@ -88,11 +105,36 @@ async def draw_game_status_photo(
     text_y_base = canvas_h - avatar_h
     max_name_w = W_bg - round(100 * s)
     font_username = core_font(round(25 * s))
+
+    # 计算群名后缀
+    group_text = None
+    font_group = None
+    if group_name:
+        font_group = core_font(round(12.5 * s))  # 用户名一半高度
+        username_max_w = round(max_name_w * 2 / 3)
+        group_max_w = max_name_w - username_max_w
+        group_text = _format_group_suffix(group_name, font_group, group_max_w)
+    else:
+        username_max_w = max_name_w
+
+    username_disp = _truncate_to_width(username, font_username, username_max_w)
+    username_x = round(100 * s)
+    username_y = text_y_base + round(5 * s)
     draw.text(
-        (round(100 * s), text_y_base + round(5 * s)),
-        _truncate_to_width(username, font_username, max_name_w),
+        (username_x, username_y),
+        username_disp,
         font=font_username, fill=theme["username_color"],
     )
+
+    # 绘制群名后缀
+    if group_text and font_group:
+        username_w = font_username.getlength(username_disp)
+        group_x = username_x + username_w + round(4 * s)
+        # 垂直居中对齐到用户名中心
+        username_bbox = font_username.getbbox("测")
+        username_center_y = username_y + (username_bbox[1] + username_bbox[3]) / 2
+        group_y = text_y_for_center(username_center_y, font_group)
+        draw.text((group_x, group_y), group_text, font=font_group, fill=_GROUP_NAME_GRAY)
 
     draw.text((round(100 * s), text_y_base + round(40 * s)), theme["subtitle"], font=core_font(round(15 * s)), fill=theme["sub_text_color"])
 
@@ -113,6 +155,7 @@ async def draw_archivements_photo(
         archivement_img_url: str,
         game_name: str,
         archivement_desc: str,
+        group_name: str | None = None,
 ) -> Image.Image:
     username_color = (0xCE, 0xE8, 0xB1)
     game_name_color = (0x90, 0xBA, 0x3C)
@@ -155,11 +198,35 @@ async def draw_archivements_photo(
 
     font_gamer = _font_with_height(round(42 * s))
     max_gamer_w = W - round(236 * s)
+
+    # 计算群名后缀
+    group_text = None
+    font_group_ach = None
+    if group_name:
+        font_group_ach = _font_with_height(round(21 * s))  # 玩家名一半高度
+        gamer_max_w = round(max_gamer_w * 2 / 3)
+        group_max_w = max_gamer_w - gamer_max_w
+        group_text = _format_group_suffix(group_name, font_group_ach, group_max_w)
+    else:
+        gamer_max_w = max_gamer_w
+
+    gamer_disp = _truncate_to_width(gamer_name, font_gamer, gamer_max_w)
+    gamer_x = round(236 * s)
+    gamer_y = round(12 * s)
     draw.text(
-        (round(236 * s), round(12 * s)),
-        _truncate_to_width(gamer_name, font_gamer, max_gamer_w),
+        (gamer_x, gamer_y),
+        gamer_disp,
         font=font_gamer, fill=username_color,
     )
+
+    # 绘制群名后缀
+    if group_text and font_group_ach:
+        gamer_w = font_gamer.getlength(gamer_disp)
+        group_x = gamer_x + gamer_w + round(4 * s)
+        gamer_bbox = font_gamer.getbbox("测")
+        gamer_center_y = gamer_y + (gamer_bbox[1] + gamer_bbox[3]) / 2
+        group_y = text_y_for_center(gamer_center_y, font_group_ach)
+        draw.text((group_x, group_y), group_text, font=font_group_ach, fill=desc_color)
 
     # "在 {game_name} 解锁了成就" —— 混色绘制
     font_game_line = _font_with_height(round(20 * s))

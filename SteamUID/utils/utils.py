@@ -103,3 +103,17 @@ def maybe_hide_steamid(text: str) -> str:
     if SteamConfig.get_config("HideSteamID").data:
         return HideStr(text)
     return text
+
+
+async def get_group_name(group_id: str | None) -> str | None:
+    """从 CoreGroup 表查询群名称。group_id 为 None 或查询失败时返回 None。"""
+    if not group_id:
+        return None
+    try:
+        from gsuid_core.utils.database.models import CoreGroup
+        group = await CoreGroup.base_select_data(group_id=group_id)
+        if group is not None and group.group_name and group.group_name != "1":
+            return str(group.group_name)
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取群名称失败 group_id={group_id}: {e!r}")
+    return None
