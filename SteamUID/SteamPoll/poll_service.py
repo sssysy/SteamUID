@@ -28,7 +28,7 @@ from ..utils.steam_status import (
     get_enabled_push_events,
     is_push_event_enabled,
 )
-from ..utils.utils import get_group_name
+from ..utils.utils import get_user_group_nickname
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
@@ -98,7 +98,9 @@ async def process_game_status_push(push_list, game_info_map) -> None:
             subs_by_group[sub.group_id].append(sub)
 
         for group_id, group_subs in subs_by_group.items():
-            group_name = await get_group_name(group_id)
+            group_name = await get_user_group_nickname(
+                group_subs[0].bot_id, group_subs[0].user_id, group_id
+            )
             send_msg = await _render_game_status_message(
                 is_playing, appid, info, old_info, game_avatar, game_data, group_name
             )
@@ -324,10 +326,13 @@ async def poll_and_push_achievements() -> None:
                 if not any(push_subs_by_group.values()):
                     continue
 
-                # 预取各群群名
+                # 预取各群用户群昵称
                 group_name_cache: dict[str | None, str | None] = {}
                 for gid in push_subs_by_group:
-                    group_name_cache[gid] = await get_group_name(gid)
+                    gsubs = push_subs_by_group[gid]
+                    group_name_cache[gid] = await get_user_group_nickname(
+                        gsubs[0].bot_id, gsubs[0].user_id, gid
+                    )
 
                 # 优先从 store API 获取中文名，GetPlayerAchievements 的 gameName 始终为英文
                 try:

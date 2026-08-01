@@ -105,15 +105,25 @@ def maybe_hide_steamid(text: str) -> str:
     return text
 
 
-async def get_group_name(group_id: str | None) -> str | None:
-    """从 CoreGroup 表查询群名称。group_id 为 None 或查询失败时返回 None。"""
+async def get_user_group_nickname(
+    bot_id: str, user_id: str, group_id: str | None
+) -> str | None:
+    """按 bot_id + user_id + group_id 从 CoreUser 表查询用户在该群的群昵称。
+
+    group_id 为 None 或查询不到有效昵称时返回 None。
+    """
     if not group_id:
         return None
     try:
-        from gsuid_core.utils.database.models import CoreGroup
-        group = await CoreGroup.base_select_data(group_id=group_id)
-        if group is not None and group.group_name and group.group_name != "1":
-            return str(group.group_name)
+        from gsuid_core.utils.database.models import CoreUser
+        user = await CoreUser.base_select_data(
+            bot_id=bot_id, user_id=user_id, group_id=group_id
+        )
+        if user is not None and user.user_name and user.user_name != "1":
+            return str(user.user_name)
     except Exception as e:
-        logger.warning(f"[SteamUID] 获取群名称失败 group_id={group_id}: {e!r}")
+        logger.warning(
+            f"[SteamUID] 获取群昵称失败 "
+            f"bot_id={bot_id} user_id={user_id} group_id={group_id}: {e!r}"
+        )
     return None
