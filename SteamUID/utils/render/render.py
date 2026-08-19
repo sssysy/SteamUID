@@ -352,18 +352,24 @@ def render_miniprofile(data: Any) -> str:
 
 _GS_THEMES: dict[str, dict] = {
     "start": {
-        "theme_class": "theme-start",
-        "subtitle": "正在玩",
+        "gradient_top":    "#304E41",
+        "gradient_bottom": "#1D272D",
+        "username_color":  "#CEE8B1",
+        "sub_text_color":  "#90BA3C",
+        "subtitle":        "正在玩",
     },
     "end": {
-        "theme_class": "theme-end",
-        "subtitle": "已结束游玩",
+        "gradient_top":    "#264C5E",
+        "gradient_bottom": "#1C222B",
+        "username_color":  "#65C6F0",
+        "sub_text_color":  "#39687E",
+        "subtitle":        "已结束游玩",
     },
 }
 
 _GS_DEFAULT_W = 460
 _GS_DEFAULT_H_BG = 215
-_GS_INFO_H = 84
+_GS_AVATAR_H = 85
 
 
 def render_game_status_html(
@@ -381,19 +387,21 @@ def render_game_status_html(
     template = _GAME_STATUS_TEMPLATE_PATH.read_text(encoding="utf-8")
 
     if game_background:
-        cover_html = (
-            '<div class="cover-wrapper">'
-            f'<img class="cover-img" src="{game_background}" alt="">'
-            '<div class="cover-fade"></div>'
-            '</div>'
-        )
+        cover_html = f'<img class="cover-img" src="{game_background}" alt="">'
+        cover_h_val = str(_GS_DEFAULT_H_BG)
     else:
         cover_html = ""
+        cover_h_val = "0"
 
     replacements = {
-        "theme_class": theme["theme_class"],
+        "canvas_width": str(_GS_DEFAULT_W),
+        "gradient_top": theme["gradient_top"],
+        "gradient_bottom": theme["gradient_bottom"],
+        "cover_height": cover_h_val,
         "cover_html": cover_html,
         "avatar_url": avatar_url,
+        "username_color": theme["username_color"],
+        "sub_text_color": theme["sub_text_color"],
         "username": username,
         "subtitle": theme["subtitle"],
         "game_name": game_name,
@@ -418,7 +426,7 @@ async def render_game_status(
         game_background=game_background,
         is_playing=is_playing,
     )
-    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_H + 50
+    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_AVATAR_H + 50
     return await render_html(
         html_content,
         ".game-status-card",
