@@ -1,3 +1,4 @@
+import io
 import pathlib
 import os
 import time
@@ -9,6 +10,7 @@ from ..exceptions import SteamError
 
 
 _TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_miniprofile.html"
+_GAME_STATUS_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_status.html"
 
 
 # ============================================================
@@ -344,3 +346,89 @@ def render_miniprofile(data: Any) -> str:
 
     # 5. 替换占位符并返回
     return _fill_template(template, replacements)
+
+
+_GS_THEMES: dict[str, dict] = {
+    "start": {
+        "gradient_top":    "#304E41",
+        "gradient_bottom": "#1D272D",
+        "username_color":  "#CEE8B1",
+        "sub_text_color":  "#90BA3C",
+        "subtitle":        "正在玩",
+    },
+    "end": {
+        "gradient_top":    "#264C5E",
+        "gradient_bottom": "#1C222B",
+        "username_color":  "#65C6F0",
+        "sub_text_color":  "#39687E",
+        "subtitle":        "已结束游玩",
+    },
+}
+
+_GS_DEFAULT_W = 460
+_GS_DEFAULT_H_BG = 215
+_GS_AVATAR_H = 85
+
+
+def render_game_status_html(
+    *,
+    username: str,
+    game_name: str,
+    avatar_url: str,
+    game_background: str | None = None,
+    is_playing: bool = True,
+) -> str:
+    """构建游戏状态（开始/结束游戏）卡片的 HTML 字符串。"""
+    theme_key = "start" if is_playing else "end"
+    theme = _GS_THEMES[theme_key]
+
+    template = _GAME_STATUS_TEMPLATE_PATH.read_text(encoding="utf-8")
+
+    if game_background:
+        cover_html = f'<img class="cover-img" src="{game_background}" alt="">'
+        cover_h_val = str(_GS_DEFAULT_H_BG)
+    else:
+        cover_html = ""
+        cover_h_val = "0"
+
+    replacements = {
+        "canvas_width": str(_GS_DEFAULT_W),
+        "gradient_top": theme["gradient_top"],
+        "gradient_bottom": theme["gradient_bottom"],
+        "cover_height": cover_h_val,
+        "cover_html": cover_html,
+        "avatar_url": avatar_url,
+        "username_color": theme["username_color"],
+        "sub_text_color": theme["sub_text_color"],
+        "username": username,
+        "subtitle": theme["subtitle"],
+        "game_name": game_name,
+    }
+
+    return _fill_template(template, replacements)
+
+
+async def render_game_status(
+    *,
+    username: str,
+    game_name: str,
+    avatar_url: str,
+    game_background: str | None = None,
+    is_playing: bool = True,
+) -> bytes:
+    """渲染游戏开始/结束状态卡片为 PNG 字节。"""
+    html_content = render_game_status_html(
+        username=username,
+        game_name=game_name,
+        avatar_url=avatar_url,
+        game_background=game_background,
+        is_playing=is_playing,
+    )
+    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_AVATAR_H + 50
+    return await render_html(
+        html_content,
+        ".game-status-card",
+        viewport_width=_GS_DEFAULT_W + 50,
+        viewport_height=total_h,
+    )
+

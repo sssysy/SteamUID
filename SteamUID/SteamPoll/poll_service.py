@@ -22,13 +22,13 @@ from ..utils.database.models import (
     SteamPriceInfo,
     SteamPlayRecord,
 )
-from ..utils.PIL.draw import draw_game_status_photo, draw_archivements_photo
+from ..utils.PIL.draw import draw_archivements_photo, draw_game_status_photo
+from ..utils.render import render_game_status
 from ..utils.steam_status import (
     PUSH_EVENTS,
     get_enabled_push_events,
     is_push_event_enabled,
 )
-from ..utils.utils import get_user_group_nickname
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
@@ -92,19 +92,10 @@ async def process_game_status_push(push_list, game_info_map) -> None:
         if not any(getattr(sub, push_column) for sub in subs):
             continue
 
-        # 按 group_id 分组，逐组渲染带对应群名的卡片
-        subs_by_group: dict[str | None, list] = defaultdict(list)
-        for sub in subs:
-            subs_by_group[sub.group_id].append(sub)
-
-        for group_id, group_subs in subs_by_group.items():
-            group_name = await get_user_group_nickname(
-                group_subs[0].bot_id, group_subs[0].user_id, group_id
-            )
-            send_msg = await _render_game_status_message(
-                is_playing, appid, info, old_info, game_avatar, game_data, group_name
-            )
-            await _dispatch_to_subs(group_subs, send_msg, push_column, steamid64)
+        send_msg = await _render_game_status_message(
+            is_playing, appid, info, old_info, game_avatar, game_data
+        )
+        await _dispatch_to_subs(subs, send_msg, push_column, steamid64)
 
 
 async def update_achievement_baselines(push_list) -> None:
@@ -124,31 +115,49 @@ async def update_achievement_baselines(push_list) -> None:
         await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
-async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar, game_data, group_name=None):
+async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar, game_data):
     """渲染游戏状态推送图片或生成文本消息"""
-    game_name = game_data.get("name") or (info.get("gameextrainfo") if is_playing else old_info.get("gameextrainfo"))
-    if is_playing:
-        text_msg = f"{info.get('personaname')} 正在玩 {game_name}"
-    else:
-        text_msg = f"{info.get('personaname')} 结束游戏 {game_name}"
+    username = info.get("personaname") or ""
+    game_name = game_data.get("name") or (info.get("gameextrainfo") if is_playing else old_info.get("gameextrainfo")) or "未知游戏"
+    avatar_url = info.get("avatarfull") or ""
+    avatar_hash = info.get("avatarhash") or ""
 
+    if is_playing:
+        text_msg = f"{username} 正在玩 {game_name}"
+    else:
+        text_msg = f"{username} 结束游戏 {game_name}"
+
+    # 1. 优先尝试 Playwright 渲染
     try:
-        IMG = await draw_game_status_photo(
-            appid=appid,
+        img_bytes = await render_game_status(
+            username=username,
             game_name=game_name,
-            avatar_url=info.get("avatarfull"),
-            avatar_hash=info.get("avatarhash"),
-            username=info.get("personaname"),
+            avatar_url=avatar_url,
             game_background=game_avatar,
             is_playing=is_playing,
-            group_name=group_name,
         )
+        if img_bytes:
+            return MessageSegment.image(img_bytes)
     except Exception as error:
-        logger.warning(f"[SteamPoll] 绘图失败 appid={appid}: {error!r}")
-        return text_msg
+        logger.warning(f"[SteamPoll] Playwright 渲染游戏状态失败，回退至 PIL: {error!r}")
 
-    if isinstance(IMG, Image.Image):
-        return MessageSegment.image(IMG)
+    # 2. 回退至 PIL 渲染
+    try:
+        img = await draw_game_status_photo(
+            appid=appid,
+            game_name=game_name,
+            avatar_url=avatar_url,
+            avatar_hash=avatar_hash,
+            username=username,
+            game_background=game_avatar,
+            is_playing=is_playing,
+        )
+        if img is not None:
+            return MessageSegment.image(img)
+    except Exception as error:
+        logger.warning(f"[SteamPoll] PIL 绘图失败 appid={appid}: {error!r}")
+
+    # 3. 降级为文本消息
     return text_msg
 
 

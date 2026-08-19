@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .game-status-card {
+            position: relative;
+            width: {{canvas_width}}px;
+            overflow: hidden;
+            background: linear-gradient(
+                to bottom,
+                {{gradient_top}},
+                {{gradient_bottom}}
+            );
+            font-family: "Motiva Sans", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC",
+                         "PingFang SC", "Hiragino Sans GB", sans-serif;
+        }
+
+        .game-status-card .cover-img {
+            display: block;
+            width: 100%;
+            height: {{cover_height}}px;
+            object-fit: cover;
+            object-position: center top;
+        }
+
+        .game-status-card .info-row {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            height: 85px;
+            position: relative;
+        }
+
+        .game-status-card .avatar {
+            flex-shrink: 0;
+            width: 85px;
+            height: 85px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .game-status-card .text-area {
+            flex: 1;
+            min-width: 0;
+            padding-left: 15px;
+            padding-right: 15px;
+            padding-top: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-status-card .username {
+            font-size: 25px;
+            font-weight: bold;
+            color: {{username_color}};
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .game-status-card .subtitle {
+            font-size: 15px;
+            color: {{sub_text_color}};
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .game-status-card .game-name {
+            font-size: 15px;
+            color: {{sub_text_color}};
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body>
+<div class="game-status-card">
+    {{cover_html}}
+    <div class="info-row">
+        <img class="avatar" src="{{avatar_url}}" alt="">
+        <div class="text-area">
+            <div class="username">{{username}}</div>
+            <div class="subtitle">{{subtitle}}</div>
+            <div class="game-name">{{game_name}}</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
