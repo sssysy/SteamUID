@@ -23,6 +23,7 @@ async def render_html(
     *,
     viewport_width: int = 492,
     viewport_height: int = 600,
+    device_scale_factor: float = 2.0,
 ) -> bytes:
     """通用 HTML 渲染：将 HTML 字符串注入浏览器并截图指定元素。
 
@@ -33,6 +34,7 @@ async def render_html(
         selector: 要截图的 CSS 选择器（如 ".miniprofile_container"）
         viewport_width: 浏览器视口宽度
         viewport_height: 浏览器视口高度
+        device_scale_factor: 缩放倍率（默认 2.0 渲染高清图）
 
     返回:
         PNG 格式的图片字节数据
@@ -48,7 +50,7 @@ async def render_html(
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(
                 viewport={"width": viewport_width, "height": viewport_height},
-                device_scale_factor=1,
+                device_scale_factor=device_scale_factor,
             )
             page = await context.new_page()
 
@@ -350,24 +352,18 @@ def render_miniprofile(data: Any) -> str:
 
 _GS_THEMES: dict[str, dict] = {
     "start": {
-        "gradient_top":    "#304E41",
-        "gradient_bottom": "#1D272D",
-        "username_color":  "#CEE8B1",
-        "sub_text_color":  "#90BA3C",
-        "subtitle":        "正在玩",
+        "theme_class": "theme-start",
+        "subtitle": "正在玩",
     },
     "end": {
-        "gradient_top":    "#264C5E",
-        "gradient_bottom": "#1C222B",
-        "username_color":  "#65C6F0",
-        "sub_text_color":  "#39687E",
-        "subtitle":        "已结束游玩",
+        "theme_class": "theme-end",
+        "subtitle": "已结束游玩",
     },
 }
 
 _GS_DEFAULT_W = 460
 _GS_DEFAULT_H_BG = 215
-_GS_AVATAR_H = 85
+_GS_INFO_H = 84
 
 
 def render_game_status_html(
@@ -385,21 +381,19 @@ def render_game_status_html(
     template = _GAME_STATUS_TEMPLATE_PATH.read_text(encoding="utf-8")
 
     if game_background:
-        cover_html = f'<img class="cover-img" src="{game_background}" alt="">'
-        cover_h_val = str(_GS_DEFAULT_H_BG)
+        cover_html = (
+            '<div class="cover-wrapper">'
+            f'<img class="cover-img" src="{game_background}" alt="">'
+            '<div class="cover-fade"></div>'
+            '</div>'
+        )
     else:
         cover_html = ""
-        cover_h_val = "0"
 
     replacements = {
-        "canvas_width": str(_GS_DEFAULT_W),
-        "gradient_top": theme["gradient_top"],
-        "gradient_bottom": theme["gradient_bottom"],
-        "cover_height": cover_h_val,
+        "theme_class": theme["theme_class"],
         "cover_html": cover_html,
         "avatar_url": avatar_url,
-        "username_color": theme["username_color"],
-        "sub_text_color": theme["sub_text_color"],
         "username": username,
         "subtitle": theme["subtitle"],
         "game_name": game_name,
@@ -424,11 +418,12 @@ async def render_game_status(
         game_background=game_background,
         is_playing=is_playing,
     )
-    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_AVATAR_H + 50
+    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_H + 50
     return await render_html(
         html_content,
         ".game-status-card",
         viewport_width=_GS_DEFAULT_W + 50,
         viewport_height=total_h,
+        device_scale_factor=2.0,
     )
 

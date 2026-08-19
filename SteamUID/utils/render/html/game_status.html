@@ -1,106 +1,215 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-cn">
 <head>
     <meta charset="UTF-8">
     <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         body {
             background: transparent;
             display: inline-block;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
         }
 
         .game-status-card {
             position: relative;
-            width: {{canvas_width}}px;
+            width: 460px;
             overflow: hidden;
-            background: linear-gradient(
-                to bottom,
-                {{gradient_top}},
-                {{gradient_bottom}}
-            );
-            font-family: "Motiva Sans", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC",
-                         "PingFang SC", "Hiragino Sans GB", sans-serif;
+            background: var(--card-bg, #121b16);
         }
 
-        .game-status-card .cover-img {
+        /* 状态主题：正在玩 (start/playing) */
+        .game-status-card.theme-start {
+            --card-bg: #121b16;
+            --fade-color: #121b16;
+            --info-bg: linear-gradient(180deg, #1b2c22 0%, #111a15 100%);
+            --avatar-border-bg: linear-gradient(135deg, #a1cd44 0%, #638522 100%);
+            --username-color: #ffffff;
+            --status-color: #90ba3c;
+            --game-name-color: #b8e663;
+        }
+
+        /* 状态主题：已结束游玩 (end/stopped) */
+        .game-status-card.theme-end {
+            --card-bg: #0f171e;
+            --fade-color: #0f171e;
+            --info-bg: linear-gradient(180deg, #1b2d3d 0%, #0e161e 100%);
+            --avatar-border-bg: linear-gradient(135deg, #66c0f4 0%, #2a526e 100%);
+            --username-color: #ffffff;
+            --status-color: #66c0f4;
+            --game-name-color: #c7d5e0;
+        }
+
+        .cover-wrapper {
+            position: relative;
+            width: 100%;
+            height: 215px;
+            overflow: hidden;
+            background: #0e141b;
+        }
+
+        .cover-wrapper .cover-img {
             display: block;
             width: 100%;
-            height: {{cover_height}}px;
+            height: 100%;
             object-fit: cover;
             object-position: center top;
         }
 
-        .game-status-card .info-row {
-            display: flex;
-            flex-direction: row;
-            align-items: flex-start;
-            height: 85px;
-            position: relative;
+        /* 顶部封面平滑过渡渐变 */
+        .cover-wrapper .cover-fade {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: linear-gradient(to bottom, transparent 0%, var(--fade-color, #121b16) 100%);
         }
 
-        .game-status-card .avatar {
+        .info-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 12px 14px;
+            gap: 12px;
+            position: relative;
+            background: var(--info-bg, #1b2c22);
+        }
+
+        /* Steam 风格带边框头像 */
+        .avatar-container {
+            position: relative;
             flex-shrink: 0;
-            width: 85px;
-            height: 85px;
+            width: 60px;
+            height: 60px;
+            border-radius: 4px;
+            padding: 2px;
+            background: var(--avatar-border-bg, #a1cd44);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 2px;
             object-fit: cover;
             display: block;
         }
 
-        .game-status-card .text-area {
+        .text-area {
             flex: 1;
             min-width: 0;
-            padding-left: 15px;
-            padding-right: 15px;
-            padding-top: 5px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            gap: 1px;
         }
 
-        .game-status-card .username {
-            font-size: 25px;
-            font-weight: bold;
-            color: {{username_color}};
+        .username {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--username-color, #ffffff);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
-            margin-bottom: 4px;
+            line-height: 1.25;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
         }
 
-        .game-status-card .subtitle {
-            font-size: 15px;
-            color: {{sub_text_color}};
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 1px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: var(--status-color, #90ba3c);
+            box-shadow: 0 0 6px var(--status-color, #90ba3c);
+            flex-shrink: 0;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--status-color, #90ba3c);
+            line-height: 1.2;
+            letter-spacing: 0.3px;
+        }
+
+        .game-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--game-name-color, #b8e663);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
-            margin-bottom: 4px;
+            line-height: 1.3;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            margin-top: 1px;
         }
 
-        .game-status-card .game-name {
-            font-size: 15px;
-            color: {{sub_text_color}};
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.2;
+        /* 蒸汽 Logo 水印 */
+        .steam-brand {
+            position: absolute;
+            right: 14px;
+            bottom: 12px;
+            opacity: 0.12;
+            pointer-events: none;
+        }
+        .steam-brand svg {
+            width: 28px;
+            height: 28px;
+            fill: #ffffff;
         }
     </style>
 </head>
 <body>
-<div class="game-status-card">
+<div class="game-status-card {{theme_class}}">
     {{cover_html}}
     <div class="info-row">
-        <img class="avatar" src="{{avatar_url}}" alt="">
+        <div class="avatar-container">
+            <img class="avatar-img" src="{{avatar_url}}" alt="">
+        </div>
         <div class="text-area">
             <div class="username">{{username}}</div>
-            <div class="subtitle">{{subtitle}}</div>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span class="subtitle">{{subtitle}}</span>
+            </div>
             <div class="game-name">{{game_name}}</div>
+        </div>
+        <div class="steam-brand">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-10 10c0 4.6 3.1 8.4 7.4 9.6l3.3-4.8a3.5 3.5 0 0 1-.7-2c0-.2 0-.4.1-.6L8.8 12a3.8 3.8 0 1 1 5 3.6l-3.2 4.6c.4.1.9.2 1.4.2a10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/></svg>
         </div>
     </div>
 </div>
