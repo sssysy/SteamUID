@@ -29,6 +29,7 @@ from ..utils.steam_status import (
     get_enabled_push_events,
     is_push_event_enabled,
 )
+from ..utils.utils import get_user_group_nickname
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
@@ -89,13 +90,43 @@ async def process_game_status_push(push_list, game_info_map) -> None:
         if target_event not in enabled_events:
             continue
         push_column = "push_start_game" if is_playing else "push_end_game"
-        if not any(getattr(sub, push_column) for sub in subs):
+
+        push_subs_by_group: dict[str | None, list] = defaultdict(list)
+        for sub in subs:
+            if getattr(sub, push_column):
+                push_subs_by_group[sub.group_id].append(sub)
+
+        if not any(push_subs_by_group.values()):
             continue
 
-        send_msg = await _render_game_status_message(
-            is_playing, appid, info, old_info, game_avatar, game_data
-        )
-        await _dispatch_to_subs(subs, send_msg, push_column, steamid64)
+        # 预取各群用户群昵称
+        group_name_cache: dict[str | None, str | None] = {}
+        for gid in push_subs_by_group:
+            gsubs = push_subs_by_group[gid]
+            group_name_cache[gid] = await get_user_group_nickname(
+                gsubs[0].bot_id, gsubs[0].user_id, gid
+            )
+
+        rendered_cache: dict[str | None, Any] = {}
+        for group_id, group_subs in push_subs_by_group.items():
+            group_name = group_name_cache[group_id]
+            if group_name not in rendered_cache:
+                rendered_cache[group_name] = await _render_game_status_message(
+                    is_playing,
+                    appid,
+                    info,
+                    old_info,
+                    game_avatar,
+                    game_data,
+                    group_name=group_name,
+                )
+            send_msg = rendered_cache[group_name]
+
+            for sub in group_subs:
+                try:
+                    await sub.send(send_msg)
+                except Exception as error:
+                    logger.warning(f"[SteamPoll] 推送 steamid={steamid64} 失败: {error!r}")
 
 
 async def update_achievement_baselines(push_list) -> None:
@@ -115,17 +146,30 @@ async def update_achievement_baselines(push_list) -> None:
         await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
-async def _render_game_status_message(is_playing, appid, info, old_info, game_avatar, game_data):
+async def _render_game_status_message(
+    is_playing,
+    appid,
+    info,
+    old_info,
+    game_avatar,
+    game_data,
+    group_name: str | None = None,
+):
     """渲染游戏状态推送图片或生成文本消息"""
     username = info.get("personaname") or ""
-    game_name = game_data.get("name") or (info.get("gameextrainfo") if is_playing else old_info.get("gameextrainfo")) or "未知游戏"
+    game_name = (
+        game_data.get("name")
+        or (info.get("gameextrainfo") if is_playing else old_info.get("gameextrainfo"))
+        or "未知游戏"
+    )
     avatar_url = info.get("avatarfull") or ""
     avatar_hash = info.get("avatarhash") or ""
 
+    user_display = f"{username} ({group_name})" if group_name else username
     if is_playing:
-        text_msg = f"{username} 正在玩 {game_name}"
+        text_msg = f"{user_display} 正在玩 {game_name}"
     else:
-        text_msg = f"{username} 结束游戏 {game_name}"
+        text_msg = f"{user_display} 结束游戏 {game_name}"
 
     # 1. 优先尝试 Playwright 渲染
     try:
@@ -135,6 +179,7 @@ async def _render_game_status_message(is_playing, appid, info, old_info, game_av
             avatar_url=avatar_url,
             game_background=game_avatar,
             is_playing=is_playing,
+            group_name=group_name,
         )
         if img_bytes:
             return MessageSegment.image(img_bytes)
@@ -151,6 +196,7 @@ async def _render_game_status_message(is_playing, appid, info, old_info, game_av
             username=username,
             game_background=game_avatar,
             is_playing=is_playing,
+            group_name=group_name,
         )
         if img is not None:
             return MessageSegment.image(img)

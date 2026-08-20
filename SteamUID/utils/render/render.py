@@ -352,24 +352,38 @@ def render_miniprofile(data: Any) -> str:
 
 _GS_THEMES: dict[str, dict] = {
     "start": {
-        "gradient_top":    "#304E41",
-        "gradient_bottom": "#1D272D",
-        "username_color":  "#CEE8B1",
-        "sub_text_color":  "#90BA3C",
-        "subtitle":        "正在玩",
+        "status_bar_color": "#5cbe32",
+        "persona_color":    "#e1e1e1",
+        "group_color":      "#8f98a0",
+        "subtitle_color":   "#808a94",
+        "subtitle":         "正在玩",
+        "game_name_color":  "#90ba3c",
     },
     "end": {
-        "gradient_top":    "#264C5E",
-        "gradient_bottom": "#1C222B",
-        "username_color":  "#65C6F0",
-        "sub_text_color":  "#39687E",
-        "subtitle":        "已结束游玩",
+        "status_bar_color": "#57cbde",
+        "persona_color":    "#57cbde",
+        "group_color":      "#4c91ac",
+        "subtitle_color":   "#808a94",
+        "subtitle":         "已结束游玩",
+        "game_name_color":  "#57cbde",
     },
 }
 
 _GS_DEFAULT_W = 460
 _GS_DEFAULT_H_BG = 215
-_GS_AVATAR_H = 85
+_GS_INFO_ROW_H = 84
+
+
+import base64
+
+_DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
+
+
+def _get_default_icon_b64() -> str:
+    """读取默认问号头像并转为 Base64 Data URL"""
+    if _DEFAULT_ICON_PATH.exists():
+        return "data:image/jpeg;base64," + base64.b64encode(_DEFAULT_ICON_PATH.read_bytes()).decode()
+    return ""
 
 
 def render_game_status_html(
@@ -379,6 +393,7 @@ def render_game_status_html(
     avatar_url: str,
     game_background: str | None = None,
     is_playing: bool = True,
+    group_name: str | None = None,
 ) -> str:
     """构建游戏状态（开始/结束游戏）卡片的 HTML 字符串。"""
     theme_key = "start" if is_playing else "end"
@@ -393,18 +408,25 @@ def render_game_status_html(
         cover_html = ""
         cover_h_val = "0"
 
+    default_avatar = _get_default_icon_b64()
+    avatar_src = avatar_url if avatar_url else default_avatar
+    group_name_html = f'<span class="group-name">({group_name})</span>' if group_name else ""
+
     replacements = {
         "canvas_width": str(_GS_DEFAULT_W),
-        "gradient_top": theme["gradient_top"],
-        "gradient_bottom": theme["gradient_bottom"],
         "cover_height": cover_h_val,
         "cover_html": cover_html,
-        "avatar_url": avatar_url,
-        "username_color": theme["username_color"],
-        "sub_text_color": theme["sub_text_color"],
-        "username": username,
+        "avatar_url": avatar_src,
+        "default_avatar": default_avatar,
+        "status_bar_color": theme["status_bar_color"],
+        "persona_color": theme["persona_color"],
+        "group_color": theme["group_color"],
+        "subtitle_color": theme["subtitle_color"],
+        "persona_name": username,
+        "group_name_html": group_name_html,
         "subtitle": theme["subtitle"],
         "game_name": game_name,
+        "game_name_color": theme["game_name_color"],
     }
 
     return _fill_template(template, replacements)
@@ -417,6 +439,7 @@ async def render_game_status(
     avatar_url: str,
     game_background: str | None = None,
     is_playing: bool = True,
+    group_name: str | None = None,
 ) -> bytes:
     """渲染游戏开始/结束状态卡片为 PNG 字节。"""
     html_content = render_game_status_html(
@@ -425,8 +448,9 @@ async def render_game_status(
         avatar_url=avatar_url,
         game_background=game_background,
         is_playing=is_playing,
+        group_name=group_name,
     )
-    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_AVATAR_H + 50
+    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_ROW_H + 50
     return await render_html(
         html_content,
         ".game-status-card",

@@ -22,22 +22,28 @@ from ..utils import maybe_hide_steamid
 
 _GAME_STATUS_THEMES: dict[str, dict] = {
     "start": {
-        "gradient_top":    (0x30, 0x4E, 0x41),
-        "gradient_bottom": (0x1D, 0x27, 0x2D),
-        "username_color":  (0xCE, 0xE8, 0xB1),
-        "sub_text_color":  (0x90, 0xBA, 0x3C),
-        "subtitle":        "正在玩",
+        "gradient_top":    (0x1E, 0x24, 0x30),
+        "gradient_bottom": (0x13, 0x16, 0x1C),
+        "status_bar_color": (0x5C, 0xBE, 0x32),
+        "persona_color":    (0xE1, 0xE1, 0xE1),
+        "group_color":      (0x8F, 0x98, 0xA0),
+        "subtitle_color":   (0x80, 0x8A, 0x94),
+        "subtitle":         "正在玩",
+        "game_name_color":  (0x90, 0xBA, 0x3C),
     },
     "end": {
-        "gradient_top":    (0x26, 0x4C, 0x5E),
-        "gradient_bottom": (0x1C, 0x22, 0x2B),
-        "username_color":  (0x65, 0xC6, 0xF0),
-        "sub_text_color":  (0x39, 0x68, 0x7E),
-        "subtitle":        "已结束游玩",
+        "gradient_top":    (0x1E, 0x24, 0x30),
+        "gradient_bottom": (0x13, 0x16, 0x1C),
+        "status_bar_color": (0x57, 0xCB, 0xDE),
+        "persona_color":    (0x57, 0xCB, 0xDE),
+        "group_color":      (0x4C, 0x91, 0xAC),
+        "subtitle_color":   (0x80, 0x8A, 0x94),
+        "subtitle":         "已结束游玩",
+        "game_name_color":  (0x57, 0xCB, 0xDE),
     },
 }
 
-_GROUP_NAME_GRAY = (0xB0, 0xB0, 0xB0)  # 群名灰色小字颜色
+_GROUP_NAME_GRAY = (0x8F, 0x98, 0xA0)  # 群名灰色小字颜色
 
 
 def _format_group_suffix(
@@ -84,65 +90,96 @@ async def draw_game_status_photo(
             logger.warning(f"[SteamUID] 游戏封面图下载失败 appid={appid}: {error!r}")
             bg = None
 
-    avatar_h = round(85 * s)
-    avatar_cache = CACHE_DIR / f"{avatar_hash}.jpg"
-    avatar = await _load_or_download(avatar_url, avatar_cache)
-    new_w = round(avatar.width * avatar_h / avatar.height)
-    avatar = avatar.resize((new_w, avatar_h), Image.Resampling.LANCZOS)
+    pad_y = round(14 * s)
+    pad_x = round(18 * s)
+    avatar_size = round(56 * s)
+    bar_w = round(4 * s)
+    info_h = avatar_size + 2 * pad_y
 
-    canvas_h = (H_bg if bg is not None else 0) + avatar_h
+    avatar_cache = CACHE_DIR / f"{avatar_hash}.jpg"
+    try:
+        if not avatar_url:
+            raise ValueError("avatar_url is empty")
+        avatar = await _load_or_download(avatar_url, avatar_cache)
+    except Exception as error:
+        logger.warning(f"[SteamUID] 玩家头像下载失败，使用默认头像代替: {error!r}")
+        avatar = Image.open(_DEFAULT_ACHIEVEMENT_ICON).convert("RGBA")
+    avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+
+    canvas_h = (H_bg if bg is not None else 0) + info_h
     canvas = Image.new("RGBA", (W_bg, canvas_h))
     draw_vertical_gradient(canvas, W_bg, canvas_h, theme["gradient_top"], theme["gradient_bottom"])
 
     overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     if bg is not None:
         overlay.paste(bg, (0, 0), bg)
-    overlay.paste(avatar, (0, canvas_h - avatar_h), avatar)
+
+    avatar_top = (H_bg if bg is not None else 0) + pad_y
+    overlay.paste(avatar, (pad_x, avatar_top), avatar)
     canvas = Image.alpha_composite(canvas, overlay)
 
     draw = ImageDraw.Draw(canvas)
 
-    text_y_base = canvas_h - avatar_h
-    max_name_w = W_bg - round(100 * s)
-    font_username = core_font(round(25 * s))
+    # 绘制头像右侧状态竖条
+    bar_x0 = pad_x + avatar_size
+    bar_y0 = avatar_top
+    bar_x1 = bar_x0 + bar_w
+    bar_y1 = avatar_top + avatar_size
+    draw.rectangle([bar_x0, bar_y0, bar_x1, bar_y1], fill=theme["status_bar_color"])
+
+    text_x = bar_x1 + round(14 * s)
+    max_text_w = W_bg - text_x - pad_x
+
+    font_persona = core_font(round(16 * s))
+    font_group = core_font(round(14 * s))
 
     # 计算群名后缀
     group_text = None
-    font_group = None
     if group_name:
-        font_group = core_font(round(12.5 * s))  # 用户名一半高度
-        username_max_w = round(max_name_w * 2 / 3)
-        group_max_w = max_name_w - username_max_w
+        persona_max_w = round(max_text_w * 2 / 3)
+        group_max_w = max_text_w - persona_max_w
         group_text = _format_group_suffix(group_name, font_group, group_max_w)
     else:
-        username_max_w = max_name_w
+        persona_max_w = max_text_w
 
-    username_disp = _truncate_to_width(username, font_username, username_max_w)
-    username_x = round(100 * s)
-    username_y = text_y_base + round(5 * s)
+    persona_disp = _truncate_to_width(username, font_persona, persona_max_w)
+    line1_y = avatar_top + round(1 * s)
     draw.text(
-        (username_x, username_y),
-        username_disp,
-        font=font_username, fill=theme["username_color"],
+        (text_x, line1_y),
+        persona_disp,
+        font=font_persona,
+        fill=theme["persona_color"],
     )
 
     # 绘制群名后缀
     if group_text and font_group:
-        username_w = font_username.getlength(username_disp)
-        group_x = username_x + username_w + round(4 * s)
-        # 垂直居中对齐到用户名中心
-        username_bbox = font_username.getbbox("测")
-        username_center_y = username_y + (username_bbox[1] + username_bbox[3]) / 2
-        group_y = text_y_for_center(username_center_y, font_group)
-        draw.text((group_x, group_y), group_text, font=font_group, fill=_GROUP_NAME_GRAY)
+        persona_w = font_persona.getlength(persona_disp)
+        group_x = text_x + persona_w + round(5 * s)
+        draw.text(
+            (group_x, line1_y + round(2 * s)),
+            group_text,
+            font=font_group,
+            fill=theme["group_color"],
+        )
 
-    draw.text((round(100 * s), text_y_base + round(40 * s)), theme["subtitle"], font=core_font(round(15 * s)), fill=theme["sub_text_color"])
-
-    font_game_st = core_font(round(15 * s))
+    # 第二行：状态副标题（正在玩 / 已结束游玩）
+    font_sub = core_font(round(13 * s))
+    line2_y = line1_y + round(20 * s)
     draw.text(
-        (round(100 * s), text_y_base + round(60 * s)),
-        _truncate_to_width(game_name, font_game_st, max_name_w),
-        font=font_game_st, fill=theme["sub_text_color"],
+        (text_x, line2_y),
+        theme["subtitle"],
+        font=font_sub,
+        fill=theme["subtitle_color"],
+    )
+
+    # 第三行：游戏名称
+    font_game = core_font(round(13 * s))
+    line3_y = line2_y + round(18 * s)
+    draw.text(
+        (text_x, line3_y),
+        _truncate_to_width(game_name, font_game, max_text_w),
+        font=font_game,
+        fill=theme["game_name_color"],
     )
 
     return canvas
@@ -168,7 +205,13 @@ async def draw_archivements_photo(
 
     gamer_hash = gamer_img_url.rstrip("/").split("/")[-1]
     gamer_cache = CACHE_DIR / f"{gamer_hash}.jpg"
-    gamer_img = await _load_or_download(gamer_img_url, gamer_cache)
+    try:
+        if not gamer_img_url:
+            raise ValueError("gamer_img_url is empty")
+        gamer_img = await _load_or_download(gamer_img_url, gamer_cache)
+    except Exception as error:
+        logger.warning(f"[SteamUID] 玩家头像下载失败，使用默认头像代替: {error!r}")
+        gamer_img = Image.open(_DEFAULT_ACHIEVEMENT_ICON).convert("RGBA")
 
     try:
         if not archivement_img_url:

@@ -40,11 +40,7 @@
             position: relative;
             width: {{canvas_width}}px;
             overflow: hidden;
-            background: linear-gradient(
-                to bottom,
-                {{gradient_top}},
-                {{gradient_bottom}}
-            );
+            background: #171a21;
             font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
         }
 
@@ -59,57 +55,93 @@
         .game-status-card .info-row {
             display: flex;
             flex-direction: row;
-            align-items: flex-start;
-            height: 85px;
+            align-items: center;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #1e2430 0%, #171a21 60%, #13161c 100%);
+            box-sizing: border-box;
+        }
+
+        .game-status-card .avatar-box {
+            display: flex;
+            flex-direction: row;
+            flex-shrink: 0;
             position: relative;
+            height: 56px;
         }
 
         .game-status-card .avatar {
-            flex-shrink: 0;
-            width: 85px;
-            height: 85px;
+            width: 56px;
+            height: 56px;
             object-fit: cover;
             display: block;
+        }
+
+        .game-status-card .status-bar {
+            width: 4px;
+            height: 56px;
+            background-color: {{status_bar_color}};
+            flex-shrink: 0;
         }
 
         .game-status-card .text-area {
             flex: 1;
             min-width: 0;
-            padding-left: 15px;
-            padding-right: 15px;
-            padding-top: 5px;
+            margin-left: 14px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
         }
 
-        .game-status-card .username {
-            font-size: 25px;
-            font-weight: bold;
-            color: {{username_color}};
+        .game-status-card .persona-row {
+            display: flex;
+            flex-direction: row;
+            align-items: baseline;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
-            margin-bottom: 4px;
+            line-height: 1.25;
+            margin-bottom: 2px;
+        }
+
+        .game-status-card .persona-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: {{persona_color}};
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .game-status-card .group-name {
+            font-size: 14px;
+            font-weight: 400;
+            color: {{group_color}};
+            margin-left: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 1;
         }
 
         .game-status-card .subtitle {
-            font-size: 15px;
-            color: {{sub_text_color}};
+            font-size: 13px;
+            font-weight: 400;
+            color: {{subtitle_color}};
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
-            margin-bottom: 4px;
+            line-height: 1.25;
+            margin-bottom: 2px;
         }
 
         .game-status-card .game-name {
-            font-size: 15px;
-            color: {{sub_text_color}};
+            font-size: 13px;
+            font-weight: 400;
+            color: {{game_name_color}};
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
+            line-height: 1.25;
         }
     </style>
 </head>
@@ -117,9 +149,15 @@
 <div class="game-status-card">
     {{cover_html}}
     <div class="info-row">
-        <img class="avatar" src="{{avatar_url}}" alt="">
+        <div class="avatar-box">
+            <img class="avatar" src="{{avatar_url}}" onerror="this.onerror=null;this.src='{{default_avatar}}'" alt="">
+            <div class="status-bar"></div>
+        </div>
         <div class="text-area">
-            <div class="username">{{username}}</div>
+            <div class="persona-row">
+                <span class="persona-name">{{persona_name}}</span>
+                {{group_name_html}}
+            </div>
             <div class="subtitle">{{subtitle}}</div>
             <div class="game-name">{{game_name}}</div>
         </div>
