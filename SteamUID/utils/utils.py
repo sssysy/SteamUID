@@ -127,3 +127,23 @@ async def get_user_group_nickname(
             f"bot_id={bot_id} user_id={user_id} group_id={group_id}: {e!r}"
         )
     return None
+
+
+def country_code_to_flag(code: str | None) -> str:
+    """将两字母 ISO 国家代码转换为国旗 Emoji，若无效则返回未知"""
+    if not code or len(code) != 2 or not code.isalpha():
+        return "未知"
+    return "".join(chr(127397 + ord(c.upper())) for c in code)
+
+
+def calc_account_age(timecreated: int | None) -> str:
+    """计算账号年限（如 8.2年），若无数据则返回 --"""
+    if not timecreated or not isinstance(timecreated, (int, float)) or timecreated <= 0:
+        return "--"
+    import time
+    diff_sec = time.time() - float(timecreated)
+    if diff_sec <= 0:
+        return "0.0年"
+    years = diff_sec / (365.25 * 86400)
+    return f"{years:.1f}年"
+

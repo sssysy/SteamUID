@@ -194,6 +194,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "信息",
+        "desc": "查看指定steam的账号详细信息卡片",
+        "eg": "信息123456",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
