@@ -122,31 +122,40 @@ async def get_archivement_schema(appid: str) -> list[dict]:
     return achievements
 
 async def get_price_data(appid: str | list[str]) -> dict:
-    """获取游戏价格数据"""
+    """获取游戏价格数据（支持单 AppID 或列表批量查询）"""
     base_url = SteamConfig.get_config("storeBaseURL").data
     cc = SteamConfig.get_config("pricecc").data
-    
+
     if isinstance(appid, str):
         appid = [appid]
-    
+
     url = f"{base_url}{SteamAPI.store_GetGameDetails}"
 
     # 分批，每批最多50个
     batches = [appid[i:i + 50] for i in range(0, len(appid), 50)]
 
-    async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> dict:
-        params = {"appids": ','.join(batch), "cc": cc, "filters": "price_overview"}
-        response = await client.get(url, params=params)
-        return response.json()
 
-    async with httpx.AsyncClient(timeout=5) as client:
+    async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> dict:
+        try:
+            params = {"appids": ','.join(batch), "cc": cc, "filters": "price_overview"}
+            response = await client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict):
+                    return data
+        except Exception as e:
+            logger.warning(f"[SteamUID] 批量获取游戏价格异常 batch={batch[:3]}...: {e}")
+        return {}
+
+    async with httpx.AsyncClient(timeout=15) as client:
         tasks = [fetch_batch(client, batch) for batch in batches]
-        results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # 合并所有批次结果
     all_prices: dict = {}
-    for prices in results:
-        all_prices.update(prices)
+    for res in results:
+        if isinstance(res, dict):
+            all_prices.update(res)
     return all_prices
 
 
@@ -212,10 +221,13 @@ async def calculate_account_value(games: list[dict]) -> int:
         if cached:
             try:
                 data = json.loads(cached)
-                price_overview = data.get("data", {}).get("price_overview") or data.get("price_overview")
-                if price_overview:
-                    price = price_overview.get("initial", price_overview.get("final", 0))
-                    total_cents += price
+                if isinstance(data, dict):
+                    item_data = data.get("data") if "data" in data else data
+                    if isinstance(item_data, dict):
+                        price_overview = item_data.get("price_overview")
+                        if isinstance(price_overview, dict):
+                            price = price_overview.get("initial", price_overview.get("final", 0))
+                            total_cents += price
                 continue
             except Exception:
                 pass
@@ -225,14 +237,19 @@ async def calculate_account_value(games: list[dict]) -> int:
         try:
             batch_prices = await get_price_data(uncached_appids)
             for appid, item in batch_prices.items():
-                if isinstance(item, dict) and item.get("success"):
-                    price_overview = item.get("data", {}).get("price_overview")
-                    if price_overview:
-                        price = price_overview.get("initial", price_overview.get("final", 0))
-                        total_cents += price
-                        await SteamApiCache.upsert_cache(appid, json.dumps(item, ensure_ascii=False))
+                if isinstance(item, dict):
+                    # 缓存已查询结果（包括免费游戏，避免重复查询）
+                    await SteamApiCache.upsert_cache(appid, json.dumps(item, ensure_ascii=False))
+                    if item.get("success"):
+                        item_data = item.get("data")
+                        if isinstance(item_data, dict):
+                            price_overview = item_data.get("price_overview")
+                            if isinstance(price_overview, dict):
+                                price = price_overview.get("initial", price_overview.get("final", 0))
+                                total_cents += price
         except Exception as e:
             logger.warning(f"[SteamUID] 计算账号价值查询价格失败: {e}")
 
     return int(round(total_cents / 100))
+
 
