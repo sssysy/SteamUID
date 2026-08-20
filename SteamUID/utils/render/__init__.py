@@ -4,6 +4,8 @@ from .render import (
     render_html,
     render_html_gif,
     render_miniprofile,
+    render_steam_info,
+    render_steam_info_html,
 )
 
 __all__ = [
@@ -12,4 +14,7 @@ __all__ = [
     "render_html",
     "render_html_gif",
     "render_miniprofile",
+    "render_steam_info",
+    "render_steam_info_html",
 ]
+

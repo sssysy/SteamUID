@@ -1,9 +1,11 @@
 import json
 import asyncio
 import httpx
+from gsuid_core.logger import logger
 from ..SteamConfig.interface import SteamAPI
 from ..SteamConfig import SteamConfig
 from .database.models_cache import SteamApiCache, SteamArchivementCache
+
 
 
 async def get_user_Summaries(steamid64: str | list[str]) -> list:
@@ -120,31 +122,40 @@ async def get_archivement_schema(appid: str) -> list[dict]:
     return achievements
 
 async def get_price_data(appid: str | list[str]) -> dict:
-    """获取游戏价格数据"""
+    """获取游戏价格数据（支持单 AppID 或列表批量查询）"""
     base_url = SteamConfig.get_config("storeBaseURL").data
     cc = SteamConfig.get_config("pricecc").data
-    
+
     if isinstance(appid, str):
         appid = [appid]
-    
+
     url = f"{base_url}{SteamAPI.store_GetGameDetails}"
 
     # 分批，每批最多50个
     batches = [appid[i:i + 50] for i in range(0, len(appid), 50)]
 
-    async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> dict:
-        params = {"appids": ','.join(batch), "cc": cc, "filters": "price_overview"}
-        response = await client.get(url, params=params)
-        return response.json()
 
-    async with httpx.AsyncClient(timeout=5) as client:
+    async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> dict:
+        try:
+            params = {"appids": ','.join(batch), "cc": cc, "filters": "price_overview"}
+            response = await client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict):
+                    return data
+        except Exception as e:
+            logger.warning(f"[SteamUID] 批量获取游戏价格异常 batch={batch[:3]}...: {e}")
+        return {}
+
+    async with httpx.AsyncClient(timeout=15) as client:
         tasks = [fetch_batch(client, batch) for batch in batches]
-        results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # 合并所有批次结果
     all_prices: dict = {}
-    for prices in results:
-        all_prices.update(prices)
+    for res in results:
+        if isinstance(res, dict):
+            all_prices.update(res)
     return all_prices
 
 
@@ -168,3 +179,77 @@ async def get_miniprofile(steamid64: str) -> dict:
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(url, params={"l": "schinese"})
         return response.json()
+
+
+async def get_player_bio(steamid64: str) -> str:
+    """获取玩家 Steam 个人资料简介（从 Steam 社区 XML/HTML 解析）"""
+    community_url = SteamConfig.get_config("CommunityBaseURL").data
+    url = f"{community_url}/profiles/{steamid64}/?xml=1"
+    try:
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200 and resp.text:
+                import xml.etree.ElementTree as ET
+                import re
+
+                try:
+                    root = ET.fromstring(resp.text)
+                    summary = root.findtext("summary")
+                    if summary:
+                        clean_text = re.sub(r"<br\s*/?>", " ", summary)
+                        clean_text = re.sub(r"<[^>]+>", "", clean_text)
+                        return clean_text.strip()
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取个人简介失败: {e}")
+    return ""
+
+
+async def calculate_account_value(games: list[dict]) -> int:
+    """根据拥有的游戏列表计算账号总价值（人民币元）"""
+    if not games:
+        return 0
+    appids = [str(g.get("appid")) for g in games if g.get("appid")]
+    if not appids:
+        return 0
+
+    uncached_appids = []
+    total_cents = 0
+    for appid in appids:
+        cached = await SteamApiCache.get_cache(appid)
+        if cached:
+            try:
+                data = json.loads(cached)
+                if isinstance(data, dict):
+                    item_data = data.get("data") if "data" in data else data
+                    if isinstance(item_data, dict):
+                        price_overview = item_data.get("price_overview")
+                        if isinstance(price_overview, dict):
+                            price = price_overview.get("initial", price_overview.get("final", 0))
+                            total_cents += price
+                continue
+            except Exception:
+                pass
+        uncached_appids.append(appid)
+
+    if uncached_appids:
+        try:
+            batch_prices = await get_price_data(uncached_appids)
+            for appid, item in batch_prices.items():
+                if isinstance(item, dict):
+                    # 缓存已查询结果（包括免费游戏，避免重复查询）
+                    await SteamApiCache.upsert_cache(appid, json.dumps(item, ensure_ascii=False))
+                    if item.get("success"):
+                        item_data = item.get("data")
+                        if isinstance(item_data, dict):
+                            price_overview = item_data.get("price_overview")
+                            if isinstance(price_overview, dict):
+                                price = price_overview.get("initial", price_overview.get("final", 0))
+                                total_cents += price
+        except Exception as e:
+            logger.warning(f"[SteamUID] 计算账号价值查询价格失败: {e}")
+
+    return int(round(total_cents / 100))
+
+
