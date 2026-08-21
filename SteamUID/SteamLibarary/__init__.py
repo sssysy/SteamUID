@@ -211,7 +211,10 @@ async def build_random_pick(steamid64: str) -> bytes:
             if not res.get("success") or "data" not in res:
                 continue
 
-            data = res.get("data", {})
+            data = res.get("data")
+            if not isinstance(data, dict):
+                continue
+
             short_desc = data.get("short_description", "")
             clean_desc = _clean_description(short_desc)
             if not clean_desc or len(clean_desc.strip()) < 2:

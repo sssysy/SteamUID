@@ -50,7 +50,7 @@ async def get_game_info(appid: str) -> dict:
     async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
         data = response.json()
-        result = data.get(appid, {})
+        result = data.get(appid, {}) if isinstance(data, dict) else {}
 
     if result:
         await SteamApiCache.upsert_cache(appid, json.dumps(result, ensure_ascii=False))
