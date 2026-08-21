@@ -55,6 +55,31 @@ async def get_game_info(appid: str) -> dict:
     if result:
         await SteamApiCache.upsert_cache(appid, json.dumps(result, ensure_ascii=False))
     return result
+
+
+async def get_game_icon_url(appid: str, steamid64: str | None = None) -> str:
+    """获取游戏的小图标（客户端小logo）URL"""
+    if steamid64:
+        try:
+            api_key = SteamConfig.get_config("SteamWebAPIKey").data
+            base_url = SteamConfig.get_config("APIBaseURL").data
+            url = f"{base_url}{SteamAPI.api_GetOwnedGames}"
+            params = {
+                "key": api_key,
+                "steamid": steamid64,
+                "include_appinfo": True,
+                "appids_filter[0]": appid,
+            }
+            async with httpx.AsyncClient(timeout=5) as client:
+                response = await client.get(url, params=params)
+                if response.status_code == 200:
+                    games = response.json().get("response", {}).get("games", [])
+                    if games and games[0].get("img_icon_url"):
+                        icon_hash = games[0]["img_icon_url"]
+                        return f"https://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{icon_hash}.jpg"
+        except Exception:
+            pass
+    return f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/capsule_sm_120.jpg"
     
 async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
     """取玩家游戏库"""
