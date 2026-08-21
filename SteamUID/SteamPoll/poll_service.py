@@ -162,11 +162,14 @@ async def update_achievement_baselines(push_list) -> None:
         steamid64 = info.get("steamid")
         if not steamid64:
             continue
+        is_playing = bool(info.get("gameid", ""))
+        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
+        if not is_playing:
+            await SteamArchivementInfo.delete_archivement_data(steamid64)
+            continue
         subs = await SteamBind.get_bind_by_steamid(steamid64)
         if not subs or not any(sub.push_archivement for sub in subs):
             continue
-        is_playing = bool(info.get("gameid", ""))
-        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
         await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
@@ -301,15 +304,29 @@ async def poll_and_push_game_status() -> None:
         logger.warning(f"[SteamPoll] 游戏状态轮询失败: {error!r}")
 
 
+_last_achievement_switch_enabled: bool | None = None
+
+
 async def poll_and_push_achievements() -> None:
     """成就轮询主入口：检测新解锁成就并推送给订阅用户。"""
+    global _last_achievement_switch_enabled
     try:
-        if not is_push_event_enabled(PUSH_EVENTS["push_archivement"]):
+        is_enabled = is_push_event_enabled(PUSH_EVENTS["push_archivement"])
+        if not is_enabled:
+            # 总开关关闭时，清空成就追踪基线，防止后续开启后用旧基线对比产生刷屏
+            if _last_achievement_switch_enabled is not False:
+                await SteamArchivementInfo.delete_all_archivement_data()
+                _last_achievement_switch_enabled = False
             return
+
+        # 若此前总开关为关闭状态（或刚启动首次运行），清空可能残留的历史旧基线，重新拉取最新成就作为初始基线
+        if _last_achievement_switch_enabled is not True:
+            await SteamArchivementInfo.delete_all_archivement_data()
+            _last_achievement_switch_enabled = True
 
         steamid_all = await SteamArchivementInfo.get_all_archivement_info()
 
-        # 自动初始化缺少基线的成就推送用户
+        # 自动初始化缺少基线的成就推送用户（此时拉取的信息仅作为基线，不推送）
         tracked_steamids = {s.steamid64 for s in steamid_all}
         all_binds = await SteamBind.get_all_archivement_push_binds()
         for bind in all_binds:
@@ -342,13 +359,32 @@ async def poll_and_push_achievements() -> None:
                     f"steamid={bind.steamid64}: {error!r}"
                 )
 
-        steamid_all = await SteamArchivementInfo.get_all_archivement_info()
+        # 仅对在此轮轮询前已有基线的用户进行增量成就检测并推送
         if not steamid_all:
             return
 
         for steamid in steamid_all:
             appid = steamid.appid
             steamid64 = steamid.steamid64
+
+            # 校验用户当前是否仍在游玩对应游戏
+            try:
+                user_info = json.loads(
+                    await SteamIDInfo.get_steamuserinfo(steamid64) or "{}"
+                )
+                current_gameid = user_info.get("gameid", "")
+                if current_gameid != appid:
+                    # 游戏已结束或已切换，删除该基线
+                    await SteamArchivementInfo.delete_archivement_data(steamid64)
+                    continue
+            except Exception:
+                pass
+
+            # 校验是否仍有订阅者开启了该用户的成就推送
+            subs = await SteamBind.get_bind_by_steamid(steamid64)
+            if not subs or not any(sub.push_archivement for sub in subs):
+                await SteamArchivementInfo.delete_archivement_data(steamid64)
+                continue
 
             try:
                 resp = await get_archivement_info(appid, steamid64)

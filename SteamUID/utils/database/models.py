@@ -140,6 +140,17 @@ class SteamArchivementInfo(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def delete_all_archivement_data(
+        cls: Type[T_SteamArchivementInfo],
+        session: AsyncSession,
+    ) -> int:
+        """清空所有成就追踪基线数据"""
+        stmt = delete(cls)
+        result = await session.execute(stmt)
+        return result.rowcount or 0 # type: ignore
+
+    @classmethod
+    @with_session
     async def get_all_steamid64(
         cls: Type[T_SteamArchivementInfo],
         session: AsyncSession,
