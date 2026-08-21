@@ -1,16 +1,15 @@
 import random
 from io import BytesIO
 
-from gsuid_core.data_store import get_res_path
 from gsuid_core.segment import pic_quality
 
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
 from ..utils.api import get_steamlibrary_by_steamid64
+from ..utils.downloader import download
 from ..utils.exceptions import SteamConfigError, SteamValidationError
 from ..utils.PIL.draw import draw_what_to_play
 from ..utils.PIL.steam_wall import build_wall
-from ..utils.utils import batch_download_images
 
 
 async def build_library_wall(steamid64: str) -> bytes:
@@ -38,11 +37,9 @@ async def build_library_wall(steamid64: str) -> bytes:
         )
         played_times.append(played_time)
 
-    cache_path = get_res_path("SteamUID") / "cache"
-    cache_path.mkdir(parents=True, exist_ok=True)
-    downloaded_paths = await batch_download_images(cdn_urls, str(cache_path))
-    for i, url in enumerate(downloaded_paths):
-        gameinfo.append((url, played_times[i]))
+    downloaded_paths = await download(cdn_urls)
+    for i, file_path in enumerate(downloaded_paths):
+        gameinfo.append((str(file_path) if file_path is not None else None, played_times[i]))
 
     if not gameinfo:
         raise SteamValidationError("该 steam 账号暂无游戏库存")

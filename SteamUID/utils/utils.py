@@ -1,55 +1,15 @@
-import asyncio
-import hashlib
-from pathlib import Path
-from typing import List
-from gsuid_core.logger import logger
-
-import httpx
+from typing import Sequence
+from .downloader import download
 
 
 async def batch_download_images(
-    urls: List[str],
+    urls: Sequence[str],
     save_dir: str,
     max_concurrency: int = 5,
-) -> List[str | None]:
-    """批量下载图片"""
-    save_path = Path(save_dir)
-    save_path.mkdir(parents=True, exist_ok=True)
-
-    sem = asyncio.Semaphore(max_concurrency)
-    paths: List[str | None] = [None] * len(urls)
-
-    async with httpx.AsyncClient(timeout=60) as client:
-
-        async def _download(index: int, url: str) -> None:
-            async with sem:
-                try:
-                    resp = await client.get(url)
-                    resp.raise_for_status()
-                    content = resp.content
-                    md5 = hashlib.md5(content).hexdigest()
-                    ext = Path(url).suffix or ".jpg"
-                    file_path = save_path / f"{md5}{ext}"
-                    if not file_path.exists():
-                        file_path.write_bytes(content)
-                    paths[index] = str(file_path)
-                except httpx.HTTPStatusError as e:
-                    if e.response.status_code == 404:
-                        logger.warning(f"未找到当前图片: {url}")
-                    else:
-                        logger.warning(f"下载图片失败: {url}")
-                        logger.warning(f"错误信息: {e}")
-                    paths[index] = None
-                except Exception as e:
-                    logger.warning(f"下载图片失败: {url}")
-                    logger.warning(f"错误信息: {e}")
-                    paths[index] = None
-
-        await asyncio.gather(
-            *[_download(i, url) for i, url in enumerate(urls)]
-        )
-
-    return paths
+) -> list[str | None]:
+    """批量下载图片（向下兼容封装，底层使用 downloader.download）"""
+    paths = await download(urls, save_dir=save_dir, max_concurrency=max_concurrency)
+    return [str(p) if p is not None else None for p in paths]
 
 
 _BASE_STEAM_ID64 = 76561197960265728

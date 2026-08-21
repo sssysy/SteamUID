@@ -5,10 +5,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from gsuid_core.data_store import get_res_path
 from gsuid_core.utils.fonts.fonts import core_font
-from gsuid_core.utils.image.utils import download_pic_to_image
 
-CACHE_DIR: Path = get_res_path("SteamUID") / "cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+from ..downloader import CACHE_DIR, download, get_cache_path
 
 _BG_HASH_PATTERN = re.compile(r"/([0-9a-fA-F]{40})/")
 _URL_HASH_PATTERN = re.compile(r"[0-9a-fA-F]{40}")
@@ -41,12 +39,13 @@ def _font_with_height(target_h: int) -> ImageFont.FreeTypeFont:
     return core_font(target_h)
 
 
-async def _load_or_download(url: str, cache_path: Path) -> Image.Image:
-    if cache_path.exists():
-        return Image.open(cache_path).convert("RGBA")
-    img = (await download_pic_to_image(url)).convert("RGBA")
-    img.convert("RGB").save(cache_path, format="JPEG")
-    return img
+async def _load_or_download(
+    url: str, cache_path: Path | None = None
+) -> Image.Image:
+    file_path = await download(url, save_path=cache_path)
+    if file_path is None or not file_path.is_file():
+        raise RuntimeError(f"Failed to load or download image: {url}")
+    return Image.open(file_path).convert("RGBA")
 
 
 def _center_text_x(center_x: int, text: str, font: ImageFont.FreeTypeFont) -> int:
@@ -79,11 +78,4 @@ def draw_vertical_gradient(
 
 def cache_path_for_url(url: str, fallback: str | None = None) -> Path:
     """从 URL 中提取 40 位 hex hash 作为缓存文件名，提取失败时用 fallback 或 md5(url)"""
-    m = _BG_HASH_PATTERN.search(url)
-    if m:
-        return CACHE_DIR / f"{m.group(1)}.jpg"
-    m = _URL_HASH_PATTERN.search(url)
-    if m:
-        return CACHE_DIR / f"{m.group(0)}.jpg"
-    h = fallback if fallback is not None else hashlib.md5(url.encode()).hexdigest()
-    return CACHE_DIR / f"{h}.jpg"
+    return get_cache_path(url, fallback=fallback)
