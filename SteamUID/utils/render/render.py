@@ -1017,7 +1017,7 @@ def render_steam_wall_html(
 
             item_html = (
                 f'<div class="game" style="grid-column: span {col_span}; grid-row: span {row_span};">'
-                f'  <img class="game-img" src="{cover_url}" onerror="this.onerror=null;this.src=\'{_DEFAULT_GAME_COVER_SVG}\'" alt="">'
+                f'  <img class="game-img" src="{cover_url}" onerror="this.closest(\'.game\')?.remove()" alt="">'
                 f'</div>'
             )
             game_items_parts.append(item_html)

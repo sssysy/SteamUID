@@ -247,5 +247,15 @@
         <!-- 游戏墙网格 -->
         {{grid_html}}
     </div>
+    <script>
+        document.querySelectorAll('.game-img').forEach(function(img) {
+            if (img.complete && img.naturalWidth === 0) {
+                img.closest('.game')?.remove();
+            }
+            img.addEventListener('error', function() {
+                img.closest('.game')?.remove();
+            });
+        });
+    </script>
 </body>
 </html>
