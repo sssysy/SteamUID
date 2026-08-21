@@ -39,7 +39,7 @@
         .bind-card {
             width: {{canvas_width}}px;
             background: linear-gradient(180deg, #1e2430 0%, #171a21 100%);
-            padding: 24px 28px 28px 28px;
+            padding: 20px 24px 24px 24px;
             font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
             color: #ffffff;
             border-radius: 0;
@@ -52,7 +52,7 @@
         .card-header {
             display: flex;
             align-items: center;
-            padding-bottom: 16px;
+            padding-bottom: 2px;
             border-bottom: none;
         }
 
@@ -110,8 +110,8 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            margin-top: 16px;
-            margin-bottom: 12px;
+            margin-top: 6px;
+            margin-bottom: 8px;
             padding-left: 0;
         }
 
@@ -155,17 +155,15 @@
             border: none;
         }
 
-        /* 背景图片与滤镜 */
+        /* 背景图片（右半边渐隐过渡到默认底色，清晰无模糊） */
         .pill-bg {
             position: absolute;
-            top: -15%;
-            left: -15%;
-            width: 130%;
-            height: 130%;
+            inset: 0;
             background-size: cover;
-            background-position: center;
+            background-position: right center;
             background-repeat: no-repeat;
-            filter: blur(6px) brightness(0.85);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 25%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.9) 80%);
+            mask-image: linear-gradient(to right, transparent 0%, transparent 25%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.9) 80%);
             z-index: 1;
         }
 
@@ -173,7 +171,7 @@
         .pill-mask {
             position: absolute;
             inset: 0;
-            background: linear-gradient(90deg, rgba(14, 18, 26, 0.72) 0%, rgba(14, 18, 26, 0.52) 50%, rgba(14, 18, 26, 0.65) 100%);
+            background: linear-gradient(90deg, rgba(14, 18, 26, 0.5) 0%, rgba(14, 18, 26, 0.3) 60%, rgba(14, 18, 26, 0.2) 100%);
             z-index: 2;
         }
 
