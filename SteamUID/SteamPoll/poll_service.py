@@ -24,7 +24,7 @@ from ..utils.database.models import (
     SteamPriceInfo,
     SteamPlayRecord,
 )
-from ..utils.PIL.draw import draw_archivements_photo, draw_game_status_photo
+from ..utils.PIL.draw import draw_archivements_photo
 from ..utils.render import render_game_status
 from ..utils.steam_status import (
     PUSH_EVENTS,
@@ -197,7 +197,7 @@ async def _render_game_status_message(
     else:
         text_msg = f"{user_display} 结束游戏 {game_name}"
 
-    # 1. 优先尝试 Playwright 渲染
+    # 优先尝试 Playwright 渲染，失败时降级为文本消息
     try:
         img_bytes = await render_game_status(
             username=username,
@@ -211,27 +211,8 @@ async def _render_game_status_message(
         if img_bytes:
             return MessageSegment.image(img_bytes)
     except Exception as error:
-        logger.warning(f"[SteamPoll] Playwright 渲染游戏状态失败，回退至 PIL: {error!r}")
+        logger.warning(f"[SteamPoll] Playwright 渲染游戏状态失败: {error!r}")
 
-    # 2. 回退至 PIL 渲染
-    try:
-        img = await draw_game_status_photo(
-            appid=appid,
-            game_name=game_name,
-            avatar_url=avatar_url,
-            avatar_hash=avatar_hash,
-            avatar_frame_url=avatar_frame_url,
-            username=username,
-            game_background=game_avatar,
-            is_playing=is_playing,
-            group_name=group_name,
-        )
-        if img is not None:
-            return MessageSegment.image(img)
-    except Exception as error:
-        logger.warning(f"[SteamPoll] PIL 绘图失败 appid={appid}: {error!r}")
-
-    # 3. 降级为文本消息
     return text_msg
 
 
