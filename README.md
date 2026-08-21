@@ -91,7 +91,10 @@
 | `steam帮助` | 呼出本插件帮助菜单 |
 | `steam清除全部缓存` | 清除全部缓存 |
 
-## 效果图
+## 丨效果图
+
+<details>
+<summary>点击展开</summary>
 
 ### steam游戏成就
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRREVybU9Zd0NpdFE2cVhXT3Q0R0ZCREFUTjgybkoxLXRmNjJYdld4NENlRFU0P2U9Q3pOMnY4.png" width="320"/>
@@ -105,19 +108,21 @@
 ### steam游戏墙
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRGtiZ2VSMlhnZVFKSjdxU1NRdHU0aEFaaEw3NnpnbHdXNXBpX2VoQms3ODYwP2U9VmV4djlk.png" width="320"/>
 
-## steam玩什么
+### steam玩什么
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1drYnVvMzhZS1JKclBiQnZrQXB4b0FVdmw4bFRuX1pSRmFQR2FiYVZLVXZzP2U9anBTZUx4.png" width="320">
 
-## steam状态
+### steam状态
 
-### 静态
+#### 静态
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1hsRG8wd1BnV1RKeThwcXNhelRnaEFhckFTWV91Rzh0SUVESkxVOVE0Y0JnP2U9eWdyOTlN.jpg" width="320">
 
-### 动态
+#### 动态
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ3otNHJhXzVKdFRaTmdEVGhqZ2N6aUFma29wWWJjOHlPX0pBY1hkazhsb0pNP2U9eW1IQzFp.gif" width="320">
 
-## steam信息
+### steam信息
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRFFncUhDM082N1FxNUQxTVphT2p3cUFYNTNTYzc1MlV4OGdYZC02bDBXc0tNP2U9dVV3ZkZp.png" width="320">
+
+</details>
 
 ## 计划功能
 
@@ -146,4 +151,3 @@
 - 此插件依赖自框架 [gsuid_core](https://github.com/Genshin-bots/gsuid_core)
 - 所有请求格式来自 [Steam Web API](https://developer.valvesoftware.com/wiki/Steam_Web_API)
 - steam游戏墙参考自 [steam_wall](https://github.com/zhMoody/steam_wall)
-- steam反代教程来自 [Yunzai-steam-plugin](https://github.com/XasYer/steam-plugin)
