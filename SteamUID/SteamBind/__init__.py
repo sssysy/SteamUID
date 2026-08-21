@@ -5,9 +5,9 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
-from ..utils.PIL.draw import draw_bind_list_photo
+from ..utils.render import render_bind_list
 from ..utils.exceptions import SteamError, SteamValidationError
-from ..utils.utils import auto2steamid64, steamid64_to_friend_code
+from ..utils.utils import auto2steamid64, steamid64_to_friend_code, get_user_group_nickname
 from . import login
 from .bind_service import (
     do_bind,
@@ -17,6 +17,15 @@ from .bind_service import (
 )
 
 bind_sv = SV("绑定账号")
+
+
+async def _get_user_display_name(ev: Event) -> str:
+    nickname = await get_user_group_nickname(ev.bot_id, ev.user_id, ev.group_id)
+    if nickname:
+        return nickname
+    if isinstance(ev.sender, dict):
+        return ev.sender.get("card") or ev.sender.get("nickname") or ev.user_id
+    return ev.user_id
 
 
 async def _send_bind_card(
@@ -33,10 +42,18 @@ async def _send_bind_card(
         now_items, other_items = await get_bind_card_data(
             ev.bot_id, ev.user_id, ev.user_type, ev.group_id, show_all
         )
-        img = await draw_bind_list_photo(
-            now_items, other_items,
-            new_bind_steamid=new_bind_steamid,
-            unbind_banner=unbind_banner,
+        seen_sids = set()
+        bind_items = []
+        for item in now_items + other_items:
+            if item["steamid64"] not in seen_sids:
+                seen_sids.add(item["steamid64"])
+                bind_items.append(item)
+
+        user_name = await _get_user_display_name(ev)
+        img = await render_bind_list(
+            bind_items=bind_items,
+            user_name=user_name,
+            user_id=ev.user_id,
         )
         await bot.send(MessageSegment.image(img))
     except Exception as e:
@@ -121,7 +138,19 @@ async def steamview(bot: Bot, ev: Event):
         if not now_items and not other_items:
             await bot.send("未绑定任何 steamid")
         else:
-            img = await draw_bind_list_photo(now_items, other_items)
+            seen_sids = set()
+            bind_items = []
+            for item in now_items + other_items:
+                if item["steamid64"] not in seen_sids:
+                    seen_sids.add(item["steamid64"])
+                    bind_items.append(item)
+
+            user_name = await _get_user_display_name(ev)
+            img = await render_bind_list(
+                bind_items=bind_items,
+                user_name=user_name,
+                user_id=ev.user_id,
+            )
             await bot.send(MessageSegment.image(img))
 
     except SteamError as e:

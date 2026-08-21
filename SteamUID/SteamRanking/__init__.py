@@ -1,45 +1,176 @@
-from gsuid_core.sv import SV
+import asyncio
+
 from gsuid_core.bot import Bot
-from gsuid_core.models import Event
 from gsuid_core.logger import logger
+from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
+from gsuid_core.sv import SV
 from gsuid_core.utils.database.models import CoreUser
 
+from ..utils.api import get_game_info
+from ..utils.database.models import SteamBind, SteamPlayRecord
 from ..utils.exceptions import SteamError, SteamValidationError
-# from ..utils.target import resolve_target_steamid64
+from ..utils.render import render_game_ranking, render_user_ranking
 from ..utils.utils import time_convert_s
-from .ranking_service import get_group_ranking_list, get_game_ranking_list
 
 ranking_sv = SV("steam排名服务")
 
+
+async def get_group_ranking_list(group_id: str) -> list[dict]:
+    """获取群排名列表"""
+    binds = await SteamBind.get_binds_by_group(group_id)
+    if not binds:
+        return []
+
+    steamid_to_user: dict[str, str] = {}
+    user_steamids: dict[str, list[str]] = {}
+    all_steamids: list[str] = []
+
+    for bind in binds:
+        sid = bind.steamid64
+        uid = bind.user_id
+        steamid_to_user[sid] = uid
+        all_steamids.append(sid)
+        if uid not in user_steamids:
+            user_steamids[uid] = []
+        if sid not in user_steamids[uid]:
+            user_steamids[uid].append(sid)
+
+    records = await SteamPlayRecord.get_records_by_steamids(all_steamids)
+    if records is None:
+        raise SteamError("查询游玩记录失败，请稍后重试")
+
+    user_durations: dict[str, int] = {}
+    for record in records:
+        uid = steamid_to_user.get(record.steamid64)
+        if uid is None:
+            continue
+        if not record.end_ts or not record.start_ts:
+            continue
+        duration = record.end_ts - record.start_ts  # type: ignore
+        if duration <= 0:
+            continue
+        user_durations[uid] = user_durations.get(uid, 0) + duration
+
+    ranking_list = [
+        {
+            "user_id": uid,
+            "total_duration": duration,
+            "steamid64s": user_steamids.get(uid, []),
+        }
+        for uid, duration in user_durations.items()
+    ]
+    ranking_list.sort(key=lambda x: x["total_duration"], reverse=True)
+
+    return ranking_list
+
+
+async def get_game_ranking_list(group_id: str, limit: int | None = None) -> list[dict]:
+    """获取群内游戏排行列表（按游戏总时长降序，不区分用户）"""
+    binds = await SteamBind.get_binds_by_group(group_id)
+    if not binds:
+        return []
+
+    all_steamids: list[str] = []
+    seen: set[str] = set()
+    for bind in binds:
+        sid = bind.steamid64
+        if sid not in seen:
+            seen.add(sid)
+            all_steamids.append(sid)
+
+    records = await SteamPlayRecord.get_records_by_steamids(all_steamids)
+    if records is None:
+        raise SteamError("查询游玩记录失败，请稍后重试")
+
+    app_durations: dict[str, int] = {}
+    for record in records:
+        if not record.end_ts or not record.start_ts:
+            continue
+        duration = record.end_ts - record.start_ts  # type: ignore
+        if duration <= 0:
+            continue
+        app_durations[record.appid] = app_durations.get(record.appid, 0) + duration
+
+    sorted_apps = sorted(app_durations.items(), key=lambda x: x[1], reverse=True)
+    if limit is not None and limit > 0:
+        sorted_apps = sorted_apps[:limit]
+
+    async def _fetch_game_detail(appid: str, total_duration: int) -> dict:
+        game_name = appid
+        cover_url = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+        try:
+            info = await get_game_info(appid)
+            if info and info.get("success"):
+                data = info.get("data", {})
+                name = data.get("name", "")
+                if name:
+                    game_name = name
+                header_img = data.get("header_image")
+                if header_img:
+                    cover_url = header_img
+        except Exception:
+            pass
+        return {
+            "appid": appid,
+            "game_name": game_name,
+            "total_duration": total_duration,
+            "cover_url": cover_url,
+        }
+
+    ranking_list = await asyncio.gather(
+        *(_fetch_game_detail(appid, total_duration) for appid, total_duration in sorted_apps)
+    )
+
+    return list(ranking_list)
+
+
 @ranking_sv.on_command(("群排行", "群排名"))
 async def group_ranking(bot: Bot, ev: Event):
-    """按用户游戏时长从高到低取5位返回"""
+    """按用户游戏时长从高到低排序，使用 Playwright 渲染图片返回"""
     try:
         if not ev.group_id:
             raise SteamValidationError("请在群聊中使用此功能")
 
         ranking_list = await get_group_ranking_list(ev.group_id)
-        if ev.text.strip() and isinstance(ev.text.strip(), int):
-            top = ranking_list[:int(ev.text.strip())]
+        if not ranking_list:
+            await bot.send("本群暂无游戏时长排行数据")
+            return
+
+        text = ev.text.strip()
+        if text.isdigit() and int(text) > 0:
+            top = ranking_list[:int(text)]
         else:
-            top = ranking_list[:5]
+            top = ranking_list[:10]
 
         if not top:
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        text = f"本群游戏时长排行 Top{len(top)}：\n"
-        for i, item in enumerate(top, 1):
-            users = await CoreUser.select_rows(user_id=item["user_id"], group_id=ev.group_id)
-            if users and users[0].user_name:
-                name = users[0].user_name
-            else:
-                name = item["user_id"]
+        display_list = []
+        for item in top:
+            uid = str(item["user_id"])
+            users = await CoreUser.select_rows(user_id=uid, group_id=ev.group_id)
+            user_name = uid
+            avatar_url = None
+            if users and users[0]:
+                if users[0].user_name and users[0].user_name != "1":
+                    user_name = str(users[0].user_name)
+                if hasattr(users[0], "avatar_url") and users[0].avatar_url:
+                    avatar_url = users[0].avatar_url
 
-            text += f"{i}. {name} ({time_convert_s(item['total_duration'])})\n"
+            if not avatar_url and uid.isdigit():
+                avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={uid}&s=640"
 
-        await bot.send(text)
+            display_list.append({
+                "user_id": uid,
+                "user_name": user_name,
+                "total_duration": item["total_duration"],
+                "avatar_url": avatar_url,
+            })
+
+        img_bytes = await render_user_ranking(display_list)
+        await bot.send(MessageSegment.image(img_bytes))
 
     except SteamError as e:
         await bot.send(str(e))
@@ -50,26 +181,21 @@ async def group_ranking(bot: Bot, ev: Event):
 
 @ranking_sv.on_command(("群游戏排行", "群游戏排名"))
 async def game_ranking(bot: Bot, ev: Event):
-    """按群内所有游戏的总游玩时长从高到低排序"""
+    """按群内所有游戏的总游玩时长从高到低排序，使用 Playwright 渲染图片返回"""
     try:
         if not ev.group_id:
             raise SteamValidationError("请在群聊中使用此功能")
 
-        ranking_list = await get_game_ranking_list(ev.group_id)
-        if ev.text.strip() and isinstance(ev.text.strip(), int):
-            top = ranking_list[:int(ev.text.strip())]
-        else:
-            top = ranking_list[:10]
+        text = ev.text.strip()
+        limit = int(text) if text.isdigit() and int(text) > 0 else 10
 
-        if not top:
+        ranking_list = await get_game_ranking_list(ev.group_id, limit=limit)
+        if not ranking_list:
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        text = f"本群游戏时长排行 Top{len(top)}：\n"
-        for i, item in enumerate(top, 1):
-            text += f"{i}. {item['game_name']} ({time_convert_s(item['total_duration'])})\n"
-
-        await bot.send(text)
+        img_bytes = await render_game_ranking(ranking_list)
+        await bot.send(MessageSegment.image(img_bytes))
 
     except SteamError as e:
         await bot.send(str(e))
@@ -77,12 +203,3 @@ async def game_ranking(bot: Bot, ev: Event):
         logger.exception(f"[SteamRanking - 群游戏排行] 未知错误: {e!r}")
         await bot.send("发生未知错误，请联系管理员查看控制台")
 
-        
-"""
-============鸽了=============
-
-@ranking_sv.on_command(("我的排行", "我的排名"))
-async def my_ranking(bot: Bot, ev: Event):
-    获取用户在群中的排名，应为总排行 + ... + 用户所在排行位置
-
-"""

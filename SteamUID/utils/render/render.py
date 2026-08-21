@@ -1,18 +1,57 @@
-import io
-import pathlib
-import os
-import time
 import asyncio
-import tempfile
+import base64
+import os
+import pathlib
 import shutil
-from typing import Any
+import tempfile
+import time
+
 from ..exceptions import SteamError
 
+_DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
+_FOOTER_PATH = pathlib.Path(__file__).parent.parent.parent / "SteamHelp" / "texture2d" / "footer.png"
 
-_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_miniprofile.html"
-_GAME_STATUS_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_status.html"
-_STEAM_INFO_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_info.html"
+# 默认游戏封面 Base64 SVG (深蓝Steam配色)
+_DEFAULT_GAME_COVER_SVG = (
+    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMzIiIGhlaWdodD0iODciIHZpZXdCb3g9IjAgMCAyMzIgODciPjxyZWN0IHdpZHRoPSIyMzIiIGhlaWdodD0iODciIGZpbGw9IiMxYjI4MzgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY3YzFmNSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSJib2xkIj5TVEVBTTwvdGV4dD48L3N2Zz4="
+)
 
+
+def _get_default_icon_b64() -> str:
+    """读取默认问号头像并转为 Base64 Data URL"""
+    if _DEFAULT_ICON_PATH.exists():
+        return "data:image/jpeg;base64," + base64.b64encode(_DEFAULT_ICON_PATH.read_bytes()).decode()
+    return ""
+
+
+def _get_footer_b64() -> str:
+    """读取帮助图 footer.png 并转为 Base64 Data URL"""
+    if _FOOTER_PATH.exists():
+        return "data:image/png;base64," + base64.b64encode(_FOOTER_PATH.read_bytes()).decode()
+    return ""
+
+
+def _fill_template(template: str, replacements: dict[str, str]) -> str:
+    """用 str.replace 替换所有 {{key}} 占位符。"""
+    for key, value in replacements.items():
+        template = template.replace("{{" + key + "}}", value)
+    return template
+
+
+def format_ranking_duration(seconds: int | float) -> str:
+    """按要求格式化游玩时长：
+    - 不足1h的按分钟显示，如 59.8min、0.0min
+    - 超过或等于1h的按小时显示，如 112.3h、1.0h
+    - 最大到h，不需要统计到天
+    """
+    if seconds < 0:
+        seconds = 0
+    if seconds < 3600:
+        minutes = seconds / 60.0
+        return f"{minutes:.1f}min"
+    else:
+        hours = seconds / 3600.0
+        return f"{hours:.1f}h"
 
 
 # ============================================================
@@ -45,7 +84,6 @@ async def render_html(
         from playwright.async_api import async_playwright
     except ImportError:
         raise SteamError("playwright 库未安装，此功能无法使用")
-
 
     try:
         async with async_playwright() as p:
@@ -233,325 +271,3 @@ async def render_html_gif(
         raise SteamError(f"Playwright 渲染 GIF 失败: {e}")
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-# ============================================================
-# Miniprofile：构建 HTML
-# ============================================================
-
-def _build_avatar_frame_html(url: str | None) -> str:
-    """构建头像框 HTML 块。无头像框时返回空字符串。"""
-    if not url:
-        return ""
-    return f'<div class="playersection_avatar_frame"><img src="{url}"></div>'
-
-
-def _build_background_inner_html(
-    webm: str | None,
-    mp4: str | None,
-    img: str | None,
-) -> str:
-    """构建背景内容 HTML 块。
-
-    优先级：视频(webm/mp4) > 静态图片 > 空字符串
-    """
-    if webm or mp4:
-        sources = ""
-        if webm:
-            sources += f'<source src="{webm}" type="video/webm">'
-        if mp4:
-            sources += f'<source src="{mp4}" type="video/mp4">'
-        return (
-            '<video class="miniprofile_nameplate" playsinline autoplay muted loop>'
-            f"{sources}</video>"
-        )
-    if img:
-        return f'<img class="miniprofile_nameplate" src="{img}">'
-    return ""
-
-
-def _build_featured_badge_html(
-    icon_url: str | None,
-    name: str | None,
-    xp: str | None,
-) -> str:
-    """构建特色徽章 HTML 块。无徽章图标时返回空字符串。"""
-    if not icon_url:
-        return ""
-    name_html = f'<div class="name">{name}</div>' if name else ""
-    xp_html = f'<div class="xp">{xp} 点经验值</div>' if xp else ""
-    return (
-        '<div class="miniprofile_featuredcontainer">'
-        f'<img src="{icon_url}" class="badge_icon">'
-        f'<div class="description">{name_html}{xp_html}</div>'
-        "</div>"
-    )
-
-
-def _fill_template(template: str, replacements: dict[str, str]) -> str:
-    """用 str.replace 替换所有 {{key}} 占位符。"""
-    for key, value in replacements.items():
-        template = template.replace("{{" + key + "}}", value)
-    return template
-
-
-_FIELD_DEFAULTS: dict[str, Any] = {
-    "avatar_url": "", # 头像 URL
-    "avatar_frame_url": None, # 头像框 URL
-    "background_video_webm": None, # 背景视频 webm URL
-    "background_video_mp4": None, # 背景视频 mp4 URL
-    "background_image_url": None, # 背景图片 URL
-    "persona_name": "", # 个人名称
-    "persona_class": "online", # 个人状态类名
-    "status_class": "online", # 状态类名
-    "status_text": "在线", # 状态文本
-    "border_color_class": "border_color_online", # 边框颜色类名
-    "level_num": "0", # 等级
-    "level_classes": "lvl_0", # 等级类名
-    "badge_icon_url": None, # 特色徽章图标 URL
-    "badge_name": None, # 特色徽章名称
-    "badge_xp": None, # 特色徽章经验值
-}
-
-
-def render_miniprofile(data: Any) -> str:
-    """迷你个人资料卡片"""
-    # 1. 从 data 中读取所有字段
-    fields = {k: getattr(data, k, v) for k, v in _FIELD_DEFAULTS.items()}
-
-    # 2. 读取 HTML 模板
-    template = _TEMPLATE_PATH.read_text(encoding="utf-8")
-
-    # 3. 构建条件 HTML 块
-    avatar_frame_html = _build_avatar_frame_html(fields["avatar_frame_url"])
-    background_inner_html = _build_background_inner_html(
-        fields["background_video_webm"],
-        fields["background_video_mp4"],
-        fields["background_image_url"],
-    )
-    featured_badge_html = _build_featured_badge_html(
-        fields["badge_icon_url"], fields["badge_name"], fields["badge_xp"]
-    )
-
-    # 4. 组装替换字典
-    replacements: dict[str, str] = {
-        "avatar_url": fields["avatar_url"],
-        "persona_name": fields["persona_name"],
-        "persona_class": fields["persona_class"],
-        "status_class": fields["status_class"],
-        "status_text": fields["status_text"],
-        "border_color_class": fields["border_color_class"],
-        "level_num": fields["level_num"],
-        "level_classes": fields["level_classes"],
-        "avatar_frame_html": avatar_frame_html,
-        "background_inner_html": background_inner_html,
-        "featured_badge_html": featured_badge_html,
-    }
-
-    # 5. 替换占位符并返回
-    return _fill_template(template, replacements)
-
-
-_GS_THEMES: dict[str, dict] = {
-    "start": {
-        "status_bar_color": "#5cbe32",
-        "persona_color":    "#e1e1e1",
-        "group_color":      "#8f98a0",
-        "subtitle_color":   "#808a94",
-        "subtitle":         "正在玩",
-        "game_name_color":  "#90ba3c",
-    },
-    "end": {
-        "status_bar_color": "#57cbde",
-        "persona_color":    "#57cbde",
-        "group_color":      "#4c91ac",
-        "subtitle_color":   "#808a94",
-        "subtitle":         "已结束游玩",
-        "game_name_color":  "#57cbde",
-    },
-}
-
-_GS_DEFAULT_W = 460
-_GS_DEFAULT_H_BG = 215
-_GS_INFO_ROW_H = 84
-
-
-import base64
-
-_DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
-
-
-def _get_default_icon_b64() -> str:
-    """读取默认问号头像并转为 Base64 Data URL"""
-    if _DEFAULT_ICON_PATH.exists():
-        return "data:image/jpeg;base64," + base64.b64encode(_DEFAULT_ICON_PATH.read_bytes()).decode()
-    return ""
-
-
-def render_game_status_html(
-    *,
-    username: str,
-    game_name: str,
-    avatar_url: str,
-    avatar_frame_url: str | None = None,
-    game_background: str | None = None,
-    is_playing: bool = True,
-    group_name: str | None = None,
-) -> str:
-    """构建游戏状态（开始/结束游戏）卡片的 HTML 字符串。"""
-    theme_key = "start" if is_playing else "end"
-    theme = _GS_THEMES[theme_key]
-
-    template = _GAME_STATUS_TEMPLATE_PATH.read_text(encoding="utf-8")
-
-    if game_background:
-        cover_html = f'<img class="cover-img" src="{game_background}" alt="">'
-        cover_h_val = str(_GS_DEFAULT_H_BG)
-    else:
-        cover_html = ""
-        cover_h_val = "0"
-
-    avatar_frame_html = (
-        f'<div class="avatar-frame"><img src="{avatar_frame_url}" alt=""></div>'
-        if avatar_frame_url
-        else ""
-    )
-
-    default_avatar = _get_default_icon_b64()
-    avatar_src = avatar_url if avatar_url else default_avatar
-    group_name_html = f'<span class="group-name">({group_name})</span>' if group_name else ""
-
-    replacements = {
-        "canvas_width": str(_GS_DEFAULT_W),
-        "cover_height": cover_h_val,
-        "cover_html": cover_html,
-        "avatar_url": avatar_src,
-        "avatar_frame_html": avatar_frame_html,
-        "default_avatar": default_avatar,
-        "status_bar_color": theme["status_bar_color"],
-        "persona_color": theme["persona_color"],
-        "group_color": theme["group_color"],
-        "subtitle_color": theme["subtitle_color"],
-        "persona_name": username,
-        "group_name_html": group_name_html,
-        "subtitle": theme["subtitle"],
-        "game_name": game_name,
-        "game_name_color": theme["game_name_color"],
-    }
-
-    return _fill_template(template, replacements)
-
-
-async def render_game_status(
-    *,
-    username: str,
-    game_name: str,
-    avatar_url: str,
-    avatar_frame_url: str | None = None,
-    game_background: str | None = None,
-    is_playing: bool = True,
-    group_name: str | None = None,
-) -> bytes:
-    """渲染游戏开始/结束状态卡片为 PNG 字节。"""
-    html_content = render_game_status_html(
-        username=username,
-        game_name=game_name,
-        avatar_url=avatar_url,
-        avatar_frame_url=avatar_frame_url,
-        game_background=game_background,
-        is_playing=is_playing,
-        group_name=group_name,
-    )
-    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_ROW_H + 50
-    return await render_html(
-        html_content,
-        ".game-status-card",
-        viewport_width=_GS_DEFAULT_W + 50,
-        viewport_height=total_h,
-        device_scale_factor=2.0,
-    )
-
-
-# ============================================================
-# Steam 信息卡片渲染
-# ============================================================
-
-_STEAM_INFO_FIELD_DEFAULTS: dict[str, Any] = {
-    "avatar_url": "",
-    "avatar_frame_url": None,
-    "background_image_url": None,
-    "persona_name": "",
-    "status_class": "online",
-    "status_text": "在线",
-    "badge_icon_url": None,
-    "bio_text": "",
-    "level_num": "0",
-    "level_classes": "lvl_0",
-    "region": "未知",
-    "account_age": "--",
-    "account_value": "0",
-    "playtime_hours": "0",
-    "game_count": "0",
-    "steam_id_display": "",
-}
-
-
-def render_steam_info_html(data: Any) -> str:
-    """构建 Steam 信息卡片的 HTML 字符串。"""
-    fields = {k: getattr(data, k, v) for k, v in _STEAM_INFO_FIELD_DEFAULTS.items()}
-    template = _STEAM_INFO_TEMPLATE_PATH.read_text(encoding="utf-8")
-
-    # 构建头像框 HTML
-    avatar_frame_html = ""
-    if fields["avatar_frame_url"]:
-        avatar_frame_html = f'<div class="avatar_frame"><img src="{fields["avatar_frame_url"]}" alt=""></div>'
-
-    # 构建徽章图标 HTML
-    badge_icon_html = ""
-    if fields["badge_icon_url"]:
-        badge_icon_html = f'<img class="badge_icon" src="{fields["badge_icon_url"]}" alt="">'
-
-    # 构建个人简介 HTML
-    bio_html = ""
-    if fields["bio_text"]:
-        bio_html = f'<div class="profile_summary">{fields["bio_text"]}</div>'
-
-    # 构建背景 HTML
-    background_html = ""
-    if fields["background_image_url"]:
-        background_html = f'<img class="background_image" src="{fields["background_image_url"]}" alt="">'
-
-    replacements = {
-        "avatar_url": fields["avatar_url"],
-        "avatar_frame_html": avatar_frame_html,
-        "background_html": background_html,
-        "persona_name": fields["persona_name"],
-        "badge_icon_html": badge_icon_html,
-        "status_class": fields["status_class"],
-        "status_text": fields["status_text"],
-        "bio_html": bio_html,
-        "level_num": str(fields["level_num"]),
-        "level_classes": fields["level_classes"],
-        "region": fields["region"],
-        "account_age": str(fields["account_age"]),
-        "account_value": str(fields["account_value"]),
-        "playtime_hours": str(fields["playtime_hours"]),
-        "game_count": str(fields["game_count"]),
-        "steam_id_display": str(fields["steam_id_display"]),
-    }
-
-    return _fill_template(template, replacements)
-
-
-async def render_steam_info(data: Any) -> bytes:
-    """渲染 Steam 信息卡片为 PNG 字节。"""
-    html_content = render_steam_info_html(data)
-    return await render_html(
-        html_content,
-        ".steam_info_card",
-        viewport_width=820,
-        viewport_height=420,
-        device_scale_factor=2.0,
-    )
-
-

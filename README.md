@@ -26,11 +26,12 @@
 > 使用前请务必阅读以下事项，否则会导致此插件无法正常工作
 > - 使用本插件前请先确保框架机器可以正常访问 **steam 官方服务器**，若无法访问请务必配置反向代理([参考](https://github.com/XasYer/steam-plugin#%E4%BD%BF%E7%94%A8cloudflare%E6%90%AD%E5%BB%BA%E5%8F%8D%E4%BB%A3-%E8%BF%9E%E6%8E%A5%E4%B8%8D%E4%B8%8Asteam%E6%83%85%E5%86%B5%E4%B8%8B%E7%9A%84%E5%A4%87%E9%80%89))并在设置中配置**SteamAPI反代URL** 和 **Steam商店反代URL**。
 > - 首次启用本插件务必在设置中填写**Steam API Key**，否则插件无法工作！。
+> - 本插件现已全面改用 playwright 进行图片渲染，请务必确保 playwright 安装正确。
 
 ## 丨命令列表
 
-### steam帮助(图片更新可能不及时)
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQWI0VVFBSHdwQVJhaWpYSFhJYnNqOUFaaEtac1plTHdKb0NKTldZM2tOOWtzP2U9cERkcjRw.jpg" width="480" alt="Steam帮助菜单">
+### steam帮助(图片更新可能不及时，请以下方命令说明为准)
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2NVVjN5LWxQS1RidlJmR3hwUnIzZEFWNUJ2aC1lMzVzLXl3dWR5V0RDUDhzP2U9QzVXMGVp.jpg" width="480" alt="Steam帮助菜单">
 
 ### 命令说明
 
@@ -81,8 +82,8 @@
 #### 用户相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam状态` | 查看自己 / @的人的迷你资料卡片 |
-> 此命令依赖于 playwright 和 imageio-ffmpeg，若执行时提示依赖缺失，请手动安装提示的依赖。
+| `steam状态` | 查看自己 / @的人的迷你资料卡片  |
+| `steam信息` | 查看自己 / @的人的游戏库统计信息|
 
 #### 其他服务
 | 命令 | 说明 |
@@ -90,33 +91,38 @@
 | `steam帮助` | 呼出本插件帮助菜单 |
 | `steam清除全部缓存` | 清除全部缓存 |
 
-## 效果图
+## 丨效果图
+
+<details>
+<summary>点击展开</summary>
 
 ### steam游戏成就
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRHR5UVVwYVVENFJhX2UxakdHblNIeUFRVVoxcDVZMGpxRkpBWmYtRGhQRENjP2U9RTdMMlJk.png" width="160"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRREVybU9Zd0NpdFE2cVhXT3Q0R0ZCREFUTjgybkoxLXRmNjJYdld4NENlRFU0P2U9Q3pOMnY4.png" width="320"/>
 
 ### steam成就推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRDVmeDFrYTF2RlI2aXo2RklpNFlSQkFkUHFGQ1FwaloteW8wZllfbkpVQXhFP2U9Ynd5bXBh.png" width="320"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQzRtdVB5MzlKVFM2Z1NPSXo5UE8yQUFkY0NyeFk3UkZCMTkxSEt3bDZkZUE0P2U9QTZNYUp3.png" width="320"/>
 
 ### steam开始游戏 / 结束游戏推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRDdkbmttUzZScFE0VG9rMDVieU9FV0FZTHhnMkJOamRseTl3eGZNZlBUalUwP2U9WTY2MENz.png" width="320"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQXpQVzRBVG5lWlNZYUtUWlBpTmhqbkFXLWlnZjJKelZsZk5GTG1rQXhSVEFZP2U9WmR6bnJX.png" width="320"/>
 
 ### steam游戏墙
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRGtiZ2VSMlhnZVFKSjdxU1NRdHU0aEFaaEw3NnpnbHdXNXBpX2VoQms3ODYwP2U9VmV4djlk.png" width="320"/>
 
-## steam玩什么
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQjcxemRIckRxTlI0ZGYwVmhpQm5YUkFkR0lzZjAzVktic2x2ZTQ3VUNSYnNRP2U9WXhMVUhP.jpg" width="320">
+### steam玩什么
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1drYnVvMzhZS1JKclBiQnZrQXB4b0FVdmw4bFRuX1pSRmFQR2FiYVZLVXZzP2U9anBTZUx4.png" width="320">
 
-## steam状态
+### steam状态
 
-### 静态
+#### 静态
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1hsRG8wd1BnV1RKeThwcXNhelRnaEFhckFTWV91Rzh0SUVESkxVOVE0Y0JnP2U9eWdyOTlN.jpg" width="320">
 
-### 动态
+#### 动态
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ3otNHJhXzVKdFRaTmdEVGhqZ2N6aUFma29wWWJjOHlPX0pBY1hkazhsb0pNP2U9eW1IQzFp.gif" width="320">
 
-## steam信息
+### steam信息
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRFFncUhDM082N1FxNUQxTVphT2p3cUFYNTNTYzc1MlV4OGdYZC02bDBXc0tNP2U9dVV3ZkZp.png" width="320">
+
+</details>
 
 ## 计划功能
 
@@ -145,4 +151,3 @@
 - 此插件依赖自框架 [gsuid_core](https://github.com/Genshin-bots/gsuid_core)
 - 所有请求格式来自 [Steam Web API](https://developer.valvesoftware.com/wiki/Steam_Web_API)
 - steam游戏墙参考自 [steam_wall](https://github.com/zhMoody/steam_wall)
-- steam反代教程来自 [Yunzai-steam-plugin](https://github.com/XasYer/steam-plugin)

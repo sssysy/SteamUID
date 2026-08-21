@@ -8,7 +8,6 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.logger import logger
 
 from ..SteamConfig import SteamConfig
-from ..utils.target import resolve_target_steamid64
 from ..utils.api import (
     get_user_Summaries,
     get_profile_items_equipped,
@@ -17,12 +16,13 @@ from ..utils.api import (
     get_player_bio,
     calculate_account_value,
 )
-from ..utils.steam_status import resolve_player_status
 from ..utils.utils import (
     country_code_to_flag,
     calc_account_age,
     steamid64_to_friend_code,
     maybe_hide_steamid,
+    resolve_target_steamid64,
+    resolve_player_status,
 )
 from ..utils.render import render_miniprofile, render_html, render_html_gif, render_steam_info
 from ..utils.exceptions import SteamValidationError, SteamAPIError, SteamError, SteamConfigError

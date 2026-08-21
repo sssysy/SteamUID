@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .achievement-push-card {
+            width: {{canvas_width}}px;
+            background: linear-gradient(180deg, #1e2430 0%, #171a21 100%);
+            padding: 20px;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* 底部成就区域 */
+        .achievement-content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+            width: 380px;
+        }
+
+        .achievement-icon-box {
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+            border-radius: 0;
+            overflow: hidden;
+            background: #171a21;
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .achievement-icon {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .achievement-text-box {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .unlock-line {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: #dfe3e8;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .game-name {
+            color: #90ba3c;
+            font-weight: 700;
+        }
+
+        .achievement-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .achievement-desc {
+            font-size: 12.5px;
+            font-weight: 400;
+            color: #8f98a0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="achievement-push-card">
+        <!-- 顶部：Steam 用户卡片 -->
+        {{account_pill_html}}
+
+        <!-- 底部：成就内容 -->
+        <div class="achievement-content">
+            <div class="achievement-icon-box">
+                <img class="achievement-icon" src="{{achievement_icon_url}}" onerror="this.onerror=null;this.src='{{default_icon}}'" alt="">
+            </div>
+            <div class="achievement-text-box">
+                <div class="unlock-line">在 <span class="game-name">{{game_name}}</span> 解锁了成就</div>
+                <div class="achievement-name" title="{{achievement_name}}">{{achievement_name}}</div>
+                <div class="achievement-desc" title="{{achievement_desc}}">{{achievement_desc}}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

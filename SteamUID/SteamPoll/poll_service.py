@@ -6,7 +6,6 @@ from collections import defaultdict
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
 from gsuid_core.subscribe import gs_subscribe
-from PIL import Image
 from gsuid_core.utils.message import Message
 
 from ..utils.api import (
@@ -24,14 +23,14 @@ from ..utils.database.models import (
     SteamPriceInfo,
     SteamPlayRecord,
 )
-from ..utils.PIL.draw import draw_archivements_photo
-from ..utils.render import render_game_status
-from ..utils.steam_status import (
+from ..utils.render import render_game_status, render_achievement_push
+from ..utils.utils import (
     PUSH_EVENTS,
     get_enabled_push_events,
     is_push_event_enabled,
+    get_user_group_nickname,
+    steamid64_to_friend_code,
 )
-from ..utils.utils import get_user_group_nickname
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
@@ -163,11 +162,14 @@ async def update_achievement_baselines(push_list) -> None:
         steamid64 = info.get("steamid")
         if not steamid64:
             continue
+        is_playing = bool(info.get("gameid", ""))
+        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
+        if not is_playing:
+            await SteamArchivementInfo.delete_archivement_data(steamid64)
+            continue
         subs = await SteamBind.get_bind_by_steamid(steamid64)
         if not subs or not any(sub.push_archivement for sub in subs):
             continue
-        is_playing = bool(info.get("gameid", ""))
-        appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
         await _update_achievement_tracking(is_playing, appid, steamid64, enabled_events)
 
 
@@ -302,15 +304,29 @@ async def poll_and_push_game_status() -> None:
         logger.warning(f"[SteamPoll] 游戏状态轮询失败: {error!r}")
 
 
+_last_achievement_switch_enabled: bool | None = None
+
+
 async def poll_and_push_achievements() -> None:
     """成就轮询主入口：检测新解锁成就并推送给订阅用户。"""
+    global _last_achievement_switch_enabled
     try:
-        if not is_push_event_enabled(PUSH_EVENTS["push_archivement"]):
+        is_enabled = is_push_event_enabled(PUSH_EVENTS["push_archivement"])
+        if not is_enabled:
+            # 总开关关闭时，清空成就追踪基线，防止后续开启后用旧基线对比产生刷屏
+            if _last_achievement_switch_enabled is not False:
+                await SteamArchivementInfo.delete_all_archivement_data()
+                _last_achievement_switch_enabled = False
             return
+
+        # 若此前总开关为关闭状态（或刚启动首次运行），清空可能残留的历史旧基线，重新拉取最新成就作为初始基线
+        if _last_achievement_switch_enabled is not True:
+            await SteamArchivementInfo.delete_all_archivement_data()
+            _last_achievement_switch_enabled = True
 
         steamid_all = await SteamArchivementInfo.get_all_archivement_info()
 
-        # 自动初始化缺少基线的成就推送用户
+        # 自动初始化缺少基线的成就推送用户（此时拉取的信息仅作为基线，不推送）
         tracked_steamids = {s.steamid64 for s in steamid_all}
         all_binds = await SteamBind.get_all_archivement_push_binds()
         for bind in all_binds:
@@ -343,13 +359,32 @@ async def poll_and_push_achievements() -> None:
                     f"steamid={bind.steamid64}: {error!r}"
                 )
 
-        steamid_all = await SteamArchivementInfo.get_all_archivement_info()
+        # 仅对在此轮轮询前已有基线的用户进行增量成就检测并推送
         if not steamid_all:
             return
 
         for steamid in steamid_all:
             appid = steamid.appid
             steamid64 = steamid.steamid64
+
+            # 校验用户当前是否仍在游玩对应游戏
+            try:
+                user_info = json.loads(
+                    await SteamIDInfo.get_steamuserinfo(steamid64) or "{}"
+                )
+                current_gameid = user_info.get("gameid", "")
+                if current_gameid != appid:
+                    # 游戏已结束或已切换，删除该基线
+                    await SteamArchivementInfo.delete_archivement_data(steamid64)
+                    continue
+            except Exception:
+                pass
+
+            # 校验是否仍有订阅者开启了该用户的成就推送
+            subs = await SteamBind.get_bind_by_steamid(steamid64)
+            if not subs or not any(sub.push_archivement for sub in subs):
+                await SteamArchivementInfo.delete_archivement_data(steamid64)
+                continue
 
             try:
                 resp = await get_archivement_info(appid, steamid64)
@@ -414,6 +449,16 @@ async def poll_and_push_achievements() -> None:
                 gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
                 gamer_name = gamer_info.get("personaname", steamid64)
                 gamer_img_url = gamer_info.get("avatarfull", "")
+                avatar_frame_url = await get_user_static_avatar_frame(steamid64)
+                friend_code = steamid64_to_friend_code(steamid64)
+
+                user_data = {
+                    "name": gamer_name,
+                    "friend_code": friend_code,
+                    "avatar_url": gamer_img_url,
+                    "avatar_frame_url": avatar_frame_url,
+                    "bg_url": None,
+                }
 
                 for ach in newly_achieved:
                     archivement_name = ach.get("name", "无名称")
@@ -425,33 +470,32 @@ async def poll_and_push_achievements() -> None:
                         f"描述：{archivement_desc}"
                     )
 
+                    send_msg = None
+                    try:
+                        archivement_img_url = await get_archivement_img(
+                            appid, ach.get("apiname", "")
+                        )
+                        achievement_data = {
+                            "game_name": game_name,
+                            "name": archivement_name,
+                            "description": archivement_desc,
+                            "icon_url": archivement_img_url,
+                        }
+                        img_bytes = await render_achievement_push(
+                            user_data=user_data,
+                            achievement_data=achievement_data,
+                        )
+                        if img_bytes:
+                            send_msg = MessageSegment.image(img_bytes)
+                    except Exception as error:
+                        logger.warning(
+                            f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
+                        )
+
+                    if send_msg is None:
+                        send_msg = text_msg
+
                     for group_id, group_subs in push_subs_by_group.items():
-                        group_name = group_name_cache[group_id]
-
-                        send_msg = None
-                        try:
-                            archivement_img_url = await get_archivement_img(
-                                appid, ach.get("apiname", "")
-                            )
-                            IMG = await draw_archivements_photo(
-                                gamer_name=gamer_name,
-                                gamer_img_url=gamer_img_url,
-                                archivement_name=archivement_name,
-                                archivement_img_url=archivement_img_url,
-                                game_name=game_name,
-                                archivement_desc=archivement_desc,
-                                group_name=group_name,
-                            )
-                            if isinstance(IMG, Image.Image):
-                                send_msg = MessageSegment.image(IMG)
-                        except Exception as error:
-                            logger.warning(
-                                f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
-                            )
-
-                        if send_msg is None:
-                            send_msg = text_msg
-
                         for sub in group_subs:
                             try:
                                 await sub.send(send_msg)
