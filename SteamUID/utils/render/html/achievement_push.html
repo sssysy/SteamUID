@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .achievement-push-card {
+            width: {{canvas_width}}px;
+            background: linear-gradient(180deg, #1e2430 0%, #171a21 100%);
+            padding: 20px;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* 顶部：药丸型账号卡片（同 steam游戏墙 右上角卡片） */
+        .pill-item {
+            position: relative;
+            width: 380px;
+            height: 68px;
+            border-radius: 9999px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 18px;
+            box-sizing: border-box;
+            border: none;
+            background: linear-gradient(135deg, #2a475e 0%, #1e364a 50%, #1b2838 100%);
+            flex-shrink: 0;
+        }
+
+        /* 背景图片（右半边渐隐过渡到默认底色） */
+        .pill-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: right center;
+            background-repeat: no-repeat;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 25%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.9) 80%);
+            mask-image: linear-gradient(to right, transparent 0%, transparent 25%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.9) 80%);
+            z-index: 1;
+        }
+
+        /* 淡黑色蒙版 */
+        .pill-mask {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(14, 18, 26, 0.5) 0%, rgba(14, 18, 26, 0.3) 60%, rgba(14, 18, 26, 0.2) 100%);
+            z-index: 2;
+        }
+
+        /* 内容层 */
+        .pill-content {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* Steam 头像与头像框 */
+        .avatar-box {
+            position: relative;
+            width: 46px;
+            height: 46px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .steam-avatar {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            border: none;
+            box-sizing: border-box;
+            background: #171a21;
+        }
+
+        .avatar-frame {
+            position: absolute;
+            top: -9.4%;
+            left: -9.4%;
+            width: 118.8%;
+            height: 118.8%;
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .avatar-frame img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        /* Steam 资料信息 */
+        .info-box {
+            margin-left: 14px;
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .steam-name {
+            font-size: 15.5px;
+            font-weight: 700;
+            color: #66c0f4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            text-shadow: 0 1px 6px rgba(102, 192, 244, 0.4), 0 1px 4px rgba(0, 0, 0, 0.85);
+        }
+
+        .steam-friend-code {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #98a2ad;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        /* 底部成就区域 */
+        .achievement-content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+            width: 380px;
+        }
+
+        .achievement-icon-box {
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+            border-radius: 0;
+            overflow: hidden;
+            background: #171a21;
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .achievement-icon {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .achievement-text-box {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .unlock-line {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: #dfe3e8;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .game-name {
+            color: #90ba3c;
+            font-weight: 700;
+        }
+
+        .achievement-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .achievement-desc {
+            font-size: 12.5px;
+            font-weight: 400;
+            color: #8f98a0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="achievement-push-card">
+        <!-- 顶部：Steam 用户卡片 -->
+        <div class="pill-item">
+            {{bg_html}}
+            <div class="pill-mask"></div>
+            <div class="pill-content">
+                <div class="avatar-box">
+                    <img class="steam-avatar" src="{{avatar_url}}" onerror="this.onerror=null;this.src='{{default_avatar}}'" alt="">
+                    {{frame_html}}
+                </div>
+                <div class="info-box">
+                    <div class="steam-name" title="{{user_name}}">{{user_name}}</div>
+                    <div class="steam-friend-code">{{friend_code}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部：成就内容 -->
+        <div class="achievement-content">
+            <div class="achievement-icon-box">
+                <img class="achievement-icon" src="{{achievement_icon_url}}" onerror="this.onerror=null;this.src='{{default_icon}}'" alt="">
+            </div>
+            <div class="achievement-text-box">
+                <div class="unlock-line">在 <span class="game-name">{{game_name}}</span> 解锁了成就</div>
+                <div class="achievement-name" title="{{achievement_name}}">{{achievement_name}}</div>
+                <div class="achievement-desc" title="{{achievement_desc}}">{{achievement_desc}}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -24,13 +24,13 @@ from ..utils.database.models import (
     SteamPriceInfo,
     SteamPlayRecord,
 )
-from ..utils.PIL.draw import draw_archivements_photo
-from ..utils.render import render_game_status
+from ..utils.render import render_game_status, render_achievement_push
 from ..utils.utils import (
     PUSH_EVENTS,
     get_enabled_push_events,
     is_push_event_enabled,
     get_user_group_nickname,
+    steamid64_to_friend_code,
 )
 
 
@@ -414,6 +414,16 @@ async def poll_and_push_achievements() -> None:
                 gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
                 gamer_name = gamer_info.get("personaname", steamid64)
                 gamer_img_url = gamer_info.get("avatarfull", "")
+                avatar_frame_url = await get_user_static_avatar_frame(steamid64)
+                friend_code = steamid64_to_friend_code(steamid64)
+
+                user_data = {
+                    "name": gamer_name,
+                    "friend_code": friend_code,
+                    "avatar_url": gamer_img_url,
+                    "avatar_frame_url": avatar_frame_url,
+                    "bg_url": None,
+                }
 
                 for ach in newly_achieved:
                     archivement_name = ach.get("name", "无名称")
@@ -425,33 +435,32 @@ async def poll_and_push_achievements() -> None:
                         f"描述：{archivement_desc}"
                     )
 
+                    send_msg = None
+                    try:
+                        archivement_img_url = await get_archivement_img(
+                            appid, ach.get("apiname", "")
+                        )
+                        achievement_data = {
+                            "game_name": game_name,
+                            "name": archivement_name,
+                            "description": archivement_desc,
+                            "icon_url": archivement_img_url,
+                        }
+                        img_bytes = await render_achievement_push(
+                            user_data=user_data,
+                            achievement_data=achievement_data,
+                        )
+                        if img_bytes:
+                            send_msg = MessageSegment.image(img_bytes)
+                    except Exception as error:
+                        logger.warning(
+                            f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
+                        )
+
+                    if send_msg is None:
+                        send_msg = text_msg
+
                     for group_id, group_subs in push_subs_by_group.items():
-                        group_name = group_name_cache[group_id]
-
-                        send_msg = None
-                        try:
-                            archivement_img_url = await get_archivement_img(
-                                appid, ach.get("apiname", "")
-                            )
-                            IMG = await draw_archivements_photo(
-                                gamer_name=gamer_name,
-                                gamer_img_url=gamer_img_url,
-                                archivement_name=archivement_name,
-                                archivement_img_url=archivement_img_url,
-                                game_name=game_name,
-                                archivement_desc=archivement_desc,
-                                group_name=group_name,
-                            )
-                            if isinstance(IMG, Image.Image):
-                                send_msg = MessageSegment.image(IMG)
-                        except Exception as error:
-                            logger.warning(
-                                f"[SteamPoll] 成就图片渲染失败 appid={appid} steamid={steamid64}: {error!r}"
-                            )
-
-                        if send_msg is None:
-                            send_msg = text_msg
-
                         for sub in group_subs:
                             try:
                                 await sub.send(send_msg)
