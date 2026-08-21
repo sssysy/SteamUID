@@ -6,7 +6,6 @@ from collections import defaultdict
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
 from gsuid_core.subscribe import gs_subscribe
-from PIL import Image
 from gsuid_core.utils.message import Message
 
 from ..utils.api import (
