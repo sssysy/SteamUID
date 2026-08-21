@@ -26,12 +26,12 @@ from ..utils.database.models import (
 )
 from ..utils.PIL.draw import draw_archivements_photo
 from ..utils.render import render_game_status
-from ..utils.steam_status import (
+from ..utils.utils import (
     PUSH_EVENTS,
     get_enabled_push_events,
     is_push_event_enabled,
+    get_user_group_nickname,
 )
-from ..utils.utils import get_user_group_nickname
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:

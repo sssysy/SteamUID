@@ -1,8 +1,8 @@
 from gsuid_core.aps import scheduler
 
+from ..SteamCache import purge_db_cache, purge_file_cache
 from ..SteamConfig import SteamConfig
 from . import poll_service
-from . import cache_poll
 
 # steam 游戏状态轮询
 @scheduler.scheduled_job(
@@ -34,7 +34,9 @@ async def check_game_sale():
     days=SteamConfig.get_config("CacheTime").data,
 )
 async def purge_cache():
-    await cache_poll.purge_stale_caches()
+    cache_days = SteamConfig.get_config("CacheTime").data
+    if cache_days and cache_days > 0:
+        await purge_db_cache(days=cache_days)
 
 # steam 缓存文件清理（FileCacheTime 为 0 时不启用）
 _file_cache_days = SteamConfig.get_config("FileCacheTime").data
@@ -43,5 +45,5 @@ if _file_cache_days and _file_cache_days > 0:
         'interval',
         days=_file_cache_days,
     )
-    async def purge_file_cache():
-        await cache_poll.purge_stale_files()
+    async def purge_file_cache_job():
+        await purge_file_cache(days=_file_cache_days)
