@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .recommend-container {
+            width: {{canvas_width}}px;
+            background: radial-gradient(ellipse farthest-corner at 20% 20%, #1e2837 0%, #121822 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px 28px 28px;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 顶部标题区 */
+        .recommend-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .recommend-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .recommend-title::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, #66c0f4 0%, #1a9fff 100%);
+            border-radius: 2px;
+        }
+
+        /* 卡片列表 */
+        .cards-list {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        /* 单游戏卡片 */
+        .game-card {
+            flex: 1;
+            min-width: 0;
+            max-width: 270px;
+            width: 100%;
+            background: rgba(30, 42, 56, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(8px);
+        }
+
+        /* 横板封面图容器 */
+        .cover-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 460 / 215;
+            background: #0e141b;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .cover-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* 游戏信息容器 */
+        .card-info {
+            padding: 14px 16px 16px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 8px;
+        }
+
+        .game-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f3f3f3;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 44px;
+            word-break: break-word;
+        }
+
+        .game-desc {
+            font-size: 13px;
+            font-weight: 400;
+            color: #8f98a0;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 6;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+<div class="recommend-container">
+    <div class="recommend-header">
+        <div class="recommend-title">{{title_text}}</div>
+    </div>
+    <div class="cards-list">
+        {{cards_html}}
+    </div>
+</div>
+</body>
+</html>

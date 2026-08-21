@@ -14,6 +14,7 @@ _GAME_STATUS_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_stat
 _STEAM_INFO_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_info.html"
 _GAME_RANKING_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_ranking.html"
 _USER_RANKING_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "user_ranking.html"
+_GAME_RECOMMEND_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_recommend.html"
 
 
 
@@ -742,6 +743,80 @@ async def render_user_ranking(
         viewport_height=max(est_height, 200),
         device_scale_factor=2.0,
     )
+
+
+# ============================================================
+# Steam 库存游戏推荐（玩什么）渲染
+# ============================================================
+
+def render_game_recommend_html(
+    games_data: list[dict],
+    canvas_width: int = 880,
+) -> str:
+    """构建 Steam 库存游戏推荐（玩什么）卡片的 HTML 字符串。
+
+    games_data item 字典格式:
+        - appid: str | int
+        - name: str
+        - description: str (游戏简介)
+        - cover_url: str (横板封面 URL，可选)
+    """
+    import html as html_lib
+
+    template = _GAME_RECOMMEND_TEMPLATE_PATH.read_text(encoding="utf-8")
+    title_text = "steam 库存游戏推荐"
+
+    cards_html_parts = []
+    for item in games_data:
+        appid = str(item.get("appid", ""))
+        name = item.get("name", "") or "未知游戏"
+        description = item.get("description", "") or "暂无游戏简介"
+        cover_url = (
+            item.get("cover_url")
+            or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+        )
+
+        escaped_name = html_lib.escape(name)
+        escaped_desc = html_lib.escape(description)
+
+        card_html = (
+            f'<div class="game-card">'
+            f'  <div class="cover-wrapper">'
+            f'    <img class="cover-img" src="{cover_url}" onerror="this.onerror=null;this.src=\'{_DEFAULT_GAME_COVER_SVG}\'" alt="">'
+            f'  </div>'
+            f'  <div class="card-info">'
+            f'    <div class="game-name" title="{escaped_name}">{escaped_name}</div>'
+            f'    <div class="game-desc">{escaped_desc}</div>'
+            f'  </div>'
+            f'</div>'
+        )
+        cards_html_parts.append(card_html)
+
+    cards_html = "\n".join(cards_html_parts)
+
+    replacements = {
+        "canvas_width": str(canvas_width),
+        "title_text": title_text,
+        "cards_html": cards_html,
+    }
+
+    return _fill_template(template, replacements)
+
+
+async def render_game_recommend(
+    games_data: list[dict],
+) -> bytes:
+    """渲染 Steam 库存游戏推荐卡片为 PNG 字节。"""
+    canvas_w = 880
+    html_content = render_game_recommend_html(games_data, canvas_width=canvas_w)
+    return await render_html(
+        html_content,
+        ".recommend-container",
+        viewport_width=canvas_w + 50,
+        viewport_height=550,
+        device_scale_factor=2.0,
+    )
+
 
 
 
