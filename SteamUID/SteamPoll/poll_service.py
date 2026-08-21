@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from collections import defaultdict
@@ -14,6 +15,7 @@ from ..utils.api import (
     get_archivement_info,
     get_archivement_img,
     get_price_data,
+    get_user_static_avatar_frame,
 )
 from ..utils.database.models import (
     SteamIDInfo,
@@ -71,7 +73,26 @@ async def prefetch_game_info(push_list) -> dict[str, dict]:
     return game_info_map
 
 
-async def process_game_status_push(push_list, game_info_map) -> None:
+async def prefetch_avatar_frames(push_list) -> dict[str, str | None]:
+    """批量拉取推送列表中涉及用户的静态头像框"""
+    steamids = {
+        info.get("steamid") for info, _ in push_list if info.get("steamid")
+    }
+    if not steamids:
+        return {}
+    tasks = {sid: get_user_static_avatar_frame(sid) for sid in steamids}
+    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+    frame_map = {}
+    for sid, res in zip(tasks.keys(), results):
+        frame_map[sid] = res if isinstance(res, str) else None
+    return frame_map
+
+
+async def process_game_status_push(
+    push_list,
+    game_info_map,
+    avatar_frame_map: dict[str, str | None] | None = None,
+) -> None:
     """处理游戏状态变化推送，渲染图片并发送给订阅用户"""
     enabled_events = get_enabled_push_events()
     for info, old_info in push_list:
@@ -84,6 +105,9 @@ async def process_game_status_push(push_list, game_info_map) -> None:
         appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
         game_data = game_info_map.get(appid, {})
         game_avatar = game_data.get("header_image")
+        avatar_frame_url = (
+            avatar_frame_map.get(steamid64) if avatar_frame_map else None
+        )
 
         # 提前判断是否有用户需要推送，避免无效渲染
         target_event = PUSH_EVENTS["push_start_game"] if is_playing else PUSH_EVENTS["push_end_game"]
@@ -119,6 +143,7 @@ async def process_game_status_push(push_list, game_info_map) -> None:
                     game_avatar,
                     game_data,
                     group_name=group_name,
+                    avatar_frame_url=avatar_frame_url,
                 )
             send_msg = rendered_cache[group_name]
 
@@ -154,6 +179,7 @@ async def _render_game_status_message(
     game_avatar,
     game_data,
     group_name: str | None = None,
+    avatar_frame_url: str | None = None,
 ):
     """渲染游戏状态推送图片或生成文本消息"""
     username = info.get("personaname") or ""
@@ -177,6 +203,7 @@ async def _render_game_status_message(
             username=username,
             game_name=game_name,
             avatar_url=avatar_url,
+            avatar_frame_url=avatar_frame_url,
             game_background=game_avatar,
             is_playing=is_playing,
             group_name=group_name,
@@ -193,6 +220,7 @@ async def _render_game_status_message(
             game_name=game_name,
             avatar_url=avatar_url,
             avatar_hash=avatar_hash,
+            avatar_frame_url=avatar_frame_url,
             username=username,
             game_background=game_avatar,
             is_playing=is_playing,
@@ -283,7 +311,8 @@ async def poll_and_push_game_status() -> None:
         
         push_list, update_list = await detect_status_changes(resp)
         game_info_map = await prefetch_game_info(push_list)
-        await process_game_status_push(push_list, game_info_map)
+        avatar_frame_map = await prefetch_avatar_frames(push_list)
+        await process_game_status_push(push_list, game_info_map, avatar_frame_map)
         await update_achievement_baselines(push_list)
         await flush_status_updates(update_list)
         await update_game_record(push_list)

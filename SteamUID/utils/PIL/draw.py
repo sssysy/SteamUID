@@ -66,6 +66,7 @@ async def draw_game_status_photo(
     game_name: str,
     avatar_url: str,
     avatar_hash: str,
+    avatar_frame_url: str | None = None,
     username: str,
     game_background: str | None = None,
     is_playing: bool = True,
@@ -106,6 +107,17 @@ async def draw_game_status_photo(
         avatar = Image.open(_DEFAULT_ACHIEVEMENT_ICON).convert("RGBA")
     avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
 
+    frame_img = None
+    if avatar_frame_url:
+        try:
+            frame_cache = cache_path_for_url(avatar_frame_url, "frame")
+            frame_raw = await _load_or_download(avatar_frame_url, frame_cache)
+            frame_size = round(avatar_size * 1.1888)
+            frame_img = frame_raw.resize((frame_size, frame_size), Image.Resampling.LANCZOS)
+        except Exception as error:
+            logger.warning(f"[SteamUID] 玩家头像框下载失败: {error!r}")
+            frame_img = None
+
     canvas_h = (H_bg if bg is not None else 0) + info_h
     canvas = Image.new("RGBA", (W_bg, canvas_h))
     draw_vertical_gradient(canvas, W_bg, canvas_h, theme["gradient_top"], theme["gradient_bottom"])
@@ -126,6 +138,16 @@ async def draw_game_status_photo(
     bar_x1 = bar_x0 + bar_w
     bar_y1 = avatar_top + avatar_size
     draw.rectangle([bar_x0, bar_y0, bar_x1, bar_y1], fill=theme["status_bar_color"])
+
+    # 绘制头像框（置于状态条图层上方）
+    if frame_img is not None:
+        frame_offset = (frame_img.width - avatar_size) // 2
+        frame_x = pad_x - frame_offset
+        frame_y = avatar_top - frame_offset
+        frame_overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        frame_overlay.paste(frame_img, (frame_x, frame_y), frame_img)
+        canvas = Image.alpha_composite(canvas, frame_overlay)
+        draw = ImageDraw.Draw(canvas)
 
     text_x = bar_x1 + round(14 * s)
     max_text_w = W_bg - text_x - pad_x

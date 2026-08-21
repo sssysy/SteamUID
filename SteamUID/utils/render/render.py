@@ -393,6 +393,7 @@ def render_game_status_html(
     username: str,
     game_name: str,
     avatar_url: str,
+    avatar_frame_url: str | None = None,
     game_background: str | None = None,
     is_playing: bool = True,
     group_name: str | None = None,
@@ -410,6 +411,12 @@ def render_game_status_html(
         cover_html = ""
         cover_h_val = "0"
 
+    avatar_frame_html = (
+        f'<div class="avatar-frame"><img src="{avatar_frame_url}" alt=""></div>'
+        if avatar_frame_url
+        else ""
+    )
+
     default_avatar = _get_default_icon_b64()
     avatar_src = avatar_url if avatar_url else default_avatar
     group_name_html = f'<span class="group-name">({group_name})</span>' if group_name else ""
@@ -419,6 +426,7 @@ def render_game_status_html(
         "cover_height": cover_h_val,
         "cover_html": cover_html,
         "avatar_url": avatar_src,
+        "avatar_frame_html": avatar_frame_html,
         "default_avatar": default_avatar,
         "status_bar_color": theme["status_bar_color"],
         "persona_color": theme["persona_color"],
@@ -439,6 +447,7 @@ async def render_game_status(
     username: str,
     game_name: str,
     avatar_url: str,
+    avatar_frame_url: str | None = None,
     game_background: str | None = None,
     is_playing: bool = True,
     group_name: str | None = None,
@@ -448,6 +457,7 @@ async def render_game_status(
         username=username,
         game_name=game_name,
         avatar_url=avatar_url,
+        avatar_frame_url=avatar_frame_url,
         game_background=game_background,
         is_playing=is_playing,
         group_name=group_name,
