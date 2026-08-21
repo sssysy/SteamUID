@@ -131,14 +131,66 @@ async def build_random_pick(steamid64: str) -> bytes:
     if not api_key:
         raise SteamConfigError("请先配置 steam web api key")
 
-    library = await get_steamlibrary_by_steamid64(api_key, steamid64)
-    games = library.get("games")
+    # 1. 并发获取用户摘要、miniprofile、装备项与游戏库
+    players_res, miniprofile_data, items_data, library_res = await asyncio.gather(
+        get_user_Summaries(steamid64),
+        get_miniprofile(steamid64),
+        get_profile_items_equipped(steamid64),
+        get_steamlibrary_by_steamid64(api_key, steamid64),
+        return_exceptions=True,
+    )
+
+    # 2. 用户校验与可见性检查
+    if isinstance(players_res, Exception) or not players_res:
+        raise SteamAPIError("未找到该 Steam 用户")
+    player = players_res[0]
+
+    if player.get("communityvisibilitystate", 3) == 1:
+        raise SteamValidationError("该用户资料为私有，无法获取游戏库")
+
+    if isinstance(library_res, Exception) or not isinstance(library_res, dict):
+        raise SteamValidationError("获取 steam 游戏库列表失败")
+
+    games = library_res.get("games")
     if games is None:
         raise SteamValidationError("获取 steam 游戏库列表失败")
     if not games:
         raise SteamValidationError("该 steam 账号暂无游戏库存")
 
-    # 随机打乱游戏库列表
+    # 3. 解析用户头像、头像框、背景图与好友码
+    user_name = player.get("personaname", "未知用户")
+    friend_code = steamid64_to_friend_code(steamid64)
+
+    avatar_url = player.get("avatarfull", "")
+    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
+        avatar_url = miniprofile_data["avatar_url"]
+
+    avatar_frame_url = None
+    if isinstance(items_data, dict):
+        frame = items_data.get("avatar_frame", {})
+        if frame.get("image_small"):
+            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
+    if not avatar_frame_url and isinstance(miniprofile_data, dict):
+        avatar_frame_url = miniprofile_data.get("avatar_frame")
+
+    bg_url = None
+    if isinstance(items_data, dict):
+        mini_bg = items_data.get("mini_profile_background", {})
+        if mini_bg.get("image_large"):
+            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
+    if not bg_url and isinstance(miniprofile_data, dict):
+        bg = miniprofile_data.get("profile_background", {})
+        bg_url = bg.get("image")
+
+    user_data = {
+        "name": user_name,
+        "friend_code": friend_code,
+        "avatar_url": avatar_url,
+        "avatar_frame_url": avatar_frame_url,
+        "bg_url": bg_url,
+    }
+
+    # 4. 随机打乱游戏库列表并选取游戏
     shuffled_games = random.sample(games, len(games))
     valid_games = []
 
@@ -185,7 +237,7 @@ async def build_random_pick(steamid64: str) -> bytes:
     if not valid_games:
         raise SteamValidationError("未能在游戏库中找到可推荐的有效游戏")
 
-    return await render_game_recommend(valid_games)
+    return await render_game_recommend(valid_games, user_data=user_data)
 
 
 @library_SV.on_command(("游戏墙", "游戏库"))

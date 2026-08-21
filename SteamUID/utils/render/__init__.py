@@ -20,6 +20,7 @@ from .render import (
     render_steam_achievement_html,
     render_achievement_push,
     render_achievement_push_html,
+    render_account_pill_html,
 )
 
 __all__ = [
@@ -44,6 +45,7 @@ __all__ = [
     "render_steam_achievement_html",
     "render_achievement_push",
     "render_achievement_push_html",
+    "render_account_pill_html",
 ]
 
 

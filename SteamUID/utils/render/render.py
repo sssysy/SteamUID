@@ -21,6 +21,8 @@ _BIND_LIST_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "bind_list.h
 _STEAM_WALL_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_wall.html"
 _STEAM_ACHIEVEMENT_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_achievement.html"
 _ACHIEVEMENT_PUSH_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "achievement_push.html"
+_ACCOUNT_PILL_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "account_pill.html"
+
 
 _DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
 _FOOTER_PATH = pathlib.Path(__file__).parent.parent.parent / "SteamHelp" / "texture2d" / "footer.png"
@@ -340,6 +342,60 @@ _FIELD_DEFAULTS: dict[str, Any] = {
     "badge_name": None, # 特色徽章名称
     "badge_xp": None, # 特色徽章经验值
 }
+
+
+# ============================================================
+# 通用账户信息（药丸型卡片）渲染
+# ============================================================
+
+def render_account_pill_html(
+    user_data: dict | None = None,
+    default_avatar: str | None = None,
+) -> str:
+    """构建卡片右上角/顶部的药丸型 Steam 账号卡片 HTML 字符串。
+
+    user_data 字典格式 (可选):
+        - name: str (Steam 昵称)
+        - friend_code: str (Steam 好友码)
+        - avatar_url: str (Steam 头像 URL)
+        - avatar_frame_url: str | None (Steam 头像框 URL)
+        - bg_url: str | None (Steam 迷你资料背景 URL)
+    """
+    import html as html_lib
+
+    if user_data is None:
+        user_data = {}
+    if default_avatar is None:
+        default_avatar = _get_default_icon_b64()
+
+    template = _ACCOUNT_PILL_TEMPLATE_PATH.read_text(encoding="utf-8")
+
+    user_name = html_lib.escape(user_data.get("name", "未知用户"))
+    friend_code = html_lib.escape(str(user_data.get("friend_code", "")))
+    avatar_url = user_data.get("avatar_url") or default_avatar
+    avatar_frame_url = user_data.get("avatar_frame_url")
+    bg_url = user_data.get("bg_url")
+
+    bg_style = f' style="background-image: url(\'{bg_url}\');"' if bg_url else ""
+    bg_html = f'<div class="pill-bg"{bg_style}></div>' if bg_url else ""
+
+    frame_html = ""
+    if avatar_frame_url:
+        frame_html = (
+            f'<div class="avatar-frame"><img src="{avatar_frame_url}" '
+            f'onerror="this.parentElement.style.display=\'none\'" alt=""></div>'
+        )
+
+    replacements = {
+        "user_name": user_name,
+        "friend_code": friend_code,
+        "avatar_url": avatar_url,
+        "frame_html": frame_html,
+        "bg_html": bg_html,
+        "default_avatar": default_avatar,
+    }
+    return _fill_template(template, replacements)
+
 
 
 def render_miniprofile(data: Any) -> str:
@@ -769,6 +825,7 @@ async def render_user_ranking(
 
 def render_game_recommend_html(
     games_data: list[dict],
+    user_data: dict | None = None,
     canvas_width: int = 880,
 ) -> str:
     """构建 Steam 库存游戏推荐（玩什么）卡片的 HTML 字符串。
@@ -778,11 +835,22 @@ def render_game_recommend_html(
         - name: str
         - description: str (游戏简介)
         - cover_url: str (横板封面 URL，可选)
+
+    user_data 字典格式 (可选):
+        - name: str (Steam 昵称)
+        - friend_code: str (Steam 好友码)
+        - avatar_url: str (Steam 头像 URL)
+        - avatar_frame_url: str | None (Steam 头像框 URL)
+        - bg_url: str | None (Steam 迷你资料背景 URL)
     """
     import html as html_lib
 
     template = _GAME_RECOMMEND_TEMPLATE_PATH.read_text(encoding="utf-8")
     title_text = "steam 库存游戏推荐"
+    default_avatar = _get_default_icon_b64()
+
+    # 右上角用户账号卡片
+    account_pill_html = render_account_pill_html(user_data, default_avatar)
 
     cards_html_parts = []
     for item in games_data:
@@ -815,6 +883,7 @@ def render_game_recommend_html(
     replacements = {
         "canvas_width": str(canvas_width),
         "title_text": title_text,
+        "account_pill_html": account_pill_html,
         "cards_html": cards_html,
         "footer_b64": _get_footer_b64(),
     }
@@ -824,10 +893,15 @@ def render_game_recommend_html(
 
 async def render_game_recommend(
     games_data: list[dict],
+    user_data: dict | None = None,
 ) -> bytes:
     """渲染 Steam 库存游戏推荐卡片为 PNG 字节。"""
     canvas_w = 880
-    html_content = render_game_recommend_html(games_data, canvas_width=canvas_w)
+    html_content = render_game_recommend_html(
+        games_data=games_data,
+        user_data=user_data,
+        canvas_width=canvas_w,
+    )
     return await render_html(
         html_content,
         ".recommend-container",
@@ -976,27 +1050,11 @@ def render_steam_wall_html(
         - playtime_forever: int (总游玩时长，分钟)
         - cover_url: str (可选)
     """
-    import html as html_lib
-
     template = _STEAM_WALL_TEMPLATE_PATH.read_text(encoding="utf-8")
     default_avatar = _get_default_icon_b64()
 
-    # 1. 顶部用户卡片
-    user_name = html_lib.escape(user_data.get("name", "未知用户"))
-    friend_code = html_lib.escape(str(user_data.get("friend_code", "")))
-    avatar_url = user_data.get("avatar_url") or default_avatar
-    avatar_frame_url = user_data.get("avatar_frame_url")
-    bg_url = user_data.get("bg_url")
-
-    bg_style = f' style="background-image: url(\'{bg_url}\');"' if bg_url else ""
-    bg_html = f'<div class="pill-bg"{bg_style}></div>' if bg_url else ""
-
-    frame_html = ""
-    if avatar_frame_url:
-        frame_html = (
-            f'<div class="avatar-frame"><img src="{avatar_frame_url}" '
-            f'onerror="this.parentElement.style.display=\'none\'" alt=""></div>'
-        )
+    # 1. 顶部用户账号卡片
+    account_pill_html = render_account_pill_html(user_data, default_avatar)
 
     # 2. 游戏墙网格
     # 过滤游玩时长 < 10 分钟的游戏
@@ -1044,12 +1102,7 @@ def render_steam_wall_html(
 
     replacements = {
         "canvas_width": str(canvas_width),
-        "user_name": user_name,
-        "friend_code": friend_code,
-        "avatar_url": avatar_url,
-        "frame_html": frame_html,
-        "bg_html": bg_html,
-        "default_avatar": default_avatar,
+        "account_pill_html": account_pill_html,
         "grid_html": grid_html,
         "footer_b64": _get_footer_b64(),
     }
@@ -1122,22 +1175,8 @@ def render_steam_achievement_html(
     game_icon_url = game_data.get("icon_url") or default_icon
     cover_url = game_data.get("cover_url") or game_icon_url
 
-    # 2. 用户卡片
-    user_name = html_lib.escape(user_data.get("name", "未知用户"))
-    friend_code = html_lib.escape(str(user_data.get("friend_code", "")))
-    avatar_url = user_data.get("avatar_url") or default_avatar
-    avatar_frame_url = user_data.get("avatar_frame_url")
-    bg_url = user_data.get("bg_url")
-
-    bg_style = f' style="background-image: url(\'{bg_url}\');"' if bg_url else ""
-    bg_html = f'<div class="pill-bg"{bg_style}></div>' if bg_url else ""
-
-    frame_html = ""
-    if avatar_frame_url:
-        frame_html = (
-            f'<div class="avatar-frame"><img src="{avatar_frame_url}" '
-            f'onerror="this.parentElement.style.display=\'none\'" alt=""></div>'
-        )
+    # 2. 用户账号卡片
+    account_pill_html = render_account_pill_html(user_data, default_avatar)
 
     # 3. 统计与进度
     total_count = len(achievements_data)
@@ -1252,12 +1291,7 @@ def render_steam_achievement_html(
         "game_icon_url": game_icon_url,
         "game_name": game_name,
         "default_icon": default_icon,
-        "default_avatar": default_avatar,
-        "user_name": user_name,
-        "friend_code": friend_code,
-        "avatar_url": avatar_url,
-        "frame_html": frame_html,
-        "bg_html": bg_html,
+        "account_pill_html": account_pill_html,
         "unlocked_count": str(unlocked_count),
         "total_count": str(total_count),
         "percentage": str(percentage),
@@ -1333,22 +1367,8 @@ def render_achievement_push_html(
     default_icon = _get_default_icon_b64()
     default_avatar = default_icon
 
-    # 1. 用户卡片
-    user_name = html_lib.escape(user_data.get("name", "未知用户"))
-    friend_code = html_lib.escape(str(user_data.get("friend_code", "")))
-    avatar_url = user_data.get("avatar_url") or default_avatar
-    avatar_frame_url = user_data.get("avatar_frame_url")
-    bg_url = user_data.get("bg_url")
-
-    bg_style = f' style="background-image: url(\'{bg_url}\');"' if bg_url else ""
-    bg_html = f'<div class="pill-bg"{bg_style}></div>' if bg_url else ""
-
-    frame_html = ""
-    if avatar_frame_url:
-        frame_html = (
-            f'<div class="avatar-frame"><img src="{avatar_frame_url}" '
-            f'onerror="this.parentElement.style.display=\'none\'" alt=""></div>'
-        )
+    # 1. 顶部用户账号卡片
+    account_pill_html = render_account_pill_html(user_data, default_avatar)
 
     # 2. 成就信息
     game_name = html_lib.escape(achievement_data.get("game_name", "未知游戏"))
@@ -1358,12 +1378,7 @@ def render_achievement_push_html(
 
     replacements = {
         "canvas_width": str(canvas_width),
-        "user_name": user_name,
-        "friend_code": friend_code,
-        "avatar_url": avatar_url,
-        "frame_html": frame_html,
-        "bg_html": bg_html,
-        "default_avatar": default_avatar,
+        "account_pill_html": account_pill_html,
         "default_icon": default_icon,
         "game_name": game_name,
         "achievement_name": achievement_name,
