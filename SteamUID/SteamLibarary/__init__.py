@@ -197,8 +197,10 @@ async def build_random_pick(steamid64: str) -> bytes:
     # 分批并发查询游戏详情（跳过无有效简介或状态异常的游戏）
     batch_size = 6
     for i in range(0, len(shuffled_games), batch_size):
-        batch = shuffled_games[i:i + batch_size]
-        appids = [str(g.get("appid", "")) for g in batch if g.get("appid")]
+        batch = [g for g in shuffled_games[i:i + batch_size] if g.get("appid")]
+        if not batch:
+            continue
+        appids = [str(g["appid"]) for g in batch]
 
         results = await asyncio.gather(
             *[get_game_info(aid) for aid in appids],
@@ -236,7 +238,6 @@ async def build_random_pick(steamid64: str) -> bytes:
 
         if len(valid_games) >= 3:
             break
-
     if not valid_games:
         raise SteamValidationError("未能在游戏库中找到可推荐的有效游戏")
 
