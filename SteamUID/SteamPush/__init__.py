@@ -5,7 +5,12 @@ from gsuid_core.sv import SV
 
 from ..utils.database.models import SteamBind
 from ..utils.exceptions import SteamError, SteamValidationError
-from ..utils.utils import PUSH_EVENTS, get_enabled_push_events, maybe_hide_steamid
+from ..utils.utils import (
+    PUSH_EVENTS,
+    auto2steamid64,
+    get_enabled_push_events,
+    maybe_hide_steamid,
+)
 
 push_SV = SV("steam推送开关")
 
@@ -44,10 +49,11 @@ async def switch_push(
         )
     ]
     if steamid64:
-        if steamid64 not in subs:
+        target_sid = auto2steamid64(steamid64) or steamid64
+        if target_sid not in subs:
             _raise("你没有绑定该 steamid，无法修改推送设置")
         else:
-            subs = [steamid64]
+            subs = [target_sid]
 
     if not subs:
         _raise("你没有绑定任何账号，无法修改推送设置")
@@ -102,7 +108,8 @@ _PUSH_COMMANDS: list[tuple[tuple[str, ...], list[str], bool]] = [
 def _make_handler(columns: list[str], enabled: bool):
     async def _handler(bot: Bot, ev: Event):
         try:
-            steamid64 = ev.text.strip()
+            text = ev.text.strip()
+            steamid64 = auto2steamid64(text) or text
             result = await switch_push(ev, steamid64, columns, enabled)
             if result:
                 await bot.send(result)

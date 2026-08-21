@@ -1,3 +1,5 @@
+import asyncio
+
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
@@ -43,7 +45,11 @@ async def get_group_ranking_list(group_id: str) -> list[dict]:
         uid = steamid_to_user.get(record.steamid64)
         if uid is None:
             continue
+        if not record.end_ts or not record.start_ts:
+            continue
         duration = record.end_ts - record.start_ts  # type: ignore
+        if duration <= 0:
+            continue
         user_durations[uid] = user_durations.get(uid, 0) + duration
 
     ranking_list = [
@@ -59,7 +65,7 @@ async def get_group_ranking_list(group_id: str) -> list[dict]:
     return ranking_list
 
 
-async def get_game_ranking_list(group_id: str) -> list[dict]:
+async def get_game_ranking_list(group_id: str, limit: int | None = None) -> list[dict]:
     """获取群内游戏排行列表（按游戏总时长降序，不区分用户）"""
     binds = await SteamBind.get_binds_by_group(group_id)
     if not binds:
@@ -79,13 +85,18 @@ async def get_game_ranking_list(group_id: str) -> list[dict]:
 
     app_durations: dict[str, int] = {}
     for record in records:
+        if not record.end_ts or not record.start_ts:
+            continue
         duration = record.end_ts - record.start_ts  # type: ignore
+        if duration <= 0:
+            continue
         app_durations[record.appid] = app_durations.get(record.appid, 0) + duration
 
     sorted_apps = sorted(app_durations.items(), key=lambda x: x[1], reverse=True)
+    if limit is not None and limit > 0:
+        sorted_apps = sorted_apps[:limit]
 
-    ranking_list: list[dict] = []
-    for appid, total_duration in sorted_apps:
+    async def _fetch_game_detail(appid: str, total_duration: int) -> dict:
         game_name = appid
         cover_url = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
         try:
@@ -100,14 +111,18 @@ async def get_game_ranking_list(group_id: str) -> list[dict]:
                     cover_url = header_img
         except Exception:
             pass
-        ranking_list.append({
+        return {
             "appid": appid,
             "game_name": game_name,
             "total_duration": total_duration,
             "cover_url": cover_url,
-        })
+        }
 
-    return ranking_list
+    ranking_list = await asyncio.gather(
+        *(_fetch_game_detail(appid, total_duration) for appid, total_duration in sorted_apps)
+    )
+
+    return list(ranking_list)
 
 
 @ranking_sv.on_command(("群排行", "群排名"))
@@ -171,22 +186,15 @@ async def game_ranking(bot: Bot, ev: Event):
         if not ev.group_id:
             raise SteamValidationError("请在群聊中使用此功能")
 
-        ranking_list = await get_game_ranking_list(ev.group_id)
+        text = ev.text.strip()
+        limit = int(text) if text.isdigit() and int(text) > 0 else 10
+
+        ranking_list = await get_game_ranking_list(ev.group_id, limit=limit)
         if not ranking_list:
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        text = ev.text.strip()
-        if text.isdigit() and int(text) > 0:
-            top = ranking_list[:int(text)]
-        else:
-            top = ranking_list[:10]
-
-        if not top:
-            await bot.send("本群暂无游戏时长排行数据")
-            return
-
-        img_bytes = await render_game_ranking(top)
+        img_bytes = await render_game_ranking(ranking_list)
         await bot.send(MessageSegment.image(img_bytes))
 
     except SteamError as e:
