@@ -242,24 +242,6 @@
             text-overflow: ellipsis;
             word-break: break-word;
         }
-
-        .card-footer {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .card-footer img {
-            max-width: 100%;
-            max-height: 16px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            display: block;
-            opacity: 0.85;
-        }
     </style>
 </head>
 <body>
@@ -290,11 +272,6 @@
                 <div class="achievement-name" title="{{achievement_name}}">{{achievement_name}}</div>
                 <div class="achievement-desc" title="{{achievement_desc}}">{{achievement_desc}}</div>
             </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="card-footer">
-            <img src="{{footer_b64}}" alt="">
         </div>
     </div>
 </body>

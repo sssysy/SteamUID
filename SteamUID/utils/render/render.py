@@ -374,7 +374,6 @@ def render_miniprofile(data: Any) -> str:
         "avatar_frame_html": avatar_frame_html,
         "background_inner_html": background_inner_html,
         "featured_badge_html": featured_badge_html,
-        "footer_b64": _get_footer_b64(),
     }
 
     # 5. 替换占位符并返回
@@ -456,7 +455,6 @@ def render_game_status_html(
         "subtitle": theme["subtitle"],
         "game_name": game_name,
         "game_name_color": theme["game_name_color"],
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -482,7 +480,7 @@ async def render_game_status(
         is_playing=is_playing,
         group_name=group_name,
     )
-    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_ROW_H + 50 + 35
+    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_ROW_H + 50
     return await render_html(
         html_content,
         ".game-status-card",
@@ -1371,7 +1369,6 @@ def render_achievement_push_html(
         "achievement_name": achievement_name,
         "achievement_desc": achievement_desc,
         "achievement_icon_url": achievement_icon_url,
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -1393,7 +1390,7 @@ async def render_achievement_push(
         html_content,
         ".achievement-push-card",
         viewport_width=canvas_width + 40,
-        viewport_height=340,
+        viewport_height=300,
         device_scale_factor=2.0,
     )
 
