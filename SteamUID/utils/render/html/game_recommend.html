@@ -38,13 +38,10 @@
 
         .recommend-container {
             width: {{canvas_width}}px;
-            background: radial-gradient(ellipse farthest-corner at 20% 20%, #1e2837 0%, #121822 100%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            background: #171d25;
             padding: 24px 28px 28px;
             font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
             color: #ffffff;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
         }
 
         /* 顶部标题区 */
@@ -59,19 +56,7 @@
             font-size: 22px;
             font-weight: 700;
             color: #ffffff;
-            letter-spacing: 0.3px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .recommend-title::before {
-            content: "";
-            display: inline-block;
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(180deg, #66c0f4 0%, #1a9fff 100%);
-            border-radius: 2px;
+            letter-spacing: -0.2px;
         }
 
         /* 卡片列表 */
@@ -83,20 +68,17 @@
             align-items: stretch;
         }
 
-        /* 单游戏卡片 */
+        /* 单游戏卡片：无边框，靠深色背景分区域 */
         .game-card {
             flex: 1;
             min-width: 0;
             max-width: 270px;
             width: 100%;
-            background: rgba(30, 42, 56, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 4px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-            backdrop-filter: blur(8px);
         }
 
         /* 横板封面图容器 */
