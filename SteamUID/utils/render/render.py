@@ -1156,9 +1156,23 @@ def render_steam_achievement_html(
     if not display_items:
         columns_html = '<div class="empty-state">该游戏暂无成就数据</div>'
     else:
+        if num_display <= 20:
+            num_cols = 1
+        elif num_display <= 40:
+            num_cols = 2
+        else:
+            num_cols = 3
+
+        base_size = num_display // num_cols
+        remainder = num_display % num_cols
+
         columns_html_parts = []
-        for i in range(0, num_display, 20):
-            chunk = display_items[i : i + 20]
+        start_idx = 0
+        for col_idx in range(num_cols):
+            col_size = base_size + (1 if col_idx < remainder else 0)
+            chunk = display_items[start_idx : start_idx + col_size]
+            start_idx += col_size
+
             card_parts = []
             for item in chunk:
                 name = html_lib.escape(item.get("name", ""))
@@ -1250,10 +1264,10 @@ async def render_steam_achievement(
         max_rows = max(1, num_display)
     elif num_display <= 40:
         canvas_width = 1380
-        max_rows = 20 if num_display > 20 else num_display
+        max_rows = (num_display + 1) // 2
     else:
         canvas_width = 2040
-        max_rows = 20
+        max_rows = (num_display + 2) // 3
 
     html_content = render_steam_achievement_html(
         game_data=game_data,
