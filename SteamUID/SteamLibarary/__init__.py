@@ -2,26 +2,29 @@ import asyncio
 import html
 import random
 import re
-from io import BytesIO
-
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
-from gsuid_core.segment import MessageSegment, pic_quality
+from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
-from ..utils.api import get_game_info, get_steamlibrary_by_steamid64
-from ..utils.downloader import download
+from ..utils.api import (
+    get_game_info,
+    get_steamlibrary_by_steamid64,
+    get_user_Summaries,
+    get_miniprofile,
+    get_profile_items_equipped,
+)
 from ..utils.exceptions import (
     SteamConfigError,
     SteamError,
     SteamValidationError,
+    SteamAPIError,
 )
-from ..utils.PIL.steam_wall import build_wall
-from ..utils.render import render_game_recommend
-from ..utils.utils import resolve_target_steamid64
+from ..utils.render import render_game_recommend, render_steam_wall
+from ..utils.utils import resolve_target_steamid64, steamid64_to_friend_code
 
 library_SV = SV("steam库存相关")
 
@@ -37,42 +40,89 @@ def _clean_description(text: str) -> str:
 
 
 async def build_library_wall(steamid64: str) -> bytes:
+    """构建 Steam 游戏墙卡片：顶部用户胶囊卡片 + 下方 dense 游戏封面墙"""
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     if not api_key:
         raise SteamConfigError("请先配置 steam web api key")
 
-    library = await get_steamlibrary_by_steamid64(api_key, steamid64)
-    if library.get("games") is None:
+    # 1. 并发获取用户摘要、miniprofile、装备项与游戏库
+    players_res, miniprofile_data, items_data, library_res = await asyncio.gather(
+        get_user_Summaries(steamid64),
+        get_miniprofile(steamid64),
+        get_profile_items_equipped(steamid64),
+        get_steamlibrary_by_steamid64(api_key, steamid64),
+        return_exceptions=True,
+    )
+
+    # 2. 用户校验与可见性检查
+    if isinstance(players_res, Exception) or not players_res:
+        raise SteamAPIError("未找到该 Steam 用户")
+    player = players_res[0]
+
+    if player.get("communityvisibilitystate", 3) == 1:
+        raise SteamValidationError("该用户资料为私有，无法获取游戏墙")
+
+    if isinstance(library_res, Exception) or not isinstance(library_res, dict):
         raise SteamValidationError("获取 steam 游戏库列表失败")
 
-    gameinfo = []
-    cdn_urls = []
-    played_times = []
-    for game in library.get("games", []):
-        appid = game.get("appid")
-        url = SteamAPI.GetGameCoverImageURL(appid, variant='library_600x900')
-        cdn_urls.append(url)
-        played_time = (
-            game.get("playtime_forever", 0) or
-            game.get("playtime_windows_forever", 0) +
-            game.get("playtime_mac_forever", 0) +
-            game.get("playtime_linux_forever", 0) +
-            game.get("playtime_deck_forever", 0)
-        )
-        played_times.append(played_time)
-
-    downloaded_paths = await download(cdn_urls)
-    for i, file_path in enumerate(downloaded_paths):
-        gameinfo.append((str(file_path) if file_path is not None else None, played_times[i]))
-
-    if not gameinfo:
+    games = library_res.get("games")
+    if games is None:
+        raise SteamValidationError("获取 steam 游戏库列表失败")
+    if not games:
         raise SteamValidationError("该 steam 账号暂无游戏库存")
 
-    wall = build_wall(gameinfo)
+    # 3. 解析用户头像、头像框、背景图与好友码
+    user_name = player.get("personaname", "未知用户")
+    friend_code = steamid64_to_friend_code(steamid64)
 
-    buf = BytesIO()
-    wall.save(buf, format="JPEG", quality=pic_quality, subsampling=0)
-    return buf.getvalue()
+    avatar_url = player.get("avatarfull", "")
+    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
+        avatar_url = miniprofile_data["avatar_url"]
+
+    avatar_frame_url = None
+    if isinstance(items_data, dict):
+        frame = items_data.get("avatar_frame", {})
+        if frame.get("image_small"):
+            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
+    if not avatar_frame_url and isinstance(miniprofile_data, dict):
+        avatar_frame_url = miniprofile_data.get("avatar_frame")
+
+    bg_url = None
+    if isinstance(items_data, dict):
+        mini_bg = items_data.get("mini_profile_background", {})
+        if mini_bg.get("image_large"):
+            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
+    if not bg_url and isinstance(miniprofile_data, dict):
+        bg = miniprofile_data.get("profile_background", {})
+        bg_url = bg.get("image")
+
+    user_data = {
+        "name": user_name,
+        "friend_code": friend_code,
+        "avatar_url": avatar_url,
+        "avatar_frame_url": avatar_frame_url,
+        "bg_url": bg_url,
+    }
+
+    # 4. 解析游戏列表
+    games_data = []
+    for g in games:
+        appid = g.get("appid")
+        playtime = (
+            g.get("playtime_forever", 0) or
+            (g.get("playtime_windows_forever", 0) +
+             g.get("playtime_mac_forever", 0) +
+             g.get("playtime_linux_forever", 0) +
+             g.get("playtime_deck_forever", 0))
+        )
+        games_data.append({
+            "appid": appid,
+            "name": g.get("name", ""),
+            "playtime_forever": playtime,
+        })
+
+    # 5. 调用 Playwright 渲染
+    return await render_steam_wall(user_data, games_data, canvas_width=1200)
 
 
 async def build_random_pick(steamid64: str) -> bytes:

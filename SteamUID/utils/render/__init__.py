@@ -14,6 +14,8 @@ from .render import (
     render_game_recommend_html,
     render_bind_list,
     render_bind_list_html,
+    render_steam_wall,
+    render_steam_wall_html,
 )
 
 __all__ = [
@@ -32,6 +34,8 @@ __all__ = [
     "render_game_recommend_html",
     "render_bind_list",
     "render_bind_list_html",
+    "render_steam_wall",
+    "render_steam_wall_html",
 ]
 
 
