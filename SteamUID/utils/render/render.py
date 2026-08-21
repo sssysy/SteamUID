@@ -12,6 +12,7 @@ from ..exceptions import SteamError
 _TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_miniprofile.html"
 _GAME_STATUS_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_status.html"
 _STEAM_INFO_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_info.html"
+_GAME_RANKING_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_ranking.html"
 
 
 
@@ -553,5 +554,110 @@ async def render_steam_info(data: Any) -> bytes:
         viewport_height=420,
         device_scale_factor=2.0,
     )
+
+
+# ============================================================
+# Steam 群游戏排行榜渲染
+# ============================================================
+
+# 默认游戏封面 Base64 SVG (深蓝Steam配色)
+_DEFAULT_GAME_COVER_SVG = (
+    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMzIiIGhlaWdodD0iODciIHZpZXdCb3g9IjAgMCAyMzIgODciPjxyZWN0IHdpZHRoPSIyMzIiIGhlaWdodD0iODciIGZpbGw9IiMxYjI4MzgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY3YzFmNSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSJib2xkIj5TVEVBTTwvdGV4dD48L3N2Zz4="
+)
+
+
+def format_ranking_duration(seconds: int | float) -> str:
+    """按要求格式化游玩时长：
+    - 不足1h的按分钟显示，如 59.8min、0.0min
+    - 超过或等于1h的按小时显示，如 112.3h、1.0h
+    - 最大到h，不需要统计到天
+    """
+    if seconds < 0:
+        seconds = 0
+    if seconds < 3600:
+        minutes = seconds / 60.0
+        return f"{minutes:.1f}min"
+    else:
+        hours = seconds / 3600.0
+        return f"{hours:.1f}h"
+
+
+def render_game_ranking_html(
+    ranking_data: list[dict],
+    top_count: int | None = None,
+    canvas_width: int = 680,
+) -> str:
+    """构建 Steam 群游戏排行榜卡片的 HTML 字符串。
+
+    ranking_data item 字典格式:
+        - appid: str
+        - game_name: str
+        - total_duration: int (秒)
+        - cover_url: str (可选)
+    """
+    import html as html_lib
+
+    template = _GAME_RANKING_TEMPLATE_PATH.read_text(encoding="utf-8")
+    actual_count = len(ranking_data)
+    title_text = f"steam 群游戏排行 Top{actual_count}: "
+
+    items_html_parts = []
+    for idx, item in enumerate(ranking_data, 1):
+        appid = str(item.get("appid", ""))
+        game_name = item.get("game_name", "") or appid
+        cover_url = (
+            item.get("cover_url")
+            or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+        )
+        duration_sec = item.get("total_duration", 0)
+        duration_str = format_ranking_duration(duration_sec)
+        rank_str = f"#{idx}"
+
+        escaped_name = html_lib.escape(game_name)
+
+        item_html = (
+            f'<div class="ranking-item">'
+            f'  <div class="game-info-col">'
+            f'    <div class="game-cover-wrapper">'
+            f'      <img class="game-cover" src="{cover_url}" onerror="this.onerror=null;this.src=\'{_DEFAULT_GAME_COVER_SVG}\'" alt="">'
+            f'    </div>'
+            f'    <div class="game-name" title="{escaped_name}">{escaped_name}</div>'
+            f'  </div>'
+            f'  <div class="data-cols">'
+            f'    <div class="rank-num">{rank_str}</div>'
+            f'    <div class="duration-text">{duration_str}</div>'
+            f'  </div>'
+            f'</div>'
+        )
+        items_html_parts.append(item_html)
+
+    items_html = "\n".join(items_html_parts)
+
+    replacements = {
+        "canvas_width": str(canvas_width),
+        "title_text": title_text,
+        "items_html": items_html,
+    }
+
+    return _fill_template(template, replacements)
+
+
+async def render_game_ranking(
+    ranking_data: list[dict],
+    top_count: int | None = None,
+) -> bytes:
+    """渲染 Steam 群游戏排行榜卡片为 PNG 字节。"""
+    canvas_w = 680
+    html_content = render_game_ranking_html(ranking_data, top_count, canvas_width=canvas_w)
+    item_count = len(ranking_data)
+    est_height = 80 + item_count * 58 + 50
+    return await render_html(
+        html_content,
+        ".ranking-container",
+        viewport_width=canvas_w + 50,
+        viewport_height=max(est_height, 200),
+        device_scale_factor=2.0,
+    )
+
 
 
