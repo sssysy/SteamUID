@@ -8,7 +8,7 @@ from gsuid_core.utils.database.models import CoreUser
 from ..utils.api import get_game_info
 from ..utils.database.models import SteamBind, SteamPlayRecord
 from ..utils.exceptions import SteamError, SteamValidationError
-from ..utils.render import render_game_ranking
+from ..utils.render import render_game_ranking, render_user_ranking
 from ..utils.utils import time_convert_s
 
 ranking_sv = SV("steam排名服务")
@@ -112,33 +112,50 @@ async def get_game_ranking_list(group_id: str) -> list[dict]:
 
 @ranking_sv.on_command(("群排行", "群排名"))
 async def group_ranking(bot: Bot, ev: Event):
-    """按用户游戏时长从高到低取5位返回"""
+    """按用户游戏时长从高到低排序，使用 Playwright 渲染图片返回"""
     try:
         if not ev.group_id:
             raise SteamValidationError("请在群聊中使用此功能")
 
         ranking_list = await get_group_ranking_list(ev.group_id)
+        if not ranking_list:
+            await bot.send("本群暂无游戏时长排行数据")
+            return
+
         text = ev.text.strip()
         if text.isdigit() and int(text) > 0:
             top = ranking_list[:int(text)]
         else:
-            top = ranking_list[:5]
+            top = ranking_list[:10]
 
         if not top:
             await bot.send("本群暂无游戏时长排行数据")
             return
 
-        reply_text = f"本群游戏时长排行 Top{len(top)}：\n"
-        for i, item in enumerate(top, 1):
-            users = await CoreUser.select_rows(user_id=item["user_id"], group_id=ev.group_id)
-            if users and users[0].user_name:
-                name = users[0].user_name
-            else:
-                name = item["user_id"]
+        display_list = []
+        for item in top:
+            uid = str(item["user_id"])
+            users = await CoreUser.select_rows(user_id=uid, group_id=ev.group_id)
+            user_name = uid
+            avatar_url = None
+            if users and users[0]:
+                if users[0].user_name and users[0].user_name != "1":
+                    user_name = str(users[0].user_name)
+                if hasattr(users[0], "avatar_url") and users[0].avatar_url:
+                    avatar_url = users[0].avatar_url
 
-            reply_text += f"{i}. {name} ({time_convert_s(item['total_duration'])})\n"
+            if not avatar_url and uid.isdigit():
+                avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={uid}&s=640"
 
-        await bot.send(reply_text)
+            display_list.append({
+                "user_id": uid,
+                "user_name": user_name,
+                "total_duration": item["total_duration"],
+                "avatar_url": avatar_url,
+            })
+
+        img_bytes = await render_user_ranking(display_list)
+        await bot.send(MessageSegment.image(img_bytes))
 
     except SteamError as e:
         await bot.send(str(e))

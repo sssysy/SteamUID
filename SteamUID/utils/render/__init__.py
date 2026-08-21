@@ -8,6 +8,8 @@ from .render import (
     render_steam_info_html,
     render_game_ranking,
     render_game_ranking_html,
+    render_user_ranking,
+    render_user_ranking_html,
 )
 
 __all__ = [
@@ -20,6 +22,9 @@ __all__ = [
     "render_steam_info_html",
     "render_game_ranking",
     "render_game_ranking_html",
+    "render_user_ranking",
+    "render_user_ranking_html",
 ]
+
 
 
