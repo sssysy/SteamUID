@@ -16,8 +16,6 @@
 >
 > **运行环境要求 Python `3.12+`**
 >
-> ~~如果已经是最新版本的 `gsuid_core`，可以直接对 bot 发送 `core安装插件SteamUID`，然后重启 Core 以应用安装~~
->
 > 插件检测 steam 状态需要将 steam 资料设置为公开
 >
 > 🚧 项目快速迭代中，有漏洞可提issue或pr 🚧
@@ -101,7 +99,7 @@
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRDVmeDFrYTF2RlI2aXo2RklpNFlSQkFkUHFGQ1FwaloteW8wZllfbkpVQXhFP2U9Ynd5bXBh.png" width="320"/>
 
 ### steam开始游戏 / 结束游戏推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQUEtZEVQOXV3blRwMjJaN2R0MVFXNEFaZUMtVTVsOWdQZjFRSmZGSUd5UlIwP2U9elRLQmdu.png" width="320"/>
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRDdkbmttUzZScFE0VG9rMDVieU9FV0FZTHhnMkJOamRseTl3eGZNZlBUalUwP2U9WTY2MENz.png" width="320"/>
 
 ### steam游戏墙
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQnhKUDRNUFhhX1NKdUROakNNYzJ1T0FTeVRKNGlqam5wMG95YzZRUFF2QXo4P2U9aHNRV2dw.jpg" width="160"/>
@@ -117,6 +115,9 @@
 ### 动态
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ3otNHJhXzVKdFRaTmdEVGhqZ2N6aUFma29wWWJjOHlPX0pBY1hkazhsb0pNP2U9eW1IQzFp.gif" width="320">
 
+## steam信息
+<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRFFncUhDM082N1FxNUQxTVphT2p3cUFYNTNTYzc1MlV4OGdYZC02bDBXc0tNP2U9dVV3ZkZp.png" width="320">
+
 ## 计划功能
 
 - [x] 支持设置所有状态推送推送默认值
@@ -128,7 +129,7 @@
 - [ ] 总结推送功能 (定时总结周期内游戏情况而不每次状态变化都推送)
 - [x] 群游玩时长排行榜
 - [x] 隐藏 steamid / 好友码
-- [ ] steam游戏库价值计算
+- [x] steam游戏库价值计算
 
 
 

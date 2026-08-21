@@ -253,3 +253,26 @@ async def calculate_account_value(games: list[dict]) -> int:
     return int(round(total_cents / 100))
 
 
+async def get_user_static_avatar_frame(steamid64: str) -> str | None:
+    """获取用户的静态 Steam 头像框 URL（优先 GetProfileItemsEquipped 静态小图，回退 miniprofile）"""
+    try:
+        items_data = await get_profile_items_equipped(steamid64)
+        if isinstance(items_data, dict):
+            frame = items_data.get("avatar_frame", {})
+            if frame.get("image_small"):
+                return f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
+    except Exception as e:
+        logger.debug(f"[SteamUID] 获取装备头像框异常 steamid={steamid64}: {e}")
+
+    try:
+        miniprofile_data = await get_miniprofile(steamid64)
+        if isinstance(miniprofile_data, dict):
+            frame_url = miniprofile_data.get("avatar_frame")
+            if frame_url:
+                return frame_url
+    except Exception as e:
+        logger.debug(f"[SteamUID] 获取miniprofile头像框异常 steamid={steamid64}: {e}")
+
+    return None
+
+
