@@ -81,6 +81,9 @@
             height: 56px;
             background-color: {{status_bar_color}};
             flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.75);
         }
 
         .game-status-card .text-area {
@@ -105,7 +108,7 @@
 
         .game-status-card .persona-name {
             font-size: 16px;
-            font-weight: 500;
+            font-weight: 700;
             color: {{persona_color}};
             white-space: nowrap;
             overflow: hidden;
@@ -114,7 +117,7 @@
 
         .game-status-card .group-name {
             font-size: 14px;
-            font-weight: 400;
+            font-weight: 500;
             color: {{group_color}};
             margin-left: 5px;
             white-space: nowrap;
@@ -125,7 +128,7 @@
 
         .game-status-card .subtitle {
             font-size: 13px;
-            font-weight: 400;
+            font-weight: 500;
             color: {{subtitle_color}};
             white-space: nowrap;
             overflow: hidden;
@@ -136,7 +139,7 @@
 
         .game-status-card .game-name {
             font-size: 13px;
-            font-weight: 400;
+            font-weight: 700;
             color: {{game_name_color}};
             white-space: nowrap;
             overflow: hidden;
