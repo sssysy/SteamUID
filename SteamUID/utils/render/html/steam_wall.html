@@ -221,6 +221,26 @@
             background: rgba(0, 0, 0, 0.2);
             border-radius: 4px;
         }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 16px 28px 20px 28px;
+            box-sizing: border-box;
+            background: transparent;
+        }
+
+        .card-footer img {
+            max-width: 560px;
+            max-height: 20px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
@@ -246,6 +266,11 @@
 
         <!-- 游戏墙网格 -->
         {{grid_html}}
+
+        <!-- Footer -->
+        <div class="card-footer">
+            <img src="{{footer_b64}}" alt="">
+        </div>
     </div>
     <script>
         document.querySelectorAll('.game-img').forEach(function(img) {

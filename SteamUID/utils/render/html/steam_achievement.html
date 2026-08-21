@@ -393,6 +393,25 @@
             border-radius: 4px;
             width: 100%;
         }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 4px 28px 20px 28px;
+            box-sizing: border-box;
+        }
+
+        .card-footer img {
+            max-width: 560px;
+            max-height: 20px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
@@ -439,6 +458,11 @@
         <!-- 成就多列主体内容 -->
         <div class="achievements-body">
             {{columns_html}}
+        </div>
+
+        <!-- Footer -->
+        <div class="card-footer">
+            <img src="{{footer_b64}}" alt="">
         </div>
     </div>
 </body>

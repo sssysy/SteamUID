@@ -134,6 +134,25 @@
             flex: 1;
             word-break: break-word;
         }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin-top: 20px;
+            box-sizing: border-box;
+        }
+
+        .card-footer img {
+            max-width: 560px;
+            max-height: 20px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
@@ -143,6 +162,9 @@
     </div>
     <div class="cards-list">
         {{cards_html}}
+    </div>
+    <div class="card-footer">
+        <img src="{{footer_b64}}" alt="">
     </div>
 </div>
 </body>

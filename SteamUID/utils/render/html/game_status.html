@@ -170,6 +170,26 @@
             text-overflow: ellipsis;
             line-height: 1.25;
         }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 8px 16px 8px 16px;
+            box-sizing: border-box;
+            background: #13161c;
+        }
+
+        .card-footer img {
+            max-width: 100%;
+            max-height: 18px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
@@ -191,6 +211,9 @@
             <div class="subtitle">{{subtitle}}</div>
             <div class="game-name">{{game_name}}</div>
         </div>
+    </div>
+    <div class="card-footer">
+        <img src="{{footer_b64}}" alt="">
     </div>
 </div>
 </body>

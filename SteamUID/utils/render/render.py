@@ -9,6 +9,8 @@ from typing import Any
 from ..exceptions import SteamError
 
 
+import base64
+
 _TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_miniprofile.html"
 _GAME_STATUS_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "game_status.html"
 _STEAM_INFO_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_info.html"
@@ -19,6 +21,24 @@ _BIND_LIST_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "bind_list.h
 _STEAM_WALL_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_wall.html"
 _STEAM_ACHIEVEMENT_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "steam_achievement.html"
 _ACHIEVEMENT_PUSH_TEMPLATE_PATH = pathlib.Path(__file__).parent / "html" / "achievement_push.html"
+
+_DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
+_FOOTER_PATH = pathlib.Path(__file__).parent.parent.parent / "SteamHelp" / "texture2d" / "footer.png"
+
+
+def _get_default_icon_b64() -> str:
+    """读取默认问号头像并转为 Base64 Data URL"""
+    if _DEFAULT_ICON_PATH.exists():
+        return "data:image/jpeg;base64," + base64.b64encode(_DEFAULT_ICON_PATH.read_bytes()).decode()
+    return ""
+
+
+def _get_footer_b64() -> str:
+    """读取帮助图 footer.png 并转为 Base64 Data URL"""
+    if _FOOTER_PATH.exists():
+        return "data:image/png;base64," + base64.b64encode(_FOOTER_PATH.read_bytes()).decode()
+    return ""
+
 
 
 
@@ -354,6 +374,7 @@ def render_miniprofile(data: Any) -> str:
         "avatar_frame_html": avatar_frame_html,
         "background_inner_html": background_inner_html,
         "featured_badge_html": featured_badge_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     # 5. 替换占位符并返回
@@ -384,16 +405,6 @@ _GS_DEFAULT_H_BG = 215
 _GS_INFO_ROW_H = 84
 
 
-import base64
-
-_DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
-
-
-def _get_default_icon_b64() -> str:
-    """读取默认问号头像并转为 Base64 Data URL"""
-    if _DEFAULT_ICON_PATH.exists():
-        return "data:image/jpeg;base64," + base64.b64encode(_DEFAULT_ICON_PATH.read_bytes()).decode()
-    return ""
 
 
 def render_game_status_html(
@@ -445,6 +456,7 @@ def render_game_status_html(
         "subtitle": theme["subtitle"],
         "game_name": game_name,
         "game_name_color": theme["game_name_color"],
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -470,7 +482,7 @@ async def render_game_status(
         is_playing=is_playing,
         group_name=group_name,
     )
-    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_ROW_H + 50
+    total_h = (_GS_DEFAULT_H_BG if game_background else 0) + _GS_INFO_ROW_H + 50 + 35
     return await render_html(
         html_content,
         ".game-status-card",
@@ -546,6 +558,7 @@ def render_steam_info_html(data: Any) -> str:
         "playtime_hours": str(fields["playtime_hours"]),
         "game_count": str(fields["game_count"]),
         "steam_id_display": str(fields["steam_id_display"]),
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -558,7 +571,7 @@ async def render_steam_info(data: Any) -> bytes:
         html_content,
         ".steam_info_card",
         viewport_width=820,
-        viewport_height=420,
+        viewport_height=460,
         device_scale_factor=2.0,
     )
 
@@ -644,6 +657,7 @@ def render_game_ranking_html(
         "canvas_width": str(canvas_width),
         "title_text": title_text,
         "items_html": items_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -657,7 +671,7 @@ async def render_game_ranking(
     canvas_w = 680
     html_content = render_game_ranking_html(ranking_data, top_count, canvas_width=canvas_w)
     item_count = len(ranking_data)
-    est_height = 80 + item_count * 58 + 50
+    est_height = 80 + item_count * 58 + 50 + 35
     return await render_html(
         html_content,
         ".ranking-container",
@@ -727,6 +741,7 @@ def render_user_ranking_html(
         "canvas_width": str(canvas_width),
         "title_text": title_text,
         "items_html": items_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -740,7 +755,7 @@ async def render_user_ranking(
     canvas_w = 680
     html_content = render_user_ranking_html(ranking_data, top_count, canvas_width=canvas_w)
     item_count = len(ranking_data)
-    est_height = 80 + item_count * 58 + 50
+    est_height = 80 + item_count * 58 + 50 + 35
     return await render_html(
         html_content,
         ".ranking-container",
@@ -803,6 +818,7 @@ def render_game_recommend_html(
         "canvas_width": str(canvas_width),
         "title_text": title_text,
         "cards_html": cards_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -818,7 +834,7 @@ async def render_game_recommend(
         html_content,
         ".recommend-container",
         viewport_width=canvas_w + 50,
-        viewport_height=550,
+        viewport_height=600,
         device_scale_factor=2.0,
     )
 
@@ -906,6 +922,7 @@ def render_bind_list_html(
         "default_avatar": default_avatar,
         "user_name": display_user_name,
         "items_html": items_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -927,7 +944,7 @@ async def render_bind_list(
         canvas_width=canvas_width,
     )
     item_count = max(len(bind_items), 1)
-    est_height = 140 + item_count * 86 + 60
+    est_height = 140 + item_count * 86 + 60 + 35
     return await render_html(
         html_content,
         ".bind-card",
@@ -1036,6 +1053,7 @@ def render_steam_wall_html(
         "bg_html": bg_html,
         "default_avatar": default_avatar,
         "grid_html": grid_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -1053,7 +1071,7 @@ async def render_steam_wall(
         canvas_width=canvas_width,
     )
     valid_count = len([g for g in games_data if (g.get("playtime_forever") or 0) >= 10])
-    est_height = max(600, 140 + int(valid_count * 30))
+    est_height = max(600, 140 + int(valid_count * 30)) + 40
 
     return await render_html(
         html_content,
@@ -1246,6 +1264,7 @@ def render_steam_achievement_html(
         "total_count": str(total_count),
         "percentage": str(percentage),
         "columns_html": columns_html,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -1275,7 +1294,7 @@ async def render_steam_achievement(
         achievements_data=achievements_data,
         canvas_width=canvas_width,
     )
-    est_height = max(500, 200 + max_rows * 78 + 40)
+    est_height = max(500, 200 + max_rows * 78 + 40) + 35
 
     return await render_html(
         html_content,
@@ -1352,6 +1371,7 @@ def render_achievement_push_html(
         "achievement_name": achievement_name,
         "achievement_desc": achievement_desc,
         "achievement_icon_url": achievement_icon_url,
+        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
@@ -1373,7 +1393,7 @@ async def render_achievement_push(
         html_content,
         ".achievement-push-card",
         viewport_width=canvas_width + 40,
-        viewport_height=300,
+        viewport_height=340,
         device_scale_factor=2.0,
     )
 

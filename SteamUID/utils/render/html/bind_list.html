@@ -273,6 +273,27 @@
             color: #8f98a0;
             font-size: 14.5px;
         }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin-top: 18px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 3;
+        }
+
+        .card-footer img {
+            max-width: 560px;
+            max-height: 20px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
@@ -297,6 +318,11 @@
         <!-- 账号列表 -->
         <div class="account-list">
             {{items_html}}
+        </div>
+
+        <!-- Footer -->
+        <div class="card-footer">
+            <img src="{{footer_b64}}" alt="">
         </div>
     </div>
 </body>

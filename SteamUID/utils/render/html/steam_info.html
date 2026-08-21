@@ -418,6 +418,27 @@
         .friendPlayerLevel.lvl_plus_70 { background-position: 0 -224px; }
         .friendPlayerLevel.lvl_plus_80 { background-position: 0 -256px; }
         .friendPlayerLevel.lvl_plus_90 { background-position: 0 -288px; }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin-top: 14px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-footer img {
+            max-width: 560px;
+            max-height: 20px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
@@ -476,6 +497,11 @@
         <div class="glass_container steam_id_container">
             <div class="steam_id_label">Steam ID:</div>
             <div class="steam_id_val">{{steam_id_display}}</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="card-footer">
+            <img src="{{footer_b64}}" alt="">
         </div>
     </div>
 </body>
