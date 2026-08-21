@@ -12,6 +12,8 @@ from .render import (
     render_user_ranking_html,
     render_game_recommend,
     render_game_recommend_html,
+    render_bind_list,
+    render_bind_list_html,
 )
 
 __all__ = [
@@ -28,6 +30,8 @@ __all__ = [
     "render_user_ranking_html",
     "render_game_recommend",
     "render_game_recommend_html",
+    "render_bind_list",
+    "render_bind_list_html",
 ]
 
 
