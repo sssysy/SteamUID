@@ -272,7 +272,7 @@ async def group_ranking(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamRanking - 群排行] 未知错误: {e!r}")
-        await bot.send("发生未知错误，请联系管理员查看控制台")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @ranking_sv.on_command(("群游戏排行", "群游戏排名", "群游戏统计"))
@@ -297,7 +297,7 @@ async def game_ranking(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamRanking - 群游戏排行] 未知错误: {e!r}")
-        await bot.send("发生未知错误，请联系管理员查看控制台")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @ranking_sv.on_command(("统计", "排行", "排名"))
@@ -367,7 +367,7 @@ async def my_game_ranking(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamRanking - 我的统计] 未知错误: {e!r}")
-        await bot.send("发生未知错误，请联系管理员查看控制台")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @ranking_sv.on_command(("群游戏玩家排行", "群游戏玩家排名", "群游戏玩家统计"))
@@ -442,6 +442,6 @@ async def game_user_ranking(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamRanking - 群游戏玩家排行] 未知错误: {e!r}")
-        await bot.send("发生未知错误，请联系管理员查看控制台")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 

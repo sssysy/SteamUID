@@ -194,5 +194,5 @@ async def game_archivements(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[steamUID - 游戏成就] 未知错误 appid={appid}: {e!r}")
-        await bot.send(f"发生未知错误: {e}")
+        await bot.send("发生未知错误，详情请查看后台。")
 

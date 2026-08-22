@@ -42,8 +42,8 @@ async def steamsubscribe(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.warning(f"[SteamPrice] 订阅命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamPrice] 订阅命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 @price_SV.on_command("取消订阅降价")
 async def steam_unsubscribe(bot: Bot, ev: Event):
@@ -69,8 +69,8 @@ async def steam_unsubscribe(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.warning(f"[SteamPrice] 取消订阅命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamPrice] 取消订阅命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 @price_SV.on_command(("订阅降价查看", "订阅降价列表"))
 async def steam_query(bot: Bot, ev: Event):
@@ -92,5 +92,5 @@ async def steam_query(bot: Bot, ev: Event):
         await bot.send(send_msg)
 
     except Exception as e:
-        logger.warning(f"[SteamPrice] 查询命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamPrice] 查询命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
