@@ -82,20 +82,20 @@
     ]
   },
   "库存相关": {
-    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面，待解决",
+    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面",
     "data": [
       {
         "name": "游戏墙",
-        "desc": "查询指定steam的游戏墙",
-        "eg": "游戏墙123456",
+        "desc": "查询 steam 游戏墙",
+        "eg": "游戏墙",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "游戏成就",
-        "desc": "查看指定游戏成就（支持游戏名或 AppID）",
-        "eg": "游戏成就 艾尔登法环",
+        "desc": "查看指定游戏成就",
+        "eg": "游戏成就cs2",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -131,16 +131,16 @@
     "data": [
       {
         "name": "订阅降价",
-        "desc": "订阅商店游戏降价信息（支持游戏名或 AppID）",
-        "eg": "订阅降价 幻兽帕鲁",
+        "desc": "订阅商店游戏降价信息",
+        "eg": "订阅降价黑神话",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "取消订阅降价",
-        "desc": "取消订阅商店游戏降价信息（支持游戏名或 AppID）",
-        "eg": "取消订阅降价 幻兽帕鲁",
+        "desc": "取消订阅商店游戏降价信息",
+        "eg": "取消订阅降价黑神话",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -192,22 +192,21 @@
       },
       {
         "name": "群游戏玩家排行",
-        "desc": "查看指定游戏在本群的玩家游玩时长排行榜（支持游戏名或 AppID）",
-        "eg": "群游戏玩家排行 艾尔登法环 10",
+        "desc": "查看指定游戏在本群的玩家游玩时长排行榜",
+        "eg": "群游戏玩家排行apex",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       }
     ]
   },
-
   "用户相关": {
     "desc": "查看 Steam 个人资料卡片",
     "data": [
       {
         "name": "状态",
         "desc": "查看指定steam的迷你资料卡片",
-        "eg": "状态123456",
+        "eg": "状态",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -215,7 +214,7 @@
       {
         "name": "信息",
         "desc": "查看指定steam的账号详细信息卡片",
-        "eg": "信息123456",
+        "eg": "信息",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
