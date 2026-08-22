@@ -1,7 +1,7 @@
 import pathlib
 from typing import Any
 
-from ..render import _fill_template, _get_footer_b64, render_html
+from ..render import _fill_template, render_html
 
 _STEAM_INFO_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "steam_info.html"
 
@@ -67,7 +67,6 @@ def render_steam_info_html(data: Any) -> str:
         "playtime_hours": str(fields["playtime_hours"]),
         "game_count": str(fields["game_count"]),
         "steam_id_display": str(fields["steam_id_display"]),
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)

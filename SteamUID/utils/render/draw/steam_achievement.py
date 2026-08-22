@@ -4,7 +4,6 @@ import pathlib
 from ..render import (
     _fill_template,
     _get_default_icon_b64,
-    _get_footer_b64,
     render_html,
 )
 from .account_pill import render_account_pill_html
@@ -169,7 +168,6 @@ def render_steam_achievement_html(
         "total_count": str(total_count),
         "percentage": str(percentage),
         "columns_html": columns_html,
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)

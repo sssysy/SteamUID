@@ -48,15 +48,14 @@
 
         .background_layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             z-index: -2;
             overflow: hidden;
         }
 
         .background_image {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -66,10 +65,7 @@
 
         .background_overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: linear-gradient(180deg, rgba(14, 20, 27, 0.35) 0%, rgba(14, 20, 27, 0.55) 60%, rgba(14, 20, 27, 0.92) 100%);
             z-index: -1;
         }
@@ -424,21 +420,22 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            gap: 4px;
             width: 100%;
             margin-top: 14px;
             box-sizing: border-box;
             position: relative;
             z-index: 1;
+            font-size: 11px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
         }
 
-        .card-footer img {
-            max-width: 560px;
-            max-height: 20px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            display: block;
-            opacity: 0.85;
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -502,7 +499,7 @@
 
         <!-- Footer -->
         <div class="card-footer">
-            <img src="{{footer_b64}}" alt="">
+            Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
         </div>
     </div>
 </body>

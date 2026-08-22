@@ -9,7 +9,6 @@ import time
 from ..exceptions import SteamError
 
 _DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
-_FOOTER_PATH = pathlib.Path(__file__).parent.parent.parent / "SteamHelp" / "texture2d" / "footer.png"
 
 # 默认游戏封面 Base64 SVG (深蓝Steam配色)
 _DEFAULT_GAME_COVER_SVG = (
@@ -21,13 +20,6 @@ def _get_default_icon_b64() -> str:
     """读取默认问号头像并转为 Base64 Data URL"""
     if _DEFAULT_ICON_PATH.exists():
         return "data:image/jpeg;base64," + base64.b64encode(_DEFAULT_ICON_PATH.read_bytes()).decode()
-    return ""
-
-
-def _get_footer_b64() -> str:
-    """读取帮助图 footer.png 并转为 Base64 Data URL"""
-    if _FOOTER_PATH.exists():
-        return "data:image/png;base64," + base64.b64encode(_FOOTER_PATH.read_bytes()).decode()
     return ""
 
 
@@ -115,8 +107,23 @@ async def render_html(
                     pass  # 视频加载超时降级
 
             # 截图指定元素
+            # 使用 page.screenshot(clip=精确浮点 bbox) 替代 element.screenshot()，
+            # 避免 element.screenshot() 在 sub-pixel 高度时向上取整到下一个整数，
+            # 导致底部多出 1px 透明区域露出 body 的白色背景。
             element = page.locator(selector)
-            screenshot_bytes = await element.screenshot(type="png")
+            await element.wait_for(state="visible")
+            bbox = await element.bounding_box()
+            if bbox is None:
+                raise SteamError("无法获取目标元素位置")
+            screenshot_bytes = await page.screenshot(
+                clip={
+                    "x": bbox["x"],
+                    "y": bbox["y"],
+                    "width": bbox["width"],
+                    "height": bbox["height"],
+                },
+                type="png",
+            )
 
             await browser.close()
             return screenshot_bytes
