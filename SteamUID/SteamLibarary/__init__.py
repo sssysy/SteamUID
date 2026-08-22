@@ -258,7 +258,7 @@ async def get_steamlibrary_image(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[steam库存] 未知错误: {e!r}")
-        await bot.send(f"发生未知错误: {e}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @library_SV.on_command("玩什么")
@@ -275,4 +275,4 @@ async def get_my_steamlibrary_image(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[steam库存] 未知错误: {e!r}")
-        await bot.send(f"发生未知错误: {e}")
+        await bot.send("发生未知错误，详情请查看后台。")

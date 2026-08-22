@@ -116,8 +116,8 @@ def _make_handler(columns: list[str], enabled: bool):
         except SteamError as e:
             await bot.send(str(e))
         except Exception as e:
-            logger.exception(f"[SteamPush] 推送开关命令异常: {e}")
-            await bot.send("发生未知错误，请稍后重试或联系管理员")
+            logger.exception(f"[SteamPush] 推送开关命令异常: {e!r}")
+            await bot.send("发生未知错误，详情请查看后台。")
 
     return _handler
 

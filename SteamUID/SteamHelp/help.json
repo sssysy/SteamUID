@@ -82,20 +82,20 @@
     ]
   },
   "库存相关": {
-    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面，待解决",
+    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面",
     "data": [
       {
         "name": "游戏墙",
-        "desc": "查询指定steam的游戏墙",
-        "eg": "游戏墙123456",
+        "desc": "查询 steam 游戏墙",
+        "eg": "游戏墙",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "游戏成就",
-        "desc": "查看指定游戏的成就",
-        "eg": "游戏成就1282270",
+        "desc": "查看指定游戏成就",
+        "eg": "游戏成就cs2",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -132,7 +132,7 @@
       {
         "name": "订阅降价",
         "desc": "订阅商店游戏降价信息",
-        "eg": "订阅降价2614070",
+        "eg": "订阅降价黑神话",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -140,7 +140,7 @@
       {
         "name": "取消订阅降价",
         "desc": "取消订阅商店游戏降价信息",
-        "eg": "取消订阅降价2614070",
+        "eg": "取消订阅降价黑神话",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -148,7 +148,7 @@
       {
         "name": "订阅降价查看",
         "desc": "查看订阅的商店游戏降价信息",
-        "eg": "订阅降价查看2614070",
+        "eg": "订阅降价查看",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -167,17 +167,33 @@
         "need_admin": false
       },
       {
-        "name": "群排行",
-        "desc": "查看群游玩时长排行榜（按用户）",
-        "eg": "群排行",
+        "name": "我的统计",
+        "desc": "查看个人群内游玩时长排行榜",
+        "eg": "我的统计",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群玩家排行",
+        "desc": "查看群玩家总时长排行榜",
+        "eg": "群玩家排行",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "群游戏排行",
-        "desc": "查看群游玩时长排行榜（按游戏）",
+        "desc": "查看群游玩时长排行榜",
         "eg": "群游戏排行",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群游戏玩家排行",
+        "desc": "查看指定游戏在本群的玩家游玩时长排行榜",
+        "eg": "群游戏玩家排行apex",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -190,7 +206,7 @@
       {
         "name": "状态",
         "desc": "查看指定steam的迷你资料卡片",
-        "eg": "状态123456",
+        "eg": "状态",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -198,7 +214,7 @@
       {
         "name": "信息",
         "desc": "查看指定steam的账号详细信息卡片",
-        "eg": "信息123456",
+        "eg": "信息",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false

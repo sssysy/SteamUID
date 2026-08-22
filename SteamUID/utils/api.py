@@ -5,6 +5,7 @@ from gsuid_core.logger import logger
 from ..SteamConfig.interface import SteamAPI
 from ..SteamConfig import SteamConfig
 from .database.models_cache import SteamApiCache, SteamArchivementCache
+from .exceptions import SteamValidationError
 
 
 
@@ -299,5 +300,87 @@ async def get_user_static_avatar_frame(steamid64: str) -> str | None:
         logger.debug(f"[SteamUID] 获取miniprofile头像框异常 steamid={steamid64}: {e}")
 
     return None
+
+
+async def search_game_store(keyword: str) -> list[dict]:
+    """通过 Steam 官方商店搜索接口按游戏名检索候选列表（带本地缓存）"""
+    term = keyword.strip()
+    if not term:
+        return []
+
+    cache_key = f"search_{term.lower()}"
+    cached = await SteamApiCache.get_cache(cache_key)
+    if cached is not None:
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    base_url = SteamConfig.get_config("storeBaseURL").data
+    url = f"{base_url}{SteamAPI.store_Search}"
+    cc = SteamConfig.get_config("pricecc").data or "cn"
+    params = {
+        "term": term,
+        "l": "schinese",
+        "cc": cc,
+    }
+    async with httpx.AsyncClient(timeout=8) as client:
+        response = await client.get(url, params=params)
+        if response.status_code != 200:
+            return []
+        data = response.json()
+        items = data.get("items", []) if isinstance(data, dict) else []
+
+    if items:
+        await SteamApiCache.upsert_cache(cache_key, json.dumps(items, ensure_ascii=False))
+    return items
+
+
+async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
+    """解析用户输入的游戏标识（纯数字 AppID 或 游戏名称）。
+
+    返回: (appid, game_name, is_from_search)
+    - 若输入为纯数字 AppID: 返回 (appid, appid 或 从详情/缓存获取的游戏名, False)
+    - 若输入为游戏名且搜索成功: 返回 (appid, 匹配到的游戏名, True)
+    - 若未找到匹配游戏: 抛出 SteamValidationError
+    """
+    raw_input = input_text.strip()
+    if not raw_input:
+        raise SteamValidationError("请输入游戏名或 AppID！")
+
+    # 1. 如果是纯数字，直接作为 AppID 处理
+    if raw_input.isdigit():
+        appid = raw_input
+        # 尝试从缓存或详情中获取游戏名称以方便后续使用
+        game_name = appid
+        cached = await SteamApiCache.get_cache(appid)
+        if cached:
+            try:
+                c_data = json.loads(cached)
+                name = c_data.get("data", {}).get("name") if isinstance(c_data, dict) else None
+                if name:
+                    game_name = name
+            except Exception:
+                pass
+        return appid, game_name, False
+
+    # 2. 如果是非纯数字，调用官方商店搜索接口
+    items = await search_game_store(raw_input)
+    if not items:
+        raise SteamValidationError(f"未找到与【{raw_input}】相关的游戏，请检查游戏名称或直接输入 AppID")
+
+    # 优先选取 type == 'app'（本体游戏），避免优先匹配到 package/sub/bundle
+    target_item = None
+    for item in items:
+        if item.get("type") == "app" and item.get("id") and item.get("name"):
+            target_item = item
+            break
+    if target_item is None:
+        target_item = items[0]
+
+    matched_appid = str(target_item.get("id"))
+    matched_name = str(target_item.get("name") or raw_input)
+    return matched_appid, matched_name, True
+
 
 

@@ -1,13 +1,91 @@
-from typing import Sequence
+from typing import Sequence, overload
 import time
 
+from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
+from .api import resolve_game_input
 from .database.models import SteamBind
 from .downloader import download
 from .exceptions import SteamValidationError
 from ..SteamConfig import SteamConfig
+
+
+@overload
+async def resolve_target_appid(
+    bot: Bot,
+    text: str,
+    parse_limit: bool = False,
+    default_limit: int = 10,
+) -> str: ...
+
+
+@overload
+async def resolve_target_appid(
+    bot: Bot,
+    text: str,
+    parse_limit: bool = True,
+    default_limit: int = 10,
+) -> tuple[str, int]: ...
+
+
+async def resolve_target_appid(
+    bot: Bot,
+    text: str,
+    parse_limit: bool = False,
+    default_limit: int = 10,
+) -> str | tuple[str, int]:
+    """从用户输入文本中解析出目标 AppID（支持纯数字 AppID 或游戏名称自动搜索）。
+
+    如果通过游戏名称搜索匹配成功，会自动调用 `bot.send` 发送：
+    '猜你想找 <游戏名>(appid)，如有错误请使用 appid 精确匹配游戏'
+
+    Args:
+        bot: Bot 实例，用于在搜索匹配成功时发送提示
+        text: 用户输入的原始文本
+        parse_limit: 是否解析末尾的条数 limit（用于排行榜等命令）
+        default_limit: 默认条数（当 parse_limit=True 时生效）
+
+    Returns:
+        若 parse_limit=False: 返回 appid 字符串
+        若 parse_limit=True: 返回 (appid, limit) 元组
+    """
+    raw_text = text.strip()
+    if not raw_text:
+        raise SteamValidationError("请输入游戏名或 AppID！例如：730 或 艾尔登法环")
+
+    if not parse_limit:
+        appid, game_name, is_from_search = await resolve_game_input(raw_text)
+        if is_from_search:
+            await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
+        return appid
+
+    words = raw_text.split()
+    limit = default_limit
+    game_query = raw_text
+
+    # 处理带条数参数的情况（例如：730 5 或 艾尔登法环 5 或 Cyberpunk 2077 5）
+    if len(words) >= 2 and words[-1].isdigit():
+        possible_limit = int(words[-1])
+        if words[0].isdigit() and len(words) == 2:
+            game_query = words[0]
+            if possible_limit > 0:
+                limit = possible_limit
+        elif 1 <= possible_limit <= 100:
+            candidate_query = " ".join(words[:-1])
+            try:
+                appid, game_name, is_from_search = await resolve_game_input(candidate_query)
+                if is_from_search:
+                    await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
+                return appid, possible_limit
+            except Exception:
+                game_query = raw_text
+
+    appid, game_name, is_from_search = await resolve_game_input(game_query)
+    if is_from_search:
+        await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
+    return appid, limit
 
 
 async def batch_download_images(

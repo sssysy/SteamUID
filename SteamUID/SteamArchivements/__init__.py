@@ -22,7 +22,7 @@ from ..utils.exceptions import (
     SteamValidationError,
 )
 from ..utils.render import render_steam_achievement
-from ..utils.utils import resolve_target_steamid64, steamid64_to_friend_code
+from ..utils.utils import resolve_target_appid, resolve_target_steamid64, steamid64_to_friend_code
 
 SV = SV("steam成就服务")
 
@@ -175,10 +175,9 @@ async def build_achievement_data(
 
 @SV.on_command("游戏成就")
 async def game_archivements(bot: Bot, ev: Event):
-    appid = ev.text.strip()
+    appid = ""
     try:
-        if not appid:
-            raise SteamValidationError("请携带appid！")
+        appid = await resolve_target_appid(bot, ev.text.strip())
         steamid64 = await resolve_target_steamid64(ev)
         if not steamid64:
             raise SteamValidationError("请先绑定 steam 账号")
@@ -195,5 +194,5 @@ async def game_archivements(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[steamUID - 游戏成就] 未知错误 appid={appid}: {e!r}")
-        await bot.send(f"发生未知错误: {e}")
+        await bot.send("发生未知错误，详情请查看后台。")
 

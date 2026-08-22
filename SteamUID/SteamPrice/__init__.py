@@ -7,6 +7,8 @@ from gsuid_core.subscribe import gs_subscribe
 
 from ..utils.database.models import SteamPriceInfo
 from ..utils.api import get_price_data
+from ..utils.exceptions import SteamError
+from ..utils.utils import resolve_target_appid
 from ..SteamConfig import SteamConfig
 import json
 
@@ -17,12 +19,8 @@ price_SV = SV("steam商店降价提醒")
 @price_SV.on_command("订阅降价")
 async def steamsubscribe(bot: Bot, ev: Event):
     try:
-        text = ev.text.strip()
-        if not text:
-            await bot.send("请携带要订阅降价提醒的 appid")
-            return
-        appid = text
-        
+        appid = await resolve_target_appid(bot, ev.text.strip())
+
         cc = SteamConfig.get_config("pricecc").data
         first_prices = await get_price_data(appid)
         if not first_prices.get(appid, {}).get("success", False):
@@ -32,7 +30,7 @@ async def steamsubscribe(bot: Bot, ev: Event):
         if not first_prices.get(appid, {}).get("data", []):
             await bot.send(f"该游戏为免费游戏，无法订阅降价提醒")
             return
-        
+
         await SteamPriceInfo.subscribe(appid, json.dumps(first_prices.get(appid, {}).get("data", {}).get("price_overview", {})))
         await gs_subscribe.add_subscribe(
             subscribe_type="single", 
@@ -41,18 +39,16 @@ async def steamsubscribe(bot: Bot, ev: Event):
             uid=appid
             )
         await bot.send(f"已订阅 {appid}, 将在游戏降价时通知您！")
+    except SteamError as e:
+        await bot.send(str(e))
     except Exception as e:
-        logger.warning(f"[SteamPrice] 订阅命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamPrice] 订阅命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 @price_SV.on_command("取消订阅降价")
 async def steam_unsubscribe(bot: Bot, ev: Event):
     try:
-        text = ev.text.strip()
-        if not text:
-            await bot.send("请携带要取消订阅降价提醒的 appid")
-            return
-        appid = text
+        appid = await resolve_target_appid(bot, ev.text.strip())
 
         await gs_subscribe.delete_subscribe(subscribe_type="single", task_name="steam商店降价订阅", event=ev, uid=appid, WS_BOT_ID=ev.WS_BOT_ID)
 
@@ -67,12 +63,14 @@ async def steam_unsubscribe(bot: Bot, ev: Event):
             if await SteamPriceInfo.unsubscribe(appid) == -1:
                 await bot.send(f"取消订阅失败！\n原因: 未找到该 appid 的相关订阅！")
                 return
-        
+
         await bot.send(f"您取消订阅 {appid} 成功！")
 
+    except SteamError as e:
+        await bot.send(str(e))
     except Exception as e:
-        logger.warning(f"[SteamPrice] 取消订阅命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamPrice] 取消订阅命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 @price_SV.on_command(("订阅降价查看", "订阅降价列表"))
 async def steam_query(bot: Bot, ev: Event):
@@ -94,5 +92,5 @@ async def steam_query(bot: Bot, ev: Event):
         await bot.send(send_msg)
 
     except Exception as e:
-        logger.warning(f"[SteamPrice] 查询命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamPrice] 查询命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")

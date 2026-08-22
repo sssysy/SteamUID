@@ -163,8 +163,8 @@ async def steamstatus(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.error(f"[SteamUser] 状态命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamUser] 状态命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @user_sv.on_command(("信息", "steam信息", "info", "steaminfo"))
@@ -304,5 +304,5 @@ async def steam_info(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.error(f"[SteamUser] 信息命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamUser] 信息命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")

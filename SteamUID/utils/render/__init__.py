@@ -10,6 +10,8 @@ from .draw import (
     render_game_recommend_html,
     render_game_status,
     render_game_status_html,
+    render_game_user_ranking,
+    render_game_user_ranking_html,
     render_miniprofile,
     render_steam_achievement,
     render_steam_achievement_html,
@@ -39,6 +41,8 @@ __all__ = [
     "render_game_recommend_html",
     "render_game_status",
     "render_game_status_html",
+    "render_game_user_ranking",
+    "render_game_user_ranking_html",
     "render_html",
     "render_html_gif",
     "render_miniprofile",
@@ -51,3 +55,4 @@ __all__ = [
     "render_user_ranking",
     "render_user_ranking_html",
 ]
+

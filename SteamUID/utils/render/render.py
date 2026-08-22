@@ -6,7 +6,9 @@ import shutil
 import tempfile
 import time
 
-from ..exceptions import SteamError
+from gsuid_core.logger import logger
+
+from ..exceptions import SteamError, SteamRenderError
 
 _DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
 
@@ -127,8 +129,11 @@ async def render_html(
 
             await browser.close()
             return screenshot_bytes
+    except SteamError:
+        raise
     except Exception as e:
-        raise SteamError(f"Playwright 渲染 HTML 失败: {e}")
+        logger.exception(f"[SteamUID - 渲染] Playwright 渲染 HTML 失败: {e!r}")
+        raise SteamRenderError("Playwright 渲染 HTML 发生错误，详情请查看后台。")
 
 
 # ============================================================
@@ -262,9 +267,10 @@ async def render_html_gif(
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
-            raise SteamError(
-                f"ffmpeg 转换 GIF 失败: {stderr.decode(errors='replace')}"
+            logger.error(
+                f"[SteamUID - 渲染] ffmpeg 转换 GIF 失败: {stderr.decode(errors='replace')}"
             )
+            raise SteamRenderError("ffmpeg 转换 GIF 发生错误，详情请查看后台。")
 
         # 读取 GIF 字节
         with open(gif_path, "rb") as f:
@@ -275,6 +281,7 @@ async def render_html_gif(
     except SteamError:
         raise
     except Exception as e:
-        raise SteamError(f"Playwright 渲染 GIF 失败: {e}")
+        logger.exception(f"[SteamUID - 渲染] Playwright 渲染 GIF 失败: {e!r}")
+        raise SteamRenderError("Playwright 渲染 GIF 发生错误，详情请查看后台。")
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

@@ -9,7 +9,7 @@ from gsuid_core.sv import SV, get_plugin_available_prefix
 from ..utils.database.models import SteamBind
 from ..SteamConfig import SteamConfig
 from ..utils.utils import steamid64_to_friend_code, maybe_hide_steamid
-from ..utils.exceptions import SteamValidationError
+from ..utils.exceptions import SteamError, SteamValidationError
 
 friends_SV = SV("steam好友相关")
 
@@ -47,8 +47,8 @@ async def add_friend(bot: Bot, ev: Event):
         except TimeoutError:
             await bot.send([MessageSegment.at(ev.user_id), MessageSegment.text("对方未回复，操作取消。")])
     
-    except SteamValidationError as e:
+    except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.exception(f"[SteamFriends] 加好友命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamFriends] 加好友命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")

@@ -46,11 +46,15 @@
 
         /* 顶部表头 */
         .ranking-header {
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+        }
+
+        .ranking-header-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-bottom: 16px;
-            margin-bottom: 8px;
+            gap: 16px;
         }
 
         .ranking-title {
@@ -58,12 +62,43 @@
             font-weight: 700;
             color: #ffffff;
             letter-spacing: -0.2px;
+            white-space: nowrap;
         }
 
-        .header-cols {
+        .game-badge {
             display: flex;
             align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex-shrink: 1;
+        }
+
+        .game-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: #11141a;
+            flex-shrink: 0;
+            display: block;
+        }
+
+        .game-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #67c1f5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+        }
+
+        .ranking-header-cols {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
             gap: 20px;
+            margin-top: 10px;
         }
 
         .header-col-rank {
@@ -103,7 +138,7 @@
             background: rgba(255, 255, 255, 0.04);
         }
 
-        .game-info-col {
+        .user-info-col {
             display: flex;
             align-items: center;
             flex: 1;
@@ -111,11 +146,11 @@
             padding-right: 16px;
         }
 
-        .game-cover-wrapper {
-            width: 116px;
+        .user-avatar-wrapper {
+            width: 48px;
             height: 48px;
             flex-shrink: 0;
-            border-radius: 3px;
+            border-radius: 4px;
             overflow: hidden;
             background: #11141a;
             display: flex;
@@ -123,42 +158,22 @@
             justify-content: center;
         }
 
-        .game-cover {
+        .user-avatar {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
         }
 
-        .game-meta {
+        .user-name {
             margin-left: 16px;
-            min-width: 0;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 2px;
-        }
-
-        .game-name {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 500;
             color: #f3f3f3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             line-height: 1.3;
-        }
-
-        .game-appid {
-            font-size: 12px;
-            font-weight: 400;
-            color: #8f98a0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.2;
-            letter-spacing: 0.2px;
         }
 
         .data-cols {
@@ -210,8 +225,14 @@
 <body>
 <div class="ranking-container">
     <div class="ranking-header">
-        <div class="ranking-title">{{title_text}}</div>
-        <div class="header-cols">
+        <div class="ranking-header-top">
+            <div class="ranking-title">{{title_text}}</div>
+            <div class="game-badge">
+                <img class="game-logo" src="{{game_logo_url}}" onerror="this.onerror=null;this.src='{{default_cover}}'" alt="">
+                <div class="game-name" title="{{game_name}}">{{game_name}}</div>
+            </div>
+        </div>
+        <div class="ranking-header-cols">
             <div class="header-col-rank">排名</div>
             <div class="header-col-duration">群累计时长</div>
         </div>

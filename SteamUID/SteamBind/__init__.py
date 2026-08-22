@@ -83,8 +83,8 @@ async def steambind(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.exception(f"[SteamBind] 绑定命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamBind] 绑定命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @bind_sv.on_command(("解绑", "unbind", "退出登录", "退出登陆"))
@@ -119,8 +119,8 @@ async def steamunbind(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.exception(f"[SteamBind] 解绑命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamBind] 解绑命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @bind_sv.on_command("查看")
@@ -156,8 +156,8 @@ async def steamview(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.exception(f"[SteamBind] 查看命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamBind] 查看命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 
 @bind_sv.on_command("切换")
@@ -172,5 +172,5 @@ async def switchsteamid(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.exception(f"[SteamBind] 切换命令异常: {e}")
-        await bot.send(f"发生未知错误: {e}")
+        logger.exception(f"[SteamBind] 切换命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
