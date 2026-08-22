@@ -189,9 +189,18 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "群游戏玩家排行",
+        "desc": "查看指定游戏在本群的玩家游玩时长排行榜",
+        "eg": "群游戏玩家排行 730",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
+
   "用户相关": {
     "desc": "查看 Steam 个人资料卡片",
     "data": [
