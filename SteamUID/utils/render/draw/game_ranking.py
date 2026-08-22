@@ -43,6 +43,8 @@ def render_game_ranking_html(
         rank_str = f"#{idx}"
 
         escaped_name = html_lib.escape(game_name)
+        escaped_appid = html_lib.escape(appid)
+        appid_html = f'<div class="game-appid">AppID: {escaped_appid}</div>' if appid else ""
 
         item_html = (
             f'<div class="ranking-item">'
@@ -50,7 +52,10 @@ def render_game_ranking_html(
             f'    <div class="game-cover-wrapper">'
             f'      <img class="game-cover" src="{cover_url}" onerror="this.onerror=null;this.src=\'{_DEFAULT_GAME_COVER_SVG}\'" alt="">'
             f'    </div>'
-            f'    <div class="game-name" title="{escaped_name}">{escaped_name}</div>'
+            f'    <div class="game-meta">'
+            f'      <div class="game-name" title="{escaped_name}">{escaped_name}</div>'
+            f'      {appid_html}'
+            f'    </div>'
             f'  </div>'
             f'  <div class="data-cols">'
             f'    <div class="rank-num">{rank_str}</div>'
