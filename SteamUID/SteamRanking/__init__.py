@@ -159,7 +159,7 @@ async def get_user_game_ranking_list(
     return list(ranking_list)
 
 
-@ranking_sv.on_command(("群排行", "群排名", "群统计"))
+@ranking_sv.on_command(("群玩家排行", "群玩家排名", "群玩家统计"))
 async def group_ranking(bot: Bot, ev: Event):
     """按用户游戏时长从高到低排序，使用 Playwright 渲染图片返回"""
     try:
@@ -238,7 +238,7 @@ async def game_ranking(bot: Bot, ev: Event):
         await bot.send("发生未知错误，请联系管理员查看控制台")
 
 
-@ranking_sv.on_command(("我的统计", "我的排行", "我的排名", "我的游戏统计", "我的游戏排行", "我的游戏排名"))
+@ranking_sv.on_command(("统计", "排行", "排名"))
 async def my_game_ranking(bot: Bot, ev: Event):
     """按用户个人在群内的游戏总时长从高到低排序，使用 Playwright 渲染图片返回"""
     try:
