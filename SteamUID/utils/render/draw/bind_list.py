@@ -4,7 +4,6 @@ import pathlib
 from ..render import (
     _fill_template,
     _get_default_icon_b64,
-    _get_footer_b64,
     render_html,
 )
 
@@ -91,7 +90,6 @@ def render_bind_list_html(
         "default_avatar": default_avatar,
         "user_name": display_user_name,
         "items_html": items_html,
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)

@@ -5,7 +5,6 @@ from ..render import (
     _DEFAULT_GAME_COVER_SVG,
     _fill_template,
     _get_default_icon_b64,
-    _get_footer_b64,
     render_html,
 )
 from .account_pill import render_account_pill_html
@@ -73,7 +72,6 @@ def render_game_recommend_html(
         "title_text": title_text,
         "account_pill_html": account_pill_html,
         "cards_html": cards_html,
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)

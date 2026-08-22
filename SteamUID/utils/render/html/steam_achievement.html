@@ -286,19 +286,20 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            gap: 4px;
             width: 100%;
             padding: 4px 28px 20px 28px;
             box-sizing: border-box;
+            font-size: 11px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
         }
 
-        .card-footer img {
-            max-width: 560px;
-            max-height: 20px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            display: block;
-            opacity: 0.85;
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -337,7 +338,7 @@
 
         <!-- Footer -->
         <div class="card-footer">
-            <img src="{{footer_b64}}" alt="">
+            Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
         </div>
     </div>
 </body>

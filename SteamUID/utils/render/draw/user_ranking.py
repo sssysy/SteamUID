@@ -4,7 +4,6 @@ import pathlib
 from ..render import (
     _fill_template,
     _get_default_icon_b64,
-    _get_footer_b64,
     format_ranking_duration,
     render_html,
 )
@@ -66,7 +65,6 @@ def render_user_ranking_html(
         "canvas_width": str(canvas_width),
         "title_text": title_text,
         "items_html": items_html,
-        "footer_b64": _get_footer_b64(),
     }
 
     return _fill_template(template, replacements)
