@@ -15,8 +15,9 @@ def render_game_ranking_html(
     ranking_data: list[dict],
     top_count: int | None = None,
     canvas_width: int = 680,
+    title_text: str | None = None,
 ) -> str:
-    """构建 Steam 群游戏排行榜卡片的 HTML 字符串。
+    """构建 Steam 游戏排行榜卡片的 HTML 字符串。
 
     ranking_data item 字典格式:
         - appid: str
@@ -26,7 +27,8 @@ def render_game_ranking_html(
     """
     template = _GAME_RANKING_TEMPLATE_PATH.read_text(encoding="utf-8")
     actual_count = len(ranking_data)
-    title_text = f"steam 群游戏排行 Top{actual_count}: "
+    if title_text is None:
+        title_text = f"steam 群游戏排行 Top{actual_count}: "
 
     items_html_parts = []
     for idx, item in enumerate(ranking_data, 1):
@@ -72,10 +74,16 @@ def render_game_ranking_html(
 async def render_game_ranking(
     ranking_data: list[dict],
     top_count: int | None = None,
+    title_text: str | None = None,
 ) -> bytes:
-    """渲染 Steam 群游戏排行榜卡片为 PNG 字节。"""
+    """渲染 Steam 游戏排行榜卡片为 PNG 字节。"""
     canvas_w = 680
-    html_content = render_game_ranking_html(ranking_data, top_count, canvas_width=canvas_w)
+    html_content = render_game_ranking_html(
+        ranking_data,
+        top_count,
+        canvas_width=canvas_w,
+        title_text=title_text,
+    )
     item_count = len(ranking_data)
     est_height = 80 + item_count * 58 + 50 + 35
     return await render_html(
