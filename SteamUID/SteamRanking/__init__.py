@@ -16,7 +16,7 @@ from ..utils.render import (
     render_game_user_ranking,
     render_user_ranking,
 )
-from ..utils.utils import auto2steamid64, time_convert_s
+from ..utils.utils import auto2steamid64, resolve_target_appid, time_convert_s
 
 ranking_sv = SV("steam排名服务")
 
@@ -378,17 +378,7 @@ async def game_user_ranking(bot: Bot, ev: Event):
             raise SteamValidationError("请在群聊中使用此功能")
 
         text = ev.text.strip()
-        if not text:
-            raise SteamValidationError("请输入游戏 AppID，例如：群游戏玩家排行 730")
-
-        words = text.split()
-        appid = words[0]
-        if not appid.isdigit():
-            raise SteamValidationError("游戏 AppID 必须为纯数字，例如：群游戏玩家排行 730")
-
-        limit = 10
-        if len(words) >= 2 and words[1].isdigit() and int(words[1]) > 0:
-            limit = int(words[1])
+        appid, limit = await resolve_target_appid(bot, text, parse_limit=True)
 
         ranking_list, played_steamids = await get_game_user_ranking_list(ev.group_id, appid)
         if not ranking_list:

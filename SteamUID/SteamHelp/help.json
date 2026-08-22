@@ -94,8 +94,8 @@
       },
       {
         "name": "游戏成就",
-        "desc": "查看指定游戏的成就",
-        "eg": "游戏成就1282270",
+        "desc": "查看指定游戏成就（支持游戏名或 AppID）",
+        "eg": "游戏成就 艾尔登法环",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -131,16 +131,16 @@
     "data": [
       {
         "name": "订阅降价",
-        "desc": "订阅商店游戏降价信息",
-        "eg": "订阅降价2614070",
+        "desc": "订阅商店游戏降价信息（支持游戏名或 AppID）",
+        "eg": "订阅降价 幻兽帕鲁",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
         "name": "取消订阅降价",
-        "desc": "取消订阅商店游戏降价信息",
-        "eg": "取消订阅降价2614070",
+        "desc": "取消订阅商店游戏降价信息（支持游戏名或 AppID）",
+        "eg": "取消订阅降价 幻兽帕鲁",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -148,7 +148,7 @@
       {
         "name": "订阅降价查看",
         "desc": "查看订阅的商店游戏降价信息",
-        "eg": "订阅降价查看2614070",
+        "eg": "订阅降价查看",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -192,8 +192,8 @@
       },
       {
         "name": "群游戏玩家排行",
-        "desc": "查看指定游戏在本群的玩家游玩时长排行榜",
-        "eg": "群游戏玩家排行 730",
+        "desc": "查看指定游戏在本群的玩家游玩时长排行榜（支持游戏名或 AppID）",
+        "eg": "群游戏玩家排行 艾尔登法环 10",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false

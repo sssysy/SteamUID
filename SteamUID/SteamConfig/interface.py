@@ -20,6 +20,9 @@ class SteamAPI:
     # 获取游戏详情 / 价格
     store_GetGameDetails = "/api/appdetails"
 
+    # 商店搜索
+    store_Search = "/api/storesearch/"
+
     # 获取服务器状态
     api_GetServerInfo = "/ISteamWebAPIUtil/GetServerInfo/v1"
 
