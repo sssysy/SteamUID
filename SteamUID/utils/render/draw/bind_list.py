@@ -1,6 +1,7 @@
 import html as html_lib
 import pathlib
 
+from ...utils import maybe_hide_steamid
 from ..render import (
     _fill_template,
     _get_default_icon_b64,
@@ -47,7 +48,8 @@ def render_bind_list_html(
     else:
         for item in bind_items:
             name = html_lib.escape(item.get("name", "未知用户"))
-            friend_code = html_lib.escape(str(item.get("friend_code", "")))
+            raw_friend_code = str(item.get("friend_code", ""))
+            friend_code = html_lib.escape(maybe_hide_steamid(raw_friend_code)) if raw_friend_code else ""
             avatar_url = item.get("avatar_url") or default_avatar
             avatar_frame_url = item.get("avatar_frame_url")
             bg_url = item.get("bg_url")

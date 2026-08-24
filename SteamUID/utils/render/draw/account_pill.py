@@ -1,6 +1,7 @@
 import html as html_lib
 import pathlib
 
+from ...utils import maybe_hide_steamid
 from ..render import _fill_template, _get_default_icon_b64
 
 _ACCOUNT_PILL_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "account_pill.html"
@@ -27,7 +28,8 @@ def render_account_pill_html(
     template = _ACCOUNT_PILL_TEMPLATE_PATH.read_text(encoding="utf-8")
 
     user_name = html_lib.escape(user_data.get("name", "未知用户"))
-    friend_code = html_lib.escape(str(user_data.get("friend_code", "")))
+    raw_friend_code = str(user_data.get("friend_code", ""))
+    friend_code = html_lib.escape(maybe_hide_steamid(raw_friend_code)) if raw_friend_code else ""
     avatar_url = user_data.get("avatar_url") or default_avatar
     avatar_frame_url = user_data.get("avatar_frame_url")
     bg_url = user_data.get("bg_url")
