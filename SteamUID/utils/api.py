@@ -46,7 +46,6 @@ async def set_to_mem_cache(key: str, data: any, ttl_seconds: float | None = None
 async def clear_user_mem_cache(steamid64: str) -> None:
     """清除指定 steamid64 的个人资料内存缓存"""
     keys_to_delete = [
-        f"user_summary_{steamid64}",
         f"profile_items_{steamid64}",
         f"miniprofile_{steamid64}",
     ]
@@ -55,11 +54,8 @@ async def clear_user_mem_cache(steamid64: str) -> None:
             _MEM_CACHE.pop(k, None)
 
 
-async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | None = None) -> list:
-    """获取玩家摘要数据（支持单 ID 或列表，带根据设置 CacheTime 的内存 TTL 缓存）"""
-    if ttl_seconds is None:
-        ttl_seconds = get_default_cache_ttl()
-
+async def get_user_Summaries(steamid64: str | list[str]) -> list:
+    """获取玩家摘要数据（支持单 ID 或列表，即时请求不使用缓存）"""
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     if isinstance(steamid64, str):
@@ -67,23 +63,11 @@ async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | No
     else:
         steamids = list(steamid64)
 
-    all_players: list[dict] = []
-    uncached_ids: list[str] = []
+    if not steamids:
+        return []
 
-    # 1. 尝试从缓存中命中
-    for sid in steamids:
-        cached = await get_from_mem_cache(f"user_summary_{sid}")
-        if cached is not None:
-            all_players.append(cached)
-        else:
-            uncached_ids.append(sid)
-
-    if not uncached_ids:
-        return all_players
-
-    # 2. 分批请求未缓存的 Steam ID
     url = f"{base_url}{SteamAPI.api_GetPlayerSummaries}"
-    batches = [uncached_ids[i:i + 50] for i in range(0, len(uncached_ids), 50)]
+    batches = [steamids[i:i + 50] for i in range(0, len(steamids), 50)]
 
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> list:
         try:
@@ -99,13 +83,9 @@ async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | No
         tasks = [fetch_batch(client, batch) for batch in batches]
         results = await asyncio.gather(*tasks)
 
-    # 3. 写入缓存并合并
+    all_players: list[dict] = []
     for players in results:
-        for p in players:
-            sid = p.get("steamid")
-            if sid:
-                await set_to_mem_cache(f"user_summary_{sid}", p, ttl_seconds=ttl_seconds)
-            all_players.append(p)
+        all_players.extend(players)
 
     return all_players
 
