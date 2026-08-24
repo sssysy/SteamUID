@@ -8,6 +8,7 @@ import time
 
 from gsuid_core.logger import logger
 
+from ..downloader import replace_html_urls_with_local
 from ..exceptions import SteamError, SteamRenderError
 
 _DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
@@ -78,6 +79,11 @@ async def render_html(
         from playwright.async_api import async_playwright
     except ImportError:
         raise SteamError("playwright 库未安装，此功能无法使用")
+
+    try:
+        html_content = await replace_html_urls_with_local(html_content)
+    except Exception as e:
+        logger.warning(f"[SteamUID - 渲染] 预处理本地化静态资源异常，降级使用原 HTML: {e}")
 
     try:
         async with async_playwright() as p:
@@ -173,6 +179,11 @@ async def render_html_gif(
 
     ffmpeg_exe = get_ffmpeg_exe()
     tmp_dir = tempfile.mkdtemp(prefix="steam_gif_")
+
+    try:
+        html_content = await replace_html_urls_with_local(html_content)
+    except Exception as e:
+        logger.warning(f"[SteamUID - 渲染] 预处理本地化静态资源异常，降级使用原 HTML: {e}")
 
     try:
         async with async_playwright() as p:

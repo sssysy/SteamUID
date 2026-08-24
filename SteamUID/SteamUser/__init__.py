@@ -15,7 +15,9 @@ from ..utils.api import (
     get_steamlibrary_by_steamid64,
     get_player_bio,
     calculate_account_value,
+    refresh_user_cache,
 )
+from ..utils.database.models import SteamBind
 from ..utils.utils import (
     country_code_to_flag,
     calc_account_age,
@@ -26,6 +28,7 @@ from ..utils.utils import (
 )
 from ..utils.render import render_miniprofile, render_html, render_html_gif, render_steam_info
 from ..utils.exceptions import SteamValidationError, SteamAPIError, SteamError, SteamConfigError
+from ..SteamBind import _send_bind_card
 
 
 user_sv = SV("steam用户相关")
@@ -305,4 +308,37 @@ async def steam_info(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamUser] 信息命令异常: {e!r}")
-        await bot.send("发生未知错误，详情请查看后台。")
+        await bot.send("发生未知错误，详情请查看后台。")
+
+
+@user_sv.on_command(("刷新用户", "更新用户", "刷新资料"))
+async def refresh_user(bot: Bot, ev: Event):
+    try:
+        # 1. 查找当前用户绑定的所有 Steam 账号
+        binds = await SteamBind.get_binds_by_user(
+            bot_id=ev.bot_id,
+            user_id=ev.user_id,
+            user_type=ev.user_type,
+        )
+        if not binds:
+            raise SteamValidationError("你尚未绑定任何 Steam 账号！")
+
+        steamids = list({b.steamid64 for b in binds if b.steamid64})
+        if not steamids:
+            raise SteamValidationError("未找到有效的绑定账号！")
+
+        # 2. 重新获取所有账户信息缓存
+        await refresh_user_cache(steamids)
+
+        # 3. 渲染发送最新的绑定卡片图片
+        await _send_bind_card(
+            bot,
+            ev,
+            fallback_msg=f"[SteamUID] 成功刷新 {len(steamids)} 个 Steam 账号的个人信息与装扮缓存！",
+            show_all=True,
+        )
+    except SteamError as e:
+        await bot.send(str(e))
+    except Exception as e:
+        logger.exception(f"[SteamUser] 刷新用户命令异常: {e!r}")
+        await bot.send("刷新用户缓存失败，详情请查看后台。")

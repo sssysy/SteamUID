@@ -218,6 +218,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "刷新用户",
+        "desc": "强制重新获取并刷新绑定的steam账号信息与装扮缓存",
+        "eg": "刷新用户",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

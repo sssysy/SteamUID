@@ -196,3 +196,52 @@ async def download(
         )
 
     return results
+
+
+_HTML_RES_URL_PATTERN = re.compile(
+    r"""(?i)(?:src|href|background|url)\s*=\s*['"](https?://[^'"]+)['"]|url\(\s*['"]?(https?://[^'")]+)['"]?\s*\)"""
+)
+
+
+async def replace_html_urls_with_local(
+    html_content: str,
+    *,
+    save_dir: Path | str | None = None,
+    max_concurrency: int = 8,
+    timeout: float = 15.0,
+) -> str:
+    """自动扫描 HTML/CSS 中的网络静态资源 URL，使用 downloader 下载到本地并替换为本地 file:/// 路径。
+
+    若下载失败或未命中，则保持原网络 URL，保证最大限度兼容和容错。
+    """
+    if not html_content:
+        return html_content
+
+    # 1. 匹配所有 http(s) 链接
+    matches = _HTML_RES_URL_PATTERN.findall(html_content)
+    raw_urls: set[str] = set()
+    for m in matches:
+        for u in m:
+            if u and u.startswith(("http://", "https://")):
+                raw_urls.add(u)
+
+    if not raw_urls:
+        return html_content
+
+    url_list = list(raw_urls)
+    # 2. 并发批量下载
+    local_paths = await download(
+        url_list,
+        save_dir=save_dir,
+        max_concurrency=max_concurrency,
+        timeout=timeout,
+    )
+
+    # 3. 替换 HTML 中的 URL 为本地 file:// 协议绝对路径
+    replaced_html = html_content
+    for u, p in zip(url_list, local_paths):
+        if p is not None and p.is_file() and p.stat().st_size > 0:
+            local_uri = p.resolve().as_uri()
+            replaced_html = replaced_html.replace(u, local_uri)
+
+    return replaced_html

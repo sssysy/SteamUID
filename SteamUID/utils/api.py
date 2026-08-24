@@ -1,5 +1,6 @@
 import json
 import asyncio
+import time
 import httpx
 from gsuid_core.logger import logger
 from ..SteamConfig.interface import SteamAPI
@@ -7,33 +8,106 @@ from ..SteamConfig import SteamConfig
 from .database.models_cache import SteamApiCache, SteamArchivementCache
 from .exceptions import SteamValidationError
 
+# 内存 TTL 缓存字典及锁
+# key -> (data, expire_at)
+_MEM_CACHE: dict[str, tuple[any, float]] = {}
+_CACHE_LOCK = asyncio.Lock()
 
 
-async def get_user_Summaries(steamid64: str | list[str]) -> list:
+def get_default_cache_ttl() -> float:
+    """根据 SteamConfig 中的 CacheTime (天) 动态转换为缓存秒数，默认最低 180 秒"""
+    try:
+        days = SteamConfig.get_config("CacheTime").data
+        if isinstance(days, (int, float)) and days > 0:
+            return float(days * 86400)
+    except Exception:
+        pass
+    return 180.0
+
+
+async def get_from_mem_cache(key: str) -> any:
+    async with _CACHE_LOCK:
+        item = _MEM_CACHE.get(key)
+        if item is not None:
+            data, expire_at = item
+            if time.time() < expire_at:
+                return data
+            else:
+                _MEM_CACHE.pop(key, None)
+    return None
+
+
+async def set_to_mem_cache(key: str, data: any, ttl_seconds: float | None = None) -> None:
+    if ttl_seconds is None:
+        ttl_seconds = get_default_cache_ttl()
+    async with _CACHE_LOCK:
+        _MEM_CACHE[key] = (data, time.time() + ttl_seconds)
+
+
+async def clear_user_mem_cache(steamid64: str) -> None:
+    """清除指定 steamid64 的个人资料内存缓存"""
+    keys_to_delete = [
+        f"user_summary_{steamid64}",
+        f"profile_items_{steamid64}",
+        f"miniprofile_{steamid64}",
+    ]
+    async with _CACHE_LOCK:
+        for k in keys_to_delete:
+            _MEM_CACHE.pop(k, None)
+
+
+async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | None = None) -> list:
+    """获取玩家摘要数据（支持单 ID 或列表，带根据设置 CacheTime 的内存 TTL 缓存）"""
+    if ttl_seconds is None:
+        ttl_seconds = get_default_cache_ttl()
+
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     if isinstance(steamid64, str):
-        steamid64 = [steamid64]
+        steamids = [steamid64]
+    else:
+        steamids = list(steamid64)
 
+    all_players: list[dict] = []
+    uncached_ids: list[str] = []
+
+    # 1. 尝试从缓存中命中
+    for sid in steamids:
+        cached = await get_from_mem_cache(f"user_summary_{sid}")
+        if cached is not None:
+            all_players.append(cached)
+        else:
+            uncached_ids.append(sid)
+
+    if not uncached_ids:
+        return all_players
+
+    # 2. 分批请求未缓存的 Steam ID
     url = f"{base_url}{SteamAPI.api_GetPlayerSummaries}"
-
-    # 分批，每批最多50个
-    batches = [steamid64[i:i + 50] for i in range(0, len(steamid64), 50)]
+    batches = [uncached_ids[i:i + 50] for i in range(0, len(uncached_ids), 50)]
 
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> list:
-        params = {"key": api_key, "steamids": ','.join(batch)}
-        response = await client.get(url, params=params)
-        data = response.json()
-        return data.get("response", {}).get("players", [])
+        try:
+            params = {"key": api_key, "steamids": ','.join(batch)}
+            response = await client.get(url, params=params)
+            data = response.json()
+            return data.get("response", {}).get("players", [])
+        except Exception as e:
+            logger.warning(f"[SteamUID] 获取玩家摘要失败 batch={batch[:3]}: {e}")
+            return []
 
     async with httpx.AsyncClient(timeout=5) as client:
         tasks = [fetch_batch(client, batch) for batch in batches]
         results = await asyncio.gather(*tasks)
 
-    # 合并所有批次结果
-    all_players = []
+    # 3. 写入缓存并合并
     for players in results:
-        all_players.extend(players)
+        for p in players:
+            sid = p.get("steamid")
+            if sid:
+                await set_to_mem_cache(f"user_summary_{sid}", p, ttl_seconds=ttl_seconds)
+            all_players.append(p)
+
     return all_players
     
 async def get_game_info(appid: str) -> dict:
@@ -185,26 +259,119 @@ async def get_price_data(appid: str | list[str]) -> dict:
     return all_prices
 
 
-async def get_profile_items_equipped(steamid64: str) -> dict:
-    """获取玩家装备项（头像框/动画头像/迷你资料背景）"""
+async def get_profile_items_equipped(steamid64: str, ttl_seconds: float | None = None) -> dict:
+    """获取玩家装备项（头像框/动画头像/迷你资料背景，带根据设置 CacheTime 的内存 TTL 缓存）"""
+    cache_key = f"profile_items_{steamid64}"
+    cached = await get_from_mem_cache(cache_key)
+    if cached is not None:
+        return cached
+
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetProfileItemsEquipped}"
     params = {"key": api_key, "steamid": steamid64, "l": "schinese"}
-    async with httpx.AsyncClient(timeout=5) as client:
-        response = await client.get(url, params=params)
-        data = response.json()
-        return data.get("response", {})
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(url, params=params)
+            data = response.json()
+            res = data.get("response", {})
+            if res:
+                await set_to_mem_cache(cache_key, res, ttl_seconds=ttl_seconds)
+            return res
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取玩家装备项失败 steamid={steamid64}: {e}")
+        return {}
 
 
-async def get_miniprofile(steamid64: str) -> dict:
-    """获取 Steam miniprofile JSON 数据（等级/徽章/背景/头像）"""
+async def get_miniprofile(steamid64: str, ttl_seconds: float | None = None) -> dict:
+    """获取 Steam miniprofile JSON 数据（等级/徽章/背景/头像，带根据设置 CacheTime 的内存 TTL 缓存）"""
+    cache_key = f"miniprofile_{steamid64}"
+    cached = await get_from_mem_cache(cache_key)
+    if cached is not None:
+        return cached
+
     community_url = SteamConfig.get_config("CommunityBaseURL").data
     steamid32 = int(steamid64) - 76561197960265728
     url = f"{community_url}/miniprofile/{steamid32}/json"
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(url, params={"l": "schinese"})
-        return response.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params={"l": "schinese"})
+            res = response.json()
+            if res and isinstance(res, dict):
+                await set_to_mem_cache(cache_key, res, ttl_seconds=ttl_seconds)
+            return res
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取 miniprofile 失败 steamid={steamid64}: {e}")
+        return {}
+
+
+async def refresh_user_cache(steamids: list[str]) -> int:
+    """清除并强制重新请求指定的 steamid64 用户信息缓存（支持批量）"""
+    if not steamids:
+        return 0
+
+    # 1. 先清除指定用户的所有内存缓存
+    for sid in steamids:
+        await clear_user_mem_cache(sid)
+
+    # 2. 批量重新拉取玩家摘要并缓存
+    await get_user_Summaries(steamids)
+
+    # 3. 并发拉取 miniprofile 与 profile_items_equipped
+    tasks = []
+    for sid in steamids:
+        tasks.append(get_miniprofile(sid))
+        tasks.append(get_profile_items_equipped(sid))
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    return len(steamids)
+
+
+async def get_user_pill_data(steamid64: str) -> dict:
+    """并发查询并聚合构建「药丸型卡片」所需的用户数据字典（全走三路 TTL 缓存）"""
+    from .utils import steamid64_to_friend_code
+
+    players_res, miniprofile_data, items_data = await asyncio.gather(
+        get_user_Summaries(steamid64),
+        get_miniprofile(steamid64),
+        get_profile_items_equipped(steamid64),
+        return_exceptions=True,
+    )
+
+    player = players_res[0] if (isinstance(players_res, list) and players_res) else {}
+    user_name = player.get("personaname", "未知用户")
+    friend_code = steamid64_to_friend_code(steamid64)
+
+    avatar_url = player.get("avatarfull", "")
+    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
+        avatar_url = miniprofile_data["avatar_url"]
+
+    avatar_frame_url = None
+    if isinstance(items_data, dict):
+        frame = items_data.get("avatar_frame", {})
+        if frame.get("image_small"):
+            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
+    if not avatar_frame_url and isinstance(miniprofile_data, dict):
+        avatar_frame_url = miniprofile_data.get("avatar_frame")
+
+    bg_url = None
+    if isinstance(items_data, dict):
+        mini_bg = items_data.get("mini_profile_background", {})
+        if mini_bg.get("image_large"):
+            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
+    if not bg_url and isinstance(miniprofile_data, dict):
+        bg = miniprofile_data.get("profile_background", {})
+        bg_url = bg.get("image")
+
+    return {
+        "name": user_name,
+        "friend_code": friend_code,
+        "avatar_url": avatar_url,
+        "avatar_frame_url": avatar_frame_url,
+        "bg_url": bg_url,
+    }
 
 
 async def get_player_bio(steamid64: str) -> str:
