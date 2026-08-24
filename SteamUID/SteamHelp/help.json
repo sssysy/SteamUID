@@ -218,6 +218,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "年度回顾",
+        "desc": "查看指定steam的年度回顾分享图",
+        "eg": "年度回顾2025",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

@@ -383,4 +383,38 @@ async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
     return matched_appid, matched_name, True
 
 
+async def get_user_year_in_review_share_images(steamid64: str, year: int) -> list[str]:
+    """获取指定 steamid64 在指定年份的年度回顾分享图片 URL 列表。
+
+    调用 ISaleFeatureService/GetUserYearInReviewShareImage/v1 接口。
+    若未公开或无数据，返回空列表。
+    """
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetUserYearInReviewShareImage}"
+    params = {
+        "key": api_key,
+        "steamid": steamid64,
+        "year": year,
+    }
+    image_urls: list[str] = []
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                images = data.get("response", {}).get("images", [])
+                for img in images:
+                    if isinstance(img, dict) and img.get("url_path"):
+                        url_path = img["url_path"].strip()
+                        if url_path.startswith("http://") or url_path.startswith("https://"):
+                            image_urls.append(url_path)
+                        else:
+                            image_urls.append(f"https://shared.akamai.steamstatic.com/social_sharing/{url_path}")
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取年度回顾分享图异常 steamid={steamid64} year={year}: {e}")
+
+    return image_urls
+
+
 
