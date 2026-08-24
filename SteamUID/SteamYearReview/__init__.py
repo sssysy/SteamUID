@@ -121,9 +121,15 @@ async def get_year_review(bot: Bot, ev: Event):
             return
 
         # 3. 并发下载所有分享图片
+        img_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://store.steampowered.com/",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        }
+
         async def fetch_img(client: httpx.AsyncClient, url: str) -> bytes | None:
             try:
-                res = await client.get(url)
+                res = await client.get(url, headers=img_headers)
                 if res.status_code == 200:
                     return res.content
             except Exception as e:

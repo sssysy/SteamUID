@@ -386,31 +386,45 @@ async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
 async def get_user_year_in_review_share_images(steamid64: str, year: int) -> list[str]:
     """获取指定 steamid64 在指定年份的年度回顾分享图片 URL 列表。
 
-    调用 ISaleFeatureService/GetUserYearInReviewShareImage/v1 接口。
-    若未公开或无数据，返回空列表。
+    通过 Steam 商店年度回顾页面（https://store.steampowered.com/replay/{steamid}/{year}）
+    解析 OpenGraph 分享图元数据。若用户未公开或无数据，返回空列表。
     """
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
-    base_url = SteamConfig.get_config("APIBaseURL").data
-    url = f"{base_url}{SteamAPI.api_GetUserYearInReviewShareImage}"
-    params = {
-        "key": api_key,
-        "steamid": steamid64,
-        "year": year,
+    import re
+    store_cfg = SteamConfig.get_config("storeBaseURL").data
+    store_base_url = store_cfg if isinstance(store_cfg, str) and store_cfg.strip() else "https://store.steampowered.com"
+    store_base_url = store_base_url.rstrip("/")
+    url = f"{store_base_url}/replay/{steamid64}/{year}"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     }
     image_urls: list[str] = []
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(url, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                images = data.get("response", {}).get("images", [])
-                for img in images:
-                    if isinstance(img, dict) and img.get("url_path"):
-                        url_path = img["url_path"].strip()
-                        if url_path.startswith("http://") or url_path.startswith("https://"):
-                            image_urls.append(url_path)
-                        else:
-                            image_urls.append(f"https://shared.akamai.steamstatic.com/social_sharing/{url_path}")
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200 and resp.text:
+                og_matches = re.findall(
+                    r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']',
+                    resp.text,
+                    re.IGNORECASE,
+                )
+                if not og_matches:
+                    og_matches = re.findall(
+                        r'<link\s+rel=["\']image_src["\']\s+href=["\']([^"\']+)["\']',
+                        resp.text,
+                        re.IGNORECASE,
+                    )
+
+                for img in og_matches:
+                    img = img.strip()
+                    # 排除未公开时的通用占位图
+                    if "social_share_image_generic" in img or "/public/images/yearinreview/" in img:
+                        continue
+                    if "social_sharing/replay" in img or "/social_sharing/" in img:
+                        if img not in image_urls:
+                            image_urls.append(img)
     except Exception as e:
         logger.warning(f"[SteamUID] 获取年度回顾分享图异常 steamid={steamid64} year={year}: {e}")
 
