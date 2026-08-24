@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .status-container {
+            width: {{canvas_width}}px;
+            background: #171d25;
+            padding: 24px 28px;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+        }
+
+        /* 顶部表头 */
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            margin-bottom: 8px;
+        }
+
+        .status-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.2px;
+        }
+
+        /* 药丸列表容器 */
+        .pill-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 药丸型账号卡片 */
+        .pill-item {
+            position: relative;
+            height: 74px;
+            border-radius: 9999px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            border: none;
+            background: linear-gradient(135deg, #2a475e 0%, #1e364a 50%, #1b2838 100%);
+        }
+
+        /* 背景图片（右半边渐隐过渡到默认底色） */
+        .pill-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: right center;
+            background-repeat: no-repeat;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 25%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.9) 80%);
+            mask-image: linear-gradient(to right, transparent 0%, transparent 25%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.9) 80%);
+            z-index: 1;
+        }
+
+        /* 淡黑色蒙版 */
+        .pill-mask {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(14, 18, 26, 0.5) 0%, rgba(14, 18, 26, 0.3) 60%, rgba(14, 18, 26, 0.2) 100%);
+            z-index: 2;
+        }
+
+        /* 内容层 */
+        .pill-content {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* 头像 */
+        .avatar-box {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #11141a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qq-avatar {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border: none;
+        }
+
+        /* 资料信息 */
+        .info-box {
+            margin-left: 18px;
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .user-name {
+            font-size: 16.5px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+        }
+
+        .status-text {
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+        }
+
+        .status-text.ingame {
+            color: #90ba3c;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+        }
+
+        .status-text.online {
+            color: #66c0f4;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+        }
+
+        /* 超过10人时正下方的3个圆点 */
+        .more-dots {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            color: #8f98a0;
+            margin-top: 4px;
+            margin-bottom: 2px;
+            line-height: 1;
+            user-select: none;
+        }
+
+        /* Footer */
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            margin-top: 16px;
+            box-sizing: border-box;
+            font-size: 11px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
+        }
+
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <!-- 顶部表头 -->
+        <div class="status-header">
+            <div class="status-title">{{title_text}}</div>
+        </div>
+
+        <!-- 药丸列表 -->
+        <div class="pill-list">
+            {{items_html}}
+        </div>
+
+        <!-- 超过10人时的省略号 -->
+        {{more_dots_html}}
+
+        <!-- Footer -->
+        <div class="card-footer">
+            Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
+        </div>
+    </div>
+</body>
+</html>
