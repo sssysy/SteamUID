@@ -45,7 +45,7 @@ def _parse_args(text: str) -> tuple[str | None, int]:
         raise SteamValidationError(_get_usage_msg())
 
 
-@year_review_sv.on_command("年度回顾")
+@year_review_sv.on_command(("年度回顾", "年度报告"))
 async def get_year_review(bot: Bot, ev: Event):
     try:
         usage_msg = _get_usage_msg()
