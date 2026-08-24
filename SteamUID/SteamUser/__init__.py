@@ -13,6 +13,8 @@ from ..utils.api import (
     get_profile_items_equipped,
     get_miniprofile,
     get_steamlibrary_by_steamid64,
+)
+from .user_service import (
     get_player_bio,
     calculate_account_value,
     refresh_user_cache,

@@ -1,15 +1,88 @@
-from typing import Sequence, overload
+import asyncio
+import json
 import time
+from typing import Sequence, overload
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from .api import resolve_game_input
+from .api import (
+    get_miniprofile,
+    get_profile_items_equipped,
+    get_user_Summaries,
+    search_game_store,
+)
 from .database.models import SteamBind
+from .database.models_cache import SteamApiCache
 from .downloader import download
 from .exceptions import SteamValidationError
 from ..SteamConfig import SteamConfig
+
+
+_BASE_STEAM_ID64 = 76561197960265728
+
+
+def steamid64_to_friend_code(steamid64: str) -> str:
+    """将 steamid64 转换为好友码（账号ID）"""
+    return str(int(steamid64) - _BASE_STEAM_ID64)
+
+
+def auto2steamid64(count: str | None) -> str | None:
+    """把好友码/steamid64自动变化成steamid64"""
+    if count is None or count.strip() == "" or not count.isdigit():
+        return None
+    count = count.strip()
+    if int(count) < _BASE_STEAM_ID64:
+        count = str(_BASE_STEAM_ID64 + int(count))
+    return count
+
+
+async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
+    """解析用户输入的游戏标识（纯数字 AppID 或 游戏名称）。
+
+    返回: (appid, game_name, is_from_search)
+    - 若输入为纯数字 AppID: 返回 (appid, appid 或 从详情/缓存获取的游戏名, False)
+    - 若输入为游戏名且搜索成功: 返回 (appid, 匹配到的游戏名, True)
+    - 若未找到匹配游戏: 抛出 SteamValidationError
+    """
+    raw_input = input_text.strip()
+    if not raw_input:
+        raise SteamValidationError("请输入游戏名或 AppID！")
+
+    # 1. 如果是纯数字，直接作为 AppID 处理
+    if raw_input.isdigit():
+        appid = raw_input
+        # 尝试从缓存或详情中获取游戏名称以方便后续使用
+        game_name = appid
+        cached = await SteamApiCache.get_cache(appid)
+        if cached:
+            try:
+                c_data = json.loads(cached)
+                name = c_data.get("data", {}).get("name") if isinstance(c_data, dict) else None
+                if name:
+                    game_name = name
+            except Exception:
+                pass
+        return appid, game_name, False
+
+    # 2. 如果是非纯数字，调用官方商店搜索接口
+    items = await search_game_store(raw_input)
+    if not items:
+        raise SteamValidationError(f"未找到与【{raw_input}】相关的游戏，请检查游戏名称或直接输入 AppID")
+
+    # 优先选取 type == 'app'（本体游戏），避免优先匹配到 package/sub/bundle
+    target_item = None
+    for item in items:
+        if item.get("type") == "app" and item.get("id") and item.get("name"):
+            target_item = item
+            break
+    if target_item is None:
+        target_item = items[0]
+
+    matched_appid = str(target_item.get("id"))
+    matched_name = str(target_item.get("name") or raw_input)
+    return matched_appid, matched_name, True
 
 
 @overload
@@ -96,24 +169,6 @@ async def batch_download_images(
     """批量下载图片（向下兼容封装，底层使用 downloader.download）"""
     paths = await download(urls, save_dir=save_dir, max_concurrency=max_concurrency)
     return [str(p) if p is not None else None for p in paths]
-
-
-_BASE_STEAM_ID64 = 76561197960265728
-
-
-def steamid64_to_friend_code(steamid64: str) -> str:
-    """将 steamid64 转换为好友码（账号ID）"""
-    return str(int(steamid64) - _BASE_STEAM_ID64)
-
-
-def auto2steamid64(count: str | None) -> str | None:
-    """把好友码/steamid64自动变化成steamid64"""
-    if count is None or count.strip() == "" or not count.isdigit():
-        return None
-    count = count.strip()
-    if int(count) < _BASE_STEAM_ID64:
-        count = str(_BASE_STEAM_ID64 + int(count))
-    return count
 
 
 async def resolve_target_steamid64(ev: Event, text: str = "") -> str | None:
@@ -234,3 +289,69 @@ def resolve_player_status(player: dict) -> tuple[str, str | None]:
     if player.get("personastate", 0) == 0:
         return ("offline", None)
     return ("online", None)
+
+
+async def get_user_static_avatar_frame(steamid64: str) -> str | None:
+    """获取用户的静态 Steam 头像框 URL（优先 GetProfileItemsEquipped 静态小图，回退 miniprofile）"""
+    try:
+        items_data = await get_profile_items_equipped(steamid64)
+        if isinstance(items_data, dict):
+            frame = items_data.get("avatar_frame", {})
+            if frame.get("image_small"):
+                return f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
+    except Exception as e:
+        logger.debug(f"[SteamUID] 获取装备头像框异常 steamid={steamid64}: {e}")
+
+    try:
+        miniprofile_data = await get_miniprofile(steamid64)
+        if isinstance(miniprofile_data, dict):
+            frame_url = miniprofile_data.get("avatar_frame")
+            if frame_url:
+                return frame_url
+    except Exception as e:
+        logger.debug(f"[SteamUID] 获取miniprofile头像框异常 steamid={steamid64}: {e}")
+
+    return None
+
+
+async def get_user_pill_data(steamid64: str) -> dict:
+    """并发查询并聚合构建「药丸型卡片」所需的用户数据字典（全走三路 TTL 缓存）"""
+    players_res, miniprofile_data, items_data = await asyncio.gather(
+        get_user_Summaries(steamid64),
+        get_miniprofile(steamid64),
+        get_profile_items_equipped(steamid64),
+        return_exceptions=True,
+    )
+
+    player = players_res[0] if (isinstance(players_res, list) and players_res) else {}
+    user_name = player.get("personaname", "未知用户")
+    friend_code = steamid64_to_friend_code(steamid64)
+
+    avatar_url = player.get("avatarfull", "")
+    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
+        avatar_url = miniprofile_data["avatar_url"]
+
+    avatar_frame_url = None
+    if isinstance(items_data, dict):
+        frame = items_data.get("avatar_frame", {})
+        if frame.get("image_small"):
+            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
+    if not avatar_frame_url and isinstance(miniprofile_data, dict):
+        avatar_frame_url = miniprofile_data.get("avatar_frame")
+
+    bg_url = None
+    if isinstance(items_data, dict):
+        mini_bg = items_data.get("mini_profile_background", {})
+        if mini_bg.get("image_large"):
+            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
+    if not bg_url and isinstance(miniprofile_data, dict):
+        bg = miniprofile_data.get("profile_background", {})
+        bg_url = bg.get("image")
+
+    return {
+        "name": user_name,
+        "friend_code": friend_code,
+        "avatar_url": avatar_url,
+        "avatar_frame_url": avatar_frame_url,
+        "bg_url": bg_url,
+    }

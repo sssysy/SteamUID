@@ -6,7 +6,8 @@ from gsuid_core.sv import SV, get_plugin_available_prefix
 from gsuid_core.segment import MessageSegment
 from gsuid_core.logger import logger
 
-from ..utils.api import get_user_year_in_review_share_images, get_user_Summaries
+from ..utils.api import get_user_Summaries
+from .review_service import get_user_year_in_review_share_images
 from ..utils.utils import resolve_target_steamid64
 from ..utils.exceptions import SteamValidationError, SteamAPIError
 
