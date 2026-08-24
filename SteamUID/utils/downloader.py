@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import hashlib
 import re
 from pathlib import Path
@@ -203,6 +204,34 @@ _HTML_RES_URL_PATTERN = re.compile(
 )
 
 
+_MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+}
+
+
+def _file_to_data_uri(file_path: Path) -> str | None:
+    """将本地文件转为 Data URI (Base64)"""
+    try:
+        data = file_path.read_bytes()
+        ext = file_path.suffix.lower()
+        mime = _MIME_TYPES.get(ext, "application/octet-stream")
+        b64 = base64.b64encode(data).decode("ascii")
+        return f"data:{mime};base64,{b64}"
+    except Exception as e:
+        logger.debug(f"[SteamUID] 文件转 Base64 失败 {file_path}: {e}")
+        return None
+
+
 async def replace_html_urls_with_local(
     html_content: str,
     *,
@@ -210,9 +239,10 @@ async def replace_html_urls_with_local(
     max_concurrency: int = 8,
     timeout: float = 15.0,
 ) -> str:
-    """自动扫描 HTML/CSS 中的网络静态资源 URL，使用 downloader 下载到本地并替换为本地 file:/// 路径。
+    """自动扫描 HTML/CSS 中的网络静态资源 URL，使用 downloader 下载到本地并替换为 Base64 Data URI。
 
     若下载失败或未命中，则保持原网络 URL，保证最大限度兼容和容错。
+    通过 Base64 Data URI 替代 file:// 协议，避免 Chromium 在 set_content 环境下因同源策略拦截 file:/// 资源的加载。
     """
     if not html_content:
         return html_content
@@ -237,11 +267,13 @@ async def replace_html_urls_with_local(
         timeout=timeout,
     )
 
-    # 3. 替换 HTML 中的 URL 为本地 file:// 协议绝对路径
+    # 3. 替换 HTML 中的 URL 为 Base64 Data URI
     replaced_html = html_content
     for u, p in zip(url_list, local_paths):
         if p is not None and p.is_file() and p.stat().st_size > 0:
-            local_uri = p.resolve().as_uri()
-            replaced_html = replaced_html.replace(u, local_uri)
+            data_uri = _file_to_data_uri(p)
+            if data_uri:
+                replaced_html = replaced_html.replace(u, data_uri)
 
     return replaced_html
+
