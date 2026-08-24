@@ -155,17 +155,9 @@
       }
     ]
   },
-  "社交相关": {
-    "desc": "加好友和排行榜功能",
+  "排行相关": {
+    "desc": "排行榜功能",
     "data": [
-      {
-        "name": "加好友",
-        "desc": "获取被 @ 用户的好友码",
-        "eg": "加好友",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
       {
         "name": "我的统计",
         "desc": "查看个人群内游玩时长排行榜",
@@ -215,6 +207,22 @@
         "name": "信息",
         "desc": "查看指定steam的账号详细信息卡片",
         "eg": "信息",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "年度回顾",
+        "desc": "查看指定steam的年度回顾分享图",
+        "eg": "年度回顾2025",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "刷新用户",
+        "desc": "强制重新获取并刷新绑定的steam账号信息与装扮缓存",
+        "eg": "刷新用户",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false

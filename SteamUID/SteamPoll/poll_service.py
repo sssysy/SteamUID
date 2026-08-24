@@ -14,7 +14,6 @@ from ..utils.api import (
     get_archivement_info,
     get_archivement_img,
     get_price_data,
-    get_user_static_avatar_frame,
 )
 from ..utils.database.models import (
     SteamIDInfo,
@@ -30,6 +29,7 @@ from ..utils.utils import (
     is_push_event_enabled,
     get_user_group_nickname,
     steamid64_to_friend_code,
+    get_user_static_avatar_frame,
 )
 
 
