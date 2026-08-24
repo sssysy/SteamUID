@@ -315,7 +315,7 @@ async def get_user_static_avatar_frame(steamid64: str) -> str | None:
 
 
 async def get_user_pill_data(steamid64: str) -> dict:
-    """并发查询并聚合构建「药丸型卡片」所需的用户数据字典（全走三路 TTL 缓存）"""
+    """并发查询并聚合构建「药丸型卡片」所需的用户数据字典"""
     players_res, miniprofile_data, items_data = await asyncio.gather(
         get_user_Summaries(steamid64),
         get_miniprofile(steamid64),

@@ -8,6 +8,16 @@ from gsuid_core.utils.plugins_config.models import (
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
 from gsuid_core.data_store import get_res_path
 
+from .region_map import (
+    SUPPORTED_REGIONS,
+    SteamRegion,
+    get_region,
+    get_current_region,
+    get_current_cc,
+    get_current_lang,
+    get_current_currency,
+)
+
 CONFIG_PATH = get_res_path() / 'SteamUID'
 
 CONFIG_DEFAULT: dict[str, GSC] = {
@@ -87,10 +97,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
             "获得成就",
         ]
     ),
-    "pricecc": GsStrConfig(
-        "steam地区代码",
-        "监听游戏降价的steam地区，默认中国大陆。其他国家代码请参照 ISO 3166-1 alpha-2",
-        "cn"
+    "country": GsStrConfig(
+        "steam地区",
+        "监听游戏降价及获取商店数据的 steam 地区，默认中国大陆",
+        "中国大陆",
+        options=SUPPORTED_REGIONS,
     ),
     "AllowAt": GsBoolConfig(
         "允许 @ 他人获取他人信息",

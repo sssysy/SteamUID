@@ -2,12 +2,12 @@ import re
 import httpx
 from gsuid_core.logger import logger
 
-from ..SteamConfig import SteamConfig
+from ..SteamConfig import SteamConfig, get_current_lang
 from ..SteamConfig.interface import SteamAPI
 
 
 async def get_user_year_in_review_share_images(
-    steamid64: str, year: int, language: str = "schinese"
+    steamid64: str, year: int, language: str | None = None
 ) -> list[str]:
     """获取指定 steamid64 在指定年份的年度回顾分享图片 URL 列表。
 
@@ -16,6 +16,8 @@ async def get_user_year_in_review_share_images(
     若 API 请求失败或为空，回退到 Steam 商店页面解析 OpenGraph 元数据。
     若用户未公开或无数据，返回空列表。
     """
+    if not language:
+        language = get_current_lang()
     base_cdn = "https://shared.fastly.steamstatic.com/social_sharing/"
     image_urls: list[str] = []
 

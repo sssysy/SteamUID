@@ -4,7 +4,7 @@ import time
 import httpx
 from gsuid_core.logger import logger
 from ..SteamConfig.interface import SteamAPI
-from ..SteamConfig import SteamConfig
+from ..SteamConfig import SteamConfig, get_current_cc, get_current_lang
 from .database.models_cache import SteamApiCache, SteamArchivementCache
 
 # 内存 TTL 缓存字典及锁
@@ -46,7 +46,6 @@ async def set_to_mem_cache(key: str, data: any, ttl_seconds: float | None = None
 async def clear_user_mem_cache(steamid64: str) -> None:
     """清除指定 steamid64 的个人资料内存缓存"""
     keys_to_delete = [
-        f"user_summary_{steamid64}",
         f"profile_items_{steamid64}",
         f"miniprofile_{steamid64}",
     ]
@@ -55,11 +54,8 @@ async def clear_user_mem_cache(steamid64: str) -> None:
             _MEM_CACHE.pop(k, None)
 
 
-async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | None = None) -> list:
-    """获取玩家摘要数据（支持单 ID 或列表，带根据设置 CacheTime 的内存 TTL 缓存）"""
-    if ttl_seconds is None:
-        ttl_seconds = get_default_cache_ttl()
-
+async def get_user_Summaries(steamid64: str | list[str]) -> list:
+    """获取玩家摘要数据（支持单 ID 或列表，即时请求不使用缓存）"""
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     if isinstance(steamid64, str):
@@ -67,23 +63,11 @@ async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | No
     else:
         steamids = list(steamid64)
 
-    all_players: list[dict] = []
-    uncached_ids: list[str] = []
+    if not steamids:
+        return []
 
-    # 1. 尝试从缓存中命中
-    for sid in steamids:
-        cached = await get_from_mem_cache(f"user_summary_{sid}")
-        if cached is not None:
-            all_players.append(cached)
-        else:
-            uncached_ids.append(sid)
-
-    if not uncached_ids:
-        return all_players
-
-    # 2. 分批请求未缓存的 Steam ID
     url = f"{base_url}{SteamAPI.api_GetPlayerSummaries}"
-    batches = [uncached_ids[i:i + 50] for i in range(0, len(uncached_ids), 50)]
+    batches = [steamids[i:i + 50] for i in range(0, len(steamids), 50)]
 
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> list:
         try:
@@ -99,13 +83,9 @@ async def get_user_Summaries(steamid64: str | list[str], ttl_seconds: float | No
         tasks = [fetch_batch(client, batch) for batch in batches]
         results = await asyncio.gather(*tasks)
 
-    # 3. 写入缓存并合并
+    all_players: list[dict] = []
     for players in results:
-        for p in players:
-            sid = p.get("steamid")
-            if sid:
-                await set_to_mem_cache(f"user_summary_{sid}", p, ttl_seconds=ttl_seconds)
-            all_players.append(p)
+        all_players.extend(players)
 
     return all_players
 
@@ -120,7 +100,7 @@ async def get_game_info(appid: str) -> dict:
     url = f"{base_url}{SteamAPI.store_GetGameDetails}"
     params = {
         "appids": appid,
-        "l": "schinese",
+        "l": get_current_lang(),
     }
     async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
@@ -182,7 +162,7 @@ async def get_archivement_info(appid: str, steamid64: str):
         "key": api_key,
         "appid": appid,
         "steamid": steamid64,
-        "l": "schinese",
+        "l": get_current_lang(),
     }
     async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
@@ -215,7 +195,7 @@ async def get_archivement_schema(appid: str) -> list[dict]:
     params = {
         "key": api_key,
         "appid": appid,
-        "l": "schinese",
+        "l": get_current_lang(),
     }
     async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(url, params=params)
@@ -230,7 +210,7 @@ async def get_archivement_schema(appid: str) -> list[dict]:
 async def get_price_data(appid: str | list[str]) -> dict:
     """获取游戏价格数据（支持单 AppID 或列表批量查询）"""
     base_url = SteamConfig.get_config("storeBaseURL").data
-    cc = SteamConfig.get_config("pricecc").data
+    cc = get_current_cc()
 
     if isinstance(appid, str):
         appid = [appid]
@@ -274,7 +254,7 @@ async def get_profile_items_equipped(steamid64: str, ttl_seconds: float | None =
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetProfileItemsEquipped}"
-    params = {"key": api_key, "steamid": steamid64, "l": "schinese"}
+    params = {"key": api_key, "steamid": steamid64, "l": get_current_lang()}
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             response = await client.get(url, params=params)
@@ -300,7 +280,7 @@ async def get_miniprofile(steamid64: str, ttl_seconds: float | None = None) -> d
     url = f"{community_url}/miniprofile/{steamid32}/json"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(url, params={"l": "schinese"})
+            response = await client.get(url, params={"l": get_current_lang()})
             res = response.json()
             if res and isinstance(res, dict):
                 await set_to_mem_cache(cache_key, res, ttl_seconds=ttl_seconds)
@@ -326,10 +306,10 @@ async def search_game_store(keyword: str) -> list[dict]:
 
     base_url = SteamConfig.get_config("storeBaseURL").data
     url = f"{base_url}{SteamAPI.store_Search}"
-    cc = SteamConfig.get_config("pricecc").data or "cn"
+    cc = get_current_cc()
     params = {
         "term": term,
-        "l": "schinese",
+        "l": get_current_lang(),
         "cc": cc,
     }
     async with httpx.AsyncClient(timeout=8) as client:
