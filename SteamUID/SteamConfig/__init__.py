@@ -92,11 +92,6 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "监听游戏降价的steam地区，默认中国大陆。其他国家代码请参照 ISO 3166-1 alpha-2",
         "cn"
     ),
-    "AllowAddFriends": GsBoolConfig(
-        "允许添加 steam 好友",
-        "开启后将支持用户通过 '@用户 steam加好友' 功能获取对方 steam 好友码",
-        False,
-    ),
     "AllowAt": GsBoolConfig(
         "允许 @ 他人获取他人信息",
         "开启后将支持用户通过 '@用户 + steam xxx' 功能获取对方信息",
