@@ -189,6 +189,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "群友状态",
+        "desc": "查看本群已绑定群友的实时在线与游戏状态",
+        "eg": "群友状态",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

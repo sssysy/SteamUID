@@ -79,6 +79,7 @@
 | `steam群玩家排行` | 查看群玩家总时长排行榜 |
 | `steam群游戏排行` | 查看群游戏总时长排行榜 |
 | `steam群游戏玩家排行apex` | 查看群内Apex Legends的玩家游戏总时长排行榜 |
+| `steam群友状态` | 查看本群已绑定群友的实时在线与游戏状态 |
 
 #### 用户相关
 | 命令 | 说明 |
@@ -152,3 +153,4 @@
 - 此插件依赖自框架 [gsuid_core](https://github.com/Genshin-bots/gsuid_core)
 - 所有请求格式来自 [Steam Web API](https://developer.valvesoftware.com/wiki/Steam_Web_API)
 - steam游戏墙参考自 [steam_wall](https://github.com/zhMoody/steam_wall)
+- 部分功能实现参考自 [yunzai-steam-plugin](https://github.com/XasYer/steam-plugin)
