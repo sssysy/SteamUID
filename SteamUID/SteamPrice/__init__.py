@@ -9,7 +9,7 @@ from ..utils.database.models import SteamPriceInfo
 from ..utils.api import get_price_data
 from ..utils.exceptions import SteamError
 from ..utils.utils import resolve_target_appid
-from ..SteamConfig import SteamConfig
+from ..SteamConfig import SteamConfig, get_current_region
 import json
 
 
@@ -21,10 +21,10 @@ async def steamsubscribe(bot: Bot, ev: Event):
     try:
         appid = await resolve_target_appid(bot, ev.text.strip())
 
-        cc = SteamConfig.get_config("pricecc").data
+        region = get_current_region()
         first_prices = await get_price_data(appid)
         if not first_prices.get(appid, {}).get("success", False):
-            await bot.send(f"订阅失败！\n原因: 获取该游戏价格失败！请确认该 appid 在 {cc} 区是否锁区！")
+            await bot.send(f"订阅失败！\n原因: 获取该游戏价格失败！请确认该 appid 在 {region.name}({region.cc}) 区是否锁区！")
             return
 
         if not first_prices.get(appid, {}).get("data", []):
