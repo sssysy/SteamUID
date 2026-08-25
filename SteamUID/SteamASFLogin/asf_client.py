@@ -57,6 +57,20 @@ class ASFClient:
         return None
 
     @classmethod
+    async def delete_bot(cls, bot_name: str) -> bool:
+        """从 ASF 中停止并删除 Bot 实例"""
+        url = f"{cls._base_url()}/Api/Bot/{bot_name}"
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.delete(url, headers=cls._headers())
+                if resp.status_code == 200:
+                    return True
+                logger.warning(f"[SteamASF] 删除 Bot {bot_name} 返回状态码: {resp.status_code} {resp.text}")
+        except Exception as e:
+            logger.error(f"[SteamASF] 删除 Bot {bot_name} 请求失败: {e!r}")
+        return False
+
+    @classmethod
     async def create_or_update_bot(
         cls, bot_name: str, steam_login: str, steam_password: str
     ) -> bool:

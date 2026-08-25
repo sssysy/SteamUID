@@ -94,6 +94,16 @@ async def do_unbind(ev: Event, steamid64: str) -> str:
     if not steamid64 or not steamid64.isdigit():
         raise SteamValidationError("请输入正确的64位steamid")
 
+    # 如果存在 ASF Bot 实例，联动清理
+    try:
+        from ..SteamASFLogin.asf_client import ASFClient
+        from ..SteamASFLogin.login import _sanitize_bot_name
+
+        bot_name = _sanitize_bot_name(ev.user_id)
+        await ASFClient.delete_bot(bot_name)
+    except Exception:
+        pass
+
     result = await SteamBind.delete_bind(
         steamid64=steamid64,
         bot_id=ev.bot_id,

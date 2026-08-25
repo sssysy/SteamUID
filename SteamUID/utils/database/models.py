@@ -592,6 +592,32 @@ class SteamBind(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def unmark_asf(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        steamid64: str,
+        bot_id: str,
+        user_id: str,
+        user_type: str,
+    ) -> int:
+        """清除指定用户的 is_asf 标志"""
+        stmt = select(cls).where(
+            cls.steamid64 == steamid64,
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+            cls.user_type == user_type,
+        )
+        result = await session.execute(stmt)
+        count = 0
+        for row in result.scalars().all():
+            if row.is_asf:
+                row.is_asf = False
+                session.add(row)
+                count += 1
+        return count
+
+    @classmethod
+    @with_session
     async def get_main_id(
         cls: Type[T_SteamBind],
         session: AsyncSession,
