@@ -60,6 +60,35 @@
       }
     ]
   },
+  "挂卡服务": {
+    "desc": "Steam 自动挂卡控制与状态查询 (基于 ASF)",
+    "data": [
+      {
+        "name": "开始挂卡",
+        "desc": "启动或恢复 ASF 自动挂卡任务",
+        "eg": "开始挂卡",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "结束挂卡",
+        "desc": "停止或暂停 ASF 自动挂卡任务",
+        "eg": "结束挂卡",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "挂卡状态",
+        "desc": "查询当前剩余挂卡游戏数量与预计时间",
+        "eg": "挂卡状态",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "游戏状态": {
     "desc": "控制已绑定 steam 账号状态变化推送",
     "data": [

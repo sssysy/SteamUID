@@ -104,6 +104,45 @@ class ASFClient:
         return False
 
     @classmethod
+    async def start_bot(cls, bot_name: str) -> bool:
+        """启动 ASF Bot 实例"""
+        url = f"{cls._base_url()}/Api/Bot/{bot_name}/Start"
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.post(url, headers=cls._headers())
+                return resp.status_code == 200
+        except Exception as e:
+            logger.error(f"[SteamASF] 启动 Bot {bot_name} 请求失败: {e!r}")
+            return False
+
+    @classmethod
+    async def send_command(cls, command: str) -> tuple[bool, str]:
+        """向 ASF IPC 发送控制命令并返回响应结果"""
+        url = f"{cls._base_url()}/Api/Command"
+        payload = {"Command": command}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url, headers=cls._headers(), json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    res = data.get("Result", "")
+                    return True, str(res).strip()
+                return False, f"ASF 返回错误码: {resp.status_code}"
+        except Exception as e:
+            logger.error(f"[SteamASF] 发送 ASF 命令 `{command}` 失败: {e!r}")
+            return False, f"请求失败: {e}"
+
+    @classmethod
+    async def resume_farming(cls, bot_name: str) -> tuple[bool, str]:
+        """恢复/开始挂卡任务"""
+        return await cls.send_command(f"resume {bot_name}")
+
+    @classmethod
+    async def pause_farming(cls, bot_name: str) -> tuple[bool, str]:
+        """暂停/停止挂卡任务"""
+        return await cls.send_command(f"pause {bot_name}")
+
+    @classmethod
     async def input_credential(
         cls, bot_name: str, input_type: str, value: str
     ) -> bool:
@@ -125,7 +164,7 @@ class ASFClient:
                 return resp_cmd.status_code == 200
         except Exception as e:
             logger.error(f"[SteamASF] 提交 2FA 凭据失败 bot={bot_name}: {e!r}")
-        return False
+            return False
 
     @classmethod
     async def poll_bot_status(

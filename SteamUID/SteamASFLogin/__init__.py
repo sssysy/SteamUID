@@ -14,7 +14,7 @@ from .asf_client import ASFClient
 asf_sv = SV("ASF登录")
 
 
-@asf_sv.on_command(("asf登录", "asf登陆", "asf绑定", "asflogin", "asf bind"))
+@asf_sv.on_command(("asf登录", "asf登陆", "asf绑定"))
 async def steamasf_bind(bot: Bot, ev: Event):
     """通过 ASF 网页登录绑定 Steam 账号"""
     try:
@@ -35,15 +35,10 @@ async def steamasf_bind(bot: Bot, ev: Event):
 
 
 @asf_sv.on_command((
-    "steamasf退出登录",
-    "steamasf退出登陆",
-    "steamasf解绑",
-    "steamasf解除绑定",
     "asf退出登录",
     "asf退出登陆",
     "asf解绑",
-    "asf解除绑定",
-    "asfunbind",
+    "asf解除绑定"
 ))
 async def steamasf_unbind(bot: Bot, ev: Event):
     """仅退出 ASF 登录并重置 ASF 状态，不影响基础 steamid 绑定"""
@@ -78,7 +73,7 @@ async def steamasf_unbind(bot: Bot, ev: Event):
                 steamid64 = user_binds[0].steamid64
 
         if not steamid64:
-            await bot.send("未找到当前账号的默认主账号绑定，请在命令后附带要退出的账号参数，例如：\nsteamasf退出登录 [steam好友码]")
+            await bot.send("未找到当前账号的默认主账号绑定，请在命令后附带要退出的账号参数，例如：\nasf退出登录 [steam好友码]")
             return
 
         # 1. 调用 ASF IPC 删除/停止该用户的 Bot 实例
