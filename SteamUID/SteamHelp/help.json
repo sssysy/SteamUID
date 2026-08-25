@@ -1,43 +1,35 @@
 {
   "绑定账号": {
-    "desc": "",
+    "desc": "绑定与管理 Steam 账号",
     "data": [
       {
         "name": "绑定",
-        "desc": "使用 OpenID 方式绑定 steam",
-        "eg": "绑定",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "asf登录",
-        "desc": "使用 ASF 网页方式登录绑定 steam",
-        "eg": "asf登录",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "绑定12345678",
-        "desc": "使用好友码 / steamid 绑定 steam",
+        "desc": "使用 OpenID 或附带好友码 绑定 steam",
         "eg": "绑定12345678",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
-        "name": "解绑",
-        "desc": "使用 OpenID 方式解绑 steam",
-        "eg": "解绑",
+        "name": "asf绑定",
+        "desc": "使用 ASF 方式登录绑定 steam",
+        "eg": "asf绑定",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       },
       {
-        "name": "解绑12345678",
-        "desc": "使用好友码 / steamid 解绑 steam",
+        "name": "解绑",
+        "desc": "使用 OpenID 或附带好友码 解绑 steam",
         "eg": "解绑12345678",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "asf解绑",
+        "desc": "删除当前账号的 ASF 登录凭证",
+        "eg": "asf解绑",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -57,53 +49,24 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      }
-    ]
-  },
-  "挂卡服务": {
-    "desc": "Steam 自动挂卡控制与状态查询 (基于 ASF)",
-    "data": [
-      {
-        "name": "开始挂卡",
-        "desc": "启动或恢复 ASF 自动挂卡任务",
-        "eg": "开始挂卡",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
       },
       {
-        "name": "结束挂卡",
-        "desc": "停止或暂停 ASF 自动挂卡任务",
-        "eg": "结束挂卡",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "挂卡状态",
-        "desc": "查询当前剩余挂卡游戏数量与预计时间",
-        "eg": "挂卡状态",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "探索队列",
-        "desc": "调用 ASF (ASFEnhance) 自动完成 Steam 探索队列并返回游戏列表",
-        "eg": "探索队列",
+        "name": "刷新用户",
+        "desc": "强制重新获取并刷新绑定的steam账号信息与装扮缓存",
+        "eg": "刷新用户",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
       }
     ]
   },
-  "游戏状态": {
-    "desc": "控制已绑定 steam 账号状态变化推送",
+  "订阅推送": {
+    "desc": "控制 Steam 状态变动推送与降价监控",
     "data": [
       {
         "name": "开启推送",
         "desc": "开启自己的所有推送功能",
-        "eg": "开启推送",
+        "eg": "开启开始游戏推送",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -111,7 +74,7 @@
       {
         "name": "关闭推送",
         "desc": "关闭自己的所有推送功能",
-        "eg": "关闭推送",
+        "eg": "关闭成就推送",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -123,11 +86,35 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "订阅降价",
+        "desc": "订阅商店游戏降价信息",
+        "eg": "订阅降价黑神话",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅降价",
+        "desc": "取消订阅商店游戏降价信息",
+        "eg": "取消订阅降价哀鸿",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅降价查看",
+        "desc": "查看订阅的商店游戏降价信息",
+        "eg": "订阅降价查看",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
-  "库存相关": {
-    "desc": "游戏墙因steam cdn原因, 部分游戏无法获取到封面",
+  "游戏相关": {
+    "desc": "游戏展示与游戏库互动",
     "data": [
       {
         "name": "游戏墙",
@@ -146,22 +133,6 @@
         "need_admin": false
       },
       {
-        "name": "开启成就推送",
-        "desc": "开启自己成就解锁的推送功能",
-        "eg": "开启成就推送",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "关闭成就推送",
-        "desc": "关闭自己成就解锁的推送功能",
-        "eg": "关闭成就推送",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
         "name": "玩什么",
         "desc": "从自己的游戏库随机挑3个游戏",
         "eg": "玩什么",
@@ -171,42 +142,13 @@
       }
     ]
   },
-  "商店相关": {
-    "desc": "订阅商店游戏降价信息等",
-    "data": [
-      {
-        "name": "订阅降价",
-        "desc": "订阅商店游戏降价信息",
-        "eg": "订阅降价黑神话",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "取消订阅降价",
-        "desc": "取消订阅商店游戏降价信息",
-        "eg": "取消订阅降价黑神话",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "订阅降价查看",
-        "desc": "查看订阅的商店游戏降价信息",
-        "eg": "订阅降价查看",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      }
-    ]
-  },
   "排行相关": {
-    "desc": "排行榜功能",
+    "desc": "排行榜与群内数据统计",
     "data": [
       {
-        "name": "我的统计",
-        "desc": "查看个人群内游玩时长排行榜",
-        "eg": "我的统计",
+        "name": "我的排行",
+        "desc": "查看个人群内游玩时长排行榜与统计",
+        "eg": "我的排行",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -234,19 +176,11 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      },
-      {
-        "name": "群友状态",
-        "desc": "查看本群已绑定群友的实时在线与游戏状态",
-        "eg": "群友状态",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
       }
     ]
   },
-  "用户相关": {
-    "desc": "查看 Steam 个人资料卡片",
+  "账号信息": {
+    "desc": "查看 Steam 个人资料卡片与群友状态",
     "data": [
       {
         "name": "状态",
@@ -273,9 +207,46 @@
         "need_admin": false
       },
       {
-        "name": "刷新用户",
-        "desc": "强制重新获取并刷新绑定的steam账号信息与装扮缓存",
-        "eg": "刷新用户",
+        "name": "群友状态",
+        "desc": "查看本群已绑定群友的实时在线与游戏状态",
+        "eg": "群友状态",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "ASF 相关": {
+    "desc": "需要后台配置 ASF 服务器基础地址",
+    "data": [
+      {
+        "name": "探索队列",
+        "desc": "调用 ASF 自动完成 Steam 探索队列并返回游戏列表",
+        "eg": "探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "开启挂卡",
+        "desc": "启动或恢复 ASF 自动挂卡任务",
+        "eg": "开启挂卡",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "结束挂卡",
+        "desc": "停止或暂停 ASF 自动挂卡任务",
+        "eg": "结束挂卡",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "挂卡状态",
+        "desc": "查询当前剩余挂卡游戏数量与预计时间",
+        "eg": "挂卡状态",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
