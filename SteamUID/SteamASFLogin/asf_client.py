@@ -66,7 +66,8 @@ class ASFClient:
             "SteamLogin": steam_login,
             "SteamPassword": steam_password,
             "Enabled": True,
-            "Paused": False,
+            "Paused": True,
+            "OnlineStatus": 7,
         }
         payload = {"BotConfig": bot_config}
 
