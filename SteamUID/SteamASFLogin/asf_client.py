@@ -82,6 +82,7 @@ class ASFClient:
             "Enabled": True,
             "Paused": True,
             "OnlineStatus": 7,
+            "GamesPlayedWhileIdle": [],
         }
         payload = {"BotConfig": bot_config}
 
@@ -90,6 +91,7 @@ class ASFClient:
                 # 尝试创建
                 resp = await client.post(url, headers=cls._headers(), json=payload)
                 if resp.status_code == 200:
+                    await cls.ensure_idle_and_invisible(bot_name)
                     return True
                 # 若已存在则尝试更新
                 resp = await client.put(url, headers=cls._headers(), json=payload)
@@ -97,6 +99,7 @@ class ASFClient:
                     # 尝试启动 Bot
                     start_url = f"{cls._base_url()}/Api/Bot/{bot_name}/Start"
                     await client.post(start_url, headers=cls._headers())
+                    await cls.ensure_idle_and_invisible(bot_name)
                     return True
                 logger.warning(f"[SteamASF] 创建/更新 Bot {bot_name} 返回错误: {resp.status_code} {resp.text}")
         except Exception as e:
@@ -141,6 +144,20 @@ class ASFClient:
     async def pause_farming(cls, bot_name: str) -> tuple[bool, str]:
         """暂停/停止挂卡任务"""
         return await cls.send_command(f"pause {bot_name}")
+
+    @classmethod
+    async def set_persona_state(cls, bot_name: str, state: int | str = 7) -> tuple[bool, str]:
+        """设置 Bot 的在线状态 (0=Offline, 1=Online, 7=Invisible 等)"""
+        return await cls.send_command(f"persona {bot_name} {state}")
+
+    @classmethod
+    async def ensure_idle_and_invisible(cls, bot_name: str) -> None:
+        """确保 Bot 处于暂停挂卡状态且保持隐身"""
+        try:
+            await cls.pause_farming(bot_name)
+            await cls.set_persona_state(bot_name, 7)
+        except Exception as e:
+            logger.warning(f"[SteamASF] 确保 Bot {bot_name} 隐身并暂停挂卡失败: {e!r}")
 
     @classmethod
     async def input_credential(

@@ -226,6 +226,8 @@ async def asf_api_login(payload: _LoginPayload):
         state.status = "success"
         state.steamid64 = steamid64
         LOGIN_CACHE[token] = state
+        # 确保登录后保持隐身且不进行自动挂卡
+        await ASFClient.ensure_idle_and_invisible(bot_name)
         return JSONResponse({
             "ok": True,
             "done": True,
@@ -276,6 +278,8 @@ async def asf_api_2fa(payload: _TwoFactorPayload):
         state.status = "success"
         state.steamid64 = steamid64
         LOGIN_CACHE[token] = state
+        # 确保登录后保持隐身且不进行自动挂卡
+        await ASFClient.ensure_idle_and_invisible(bot_name)
         return JSONResponse({
             "ok": True,
             "done": True,

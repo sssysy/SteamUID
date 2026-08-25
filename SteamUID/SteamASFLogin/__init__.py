@@ -20,6 +20,8 @@ async def steamasf_bind(bot: Bot, ev: Event):
     try:
         steamid64 = await login.request_asf_login(bot, ev)
         if steamid64:
+            bot_name = login._sanitize_bot_name(ev.user_id)
+            await ASFClient.ensure_idle_and_invisible(bot_name)
             success_msg, warning = await do_bind(ev, steamid64, is_asf=True)
             fallback = success_msg
             if warning:
