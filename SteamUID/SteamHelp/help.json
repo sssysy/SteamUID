@@ -228,6 +228,30 @@
         "need_admin": false
       },
       {
+        "name": "开启自动探索",
+        "desc": "开启每日自动探索队列任务",
+        "eg": "开启自动探索",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭自动探索",
+        "desc": "关闭每日自动探索队列任务",
+        "eg": "关闭自动探索",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "自动探索状态",
+        "desc": "查看绑定的 Steam 账号每日自动探索队列开关状态",
+        "eg": "自动探索状态",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "开启挂卡",
         "desc": "启动或恢复 ASF 自动挂卡任务",
         "eg": "开启挂卡",

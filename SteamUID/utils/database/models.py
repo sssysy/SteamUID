@@ -287,6 +287,7 @@ class SteamBind(BaseIDModel, table=True):
     push_start_game: bool = Field(default=True, title="推送开始游戏")
     push_end_game: bool = Field(default=True, title="推送结束游戏")
     push_archivement: bool = Field(default=True, title="推送成就")
+    auto_discovery_queue: bool = Field(default=False, title="自动探索队列")
     is_main_id: bool = Field(default=False, title="是否主ID")
     is_asf: bool = Field(default=False, title="是否绑定ASF")
 
@@ -312,6 +313,7 @@ class SteamBind(BaseIDModel, table=True):
         push_start_game: bool = True,
         push_end_game: bool = True,
         push_archivement: bool = True,
+        auto_discovery_queue: bool = False,
     ) -> int:
         """写入绑定关系（同一 user + steamid 已存在则更新）"""
         # 设置主ID前，先将该用户在同群绑定的 is_main_id 清零
@@ -358,6 +360,7 @@ class SteamBind(BaseIDModel, table=True):
                     push_start_game=push_start_game,
                     push_end_game=push_end_game,
                     push_archivement=push_archivement,
+                    auto_discovery_queue=auto_discovery_queue,
                     is_main_id=is_main_id,
                     is_asf=is_asf,
                 )
@@ -462,7 +465,23 @@ class SteamBind(BaseIDModel, table=True):
             return 0
         return -1
 
-    PUSH_COLUMNS: ClassVar[Set[str]] = {"push_start_game", "push_end_game", "push_archivement"}
+    PUSH_COLUMNS: ClassVar[Set[str]] = {
+        "push_start_game",
+        "push_end_game",
+        "push_archivement",
+        "auto_discovery_queue",
+    }
+
+    @classmethod
+    @with_session
+    async def get_all_auto_discovery_queue_binds(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+    ) -> list["SteamBind"]:
+        """获取所有开启了自动探索队列的绑定"""
+        stmt = select(cls).where(cls.auto_discovery_queue == True)  # noqa: E712
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     @classmethod
     @with_session

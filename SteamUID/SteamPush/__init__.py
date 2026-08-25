@@ -124,3 +124,27 @@ def _make_handler(columns: list[str], enabled: bool):
 
 for _cmds, _columns, _enabled in _PUSH_COMMANDS:
     push_SV.on_command(_cmds)(_make_handler(_columns, _enabled))
+
+
+@push_SV.on_command(("推送状态", "steam推送状态"))
+async def check_push_status(bot: Bot, ev: Event):
+    try:
+        binds = await SteamBind.get_binds_by_user(
+            ev.bot_id, ev.user_id, ev.user_type, ev.group_id
+        )
+        if not binds:
+            await bot.send("你尚未绑定任何 Steam 账号！")
+            return
+
+        msg_lines = ["【Steam 推送状态】"]
+        for b in binds:
+            steamid_disp = maybe_hide_steamid(b.steamid64) if b.steamid64 else b.user_id
+            msg_lines.append(f"账号：{steamid_disp}")
+            msg_lines.append(f"  开始游戏推送：{'开启' if b.push_start_game else '关闭'}")
+            msg_lines.append(f"  结束游戏推送：{'开启' if b.push_end_game else '关闭'}")
+            msg_lines.append(f"  成就推送：{'开启' if b.push_archivement else '关闭'}")
+            msg_lines.append(f"  自动探索队列：{'开启' if b.auto_discovery_queue else '关闭'}")
+        await bot.send("\n".join(msg_lines))
+    except Exception as e:
+        logger.exception(f"[SteamPush] 查询推送状态异常: {e!r}")
+        await bot.send("查询推送状态失败，详情请查看后台。")

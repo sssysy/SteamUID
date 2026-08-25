@@ -83,6 +83,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "",
         secret=True,
     ),
+    "AutoDiscoveryQueueTime": GsStrConfig(
+        "自动探索队列执行时间",
+        "每日自动探索队列的时间，格式为 HH:MM (例如 02:00)。修改后需重启 GsCore 生效",
+        "02:00",
+    ),
     "OnlyOpenID": GsBoolConfig(
         "仅允许网页登录",
         "开启后将不支持用户手动传入steamid，而采用 Openid 验证 steamid 所有权后绑定",
@@ -91,11 +96,12 @@ CONFIG_DEFAULT: dict[str, GSC] = {
     "PushSwitch": GsListStrConfig(
         "推送总开关",
         "选择开启的推送事件，关闭的事件将不会推送(无论用户设置是否开启)",
-        ["开始游戏","结束游戏","获得成就"],
+        ["开始游戏", "自动探索完毕"],
         options=[
             "开始游戏",
             "结束游戏",
             "获得成就",
+            "自动探索完毕",
         ]
     ),
     "PushDefault": GsListStrConfig(

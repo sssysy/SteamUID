@@ -47,3 +47,31 @@ if _file_cache_days and _file_cache_days > 0:
     )
     async def purge_file_cache_job():
         await purge_file_cache(days=_file_cache_days)
+
+
+# steam 每日自动探索队列任务
+def _parse_discovery_queue_time() -> tuple[int, int]:
+    raw = SteamConfig.get_config("AutoDiscoveryQueueTime").data.strip()
+    try:
+        if ":" in raw:
+            parts = raw.split(":")
+            h, m = int(parts[0]), int(parts[1])
+            if 0 <= h <= 23 and 0 <= m <= 59:
+                return h, m
+    except Exception:
+        pass
+    return 2, 0
+
+
+_explore_h, _explore_m = _parse_discovery_queue_time()
+
+
+@scheduler.scheduled_job(
+    "cron",
+    hour=_explore_h,
+    minute=_explore_m,
+)
+async def auto_discovery_queue_job():
+    from ..SteamASFDiscoveryQueue.discovery_service import run_auto_discovery_queue_job
+    await run_auto_discovery_queue_job()
+
