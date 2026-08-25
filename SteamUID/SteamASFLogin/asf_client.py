@@ -14,7 +14,11 @@ class ASFClient:
     @classmethod
     def _base_url(cls) -> str:
         url = SteamConfig.get_config("steamasfbaseurl").data.strip()
-        return url.rstrip("/") if url else "http://127.0.0.1:1242"
+        if not url:
+            return "http://127.0.0.1:1242"
+        if not (url.startswith("http://") or url.startswith("https://")):
+            url = f"http://{url}"
+        return url.rstrip("/")
 
     @classmethod
     def _headers(cls) -> dict[str, str]:

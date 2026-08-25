@@ -53,7 +53,11 @@ def _auth_token(user_id: str) -> str:
 def _login_base_url() -> str:
     """获取 gscore 回调与网页访问基础 URL"""
     base = SteamConfig.get_config("gscoreBaseURL").data.strip()
-    return base.rstrip("/") if base else "http://127.0.0.1:8765"
+    if not base:
+        return "http://127.0.0.1:8765"
+    if not (base.startswith("http://") or base.startswith("https://")):
+        base = f"http://{base}"
+    return base.rstrip("/")
 
 
 def _sanitize_bot_name(user_id: str) -> str:
@@ -103,11 +107,9 @@ async def asf_static_file(filename: str):
     return Response(status_code=404)
 
 
-@app.get("/steam/asf/login")
-@app.get("/steam/asf/{auth_token}")
-async def asf_login_entry(request: Request, auth_token: str | None = None):
-    """ASF 网页登录主入口"""
-    token = auth_token or request.query_params.get("state", "") or request.query_params.get("auth", "")
+async def _render_login_page(token: str) -> HTMLResponse:
+    """内部通用渲染登录页函数"""
+    token = (token or "").strip()
     state = LOGIN_CACHE.get(token)
 
     if not token or not state:
@@ -124,6 +126,19 @@ async def asf_login_entry(request: Request, auth_token: str | None = None):
     # 注入 auth token 到隐藏域中
     html_content = html_content.replace('value="{{ auth | default(\'\') }}"', f'value="{token}"')
     return HTMLResponse(html_content, status_code=200)
+
+
+@app.get("/steam/asf/login")
+async def asf_login_page_query(request: Request):
+    """ASF 网页登录 (Query Parameter 方式: /steam/asf/login?state=xxx)"""
+    token = request.query_params.get("state") or request.query_params.get("auth") or ""
+    return await _render_login_page(token)
+
+
+@app.get("/steam/asf/i/{auth_token}")
+async def asf_login_page_path(auth_token: str):
+    """ASF 网页登录 (Path Parameter 方式: /steam/asf/i/xxx)"""
+    return await _render_login_page(auth_token)
 
 
 @app.get("/steam/asf/success")
