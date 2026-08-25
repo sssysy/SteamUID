@@ -106,7 +106,7 @@ class _LoginPayload(BaseModel):
 
 class _TwoFactorPayload(BaseModel):
     auth: str
-    code: str
+    code: str = ""
 
 
 # =========================================================
@@ -241,7 +241,7 @@ async def asf_api_login(payload: _LoginPayload):
         return JSONResponse({
             "ok": True,
             "need_2fa": True,
-            "hint": poll_res.get("hint", "请输入您的 Steam 手机令牌或邮箱验证码"),
+            "hint": poll_res.get("hint", "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】"),
         })
     else:
         # 若仍在 pending，通常为需要 2FA 提示
@@ -250,13 +250,13 @@ async def asf_api_login(payload: _LoginPayload):
         return JSONResponse({
             "ok": True,
             "need_2fa": True,
-            "hint": "请输入您的 Steam 手机令牌或邮箱验证码",
+            "hint": "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】",
         })
 
 
 @app.post("/steam/asf/api/2fa")
 async def asf_api_2fa(payload: _TwoFactorPayload):
-    """处理两步验证码提交并对接 ASF"""
+    """处理两步验证码提交或客户端批准确认并对接 ASF"""
     token = payload.auth
     state = LOGIN_CACHE.get(token)
 
@@ -264,12 +264,13 @@ async def asf_api_2fa(payload: _TwoFactorPayload):
         return JSONResponse({"ok": False, "msg": "登录会话已过期，请重新获取链接"})
 
     bot_name = state.bot_name or _sanitize_bot_name(state.user_id)
-    code = payload.code.strip().upper()
+    code = (payload.code or "").strip().upper()
 
-    # 向 ASF 提交 2FA 凭据
-    input_ok = await ASFClient.input_credential(bot_name, state.input_type, code)
-    if not input_ok:
-        return JSONResponse({"ok": False, "msg": "向 ASF 提交两步验证凭据失败"})
+    # 若输入了验证码，则向 ASF 提交凭据；若未输入，则直接等待并检测手机端是否已批准登录
+    if code:
+        input_ok = await ASFClient.input_credential(bot_name, state.input_type, code)
+        if not input_ok:
+            return JSONResponse({"ok": False, "msg": "向 ASF 提交两步验证凭据失败"})
 
     # 等待登录成功（最多等待 8 秒）
     poll_res = await ASFClient.poll_bot_status(bot_name, max_wait_seconds=8.0)
@@ -286,6 +287,9 @@ async def asf_api_2fa(payload: _TwoFactorPayload):
             "steamid64": steamid64,
             "redirect": "/steam/asf/success",
         })
+
+    if not code:
+        return JSONResponse({"ok": False, "msg": "尚未检测到客户端批准，请在手机 Steam 上点击【批准】后再点击确认验证"})
 
     return JSONResponse({"ok": False, "msg": "两步验证码错误或已失效，请重新输入"})
 

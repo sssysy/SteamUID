@@ -222,13 +222,13 @@ class ASFClient:
                     return {
                         "status": "need_2fa",
                         "input_type": "TwoFactorAuthentication",
-                        "hint": "请输入您的 Steam 手机令牌验证码",
+                        "hint": "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】",
                     }
                 elif req_input:
                     return {
                         "status": "need_2fa",
                         "input_type": "TwoFactorAuthentication",
-                        "hint": "请输入您的 Steam 令牌验证码",
+                        "hint": "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】",
                     }
 
             await asyncio.sleep(interval)
