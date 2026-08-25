@@ -26,9 +26,76 @@
 > 使用前请务必阅读以下事项，否则会导致此插件无法正常工作
 > - 使用本插件前请先确保框架机器可以正常访问 **steam 官方服务器**，若无法访问请务必配置反向代理([参考](https://github.com/XasYer/steam-plugin#%E4%BD%BF%E7%94%A8cloudflare%E6%90%AD%E5%BB%BA%E5%8F%8D%E4%BB%A3-%E8%BF%9E%E6%8E%A5%E4%B8%8D%E4%B8%8Asteam%E6%83%85%E5%86%B5%E4%B8%8B%E7%9A%84%E5%A4%87%E9%80%89))并在设置中配置**SteamAPI反代URL** 和 **Steam商店反代URL**。
 > - 首次启用本插件务必在设置中填写**Steam API Key**，否则插件无法工作！。
-> - 本插件现已全面改用 playwright 进行图片渲染，请务必确保 playwright 安装正确。
+> - 如果需要使用插件 ASF 相关功能，需要自搭建 [ArchiSteamFarm](https://github.com/JustArchiNET/ArchiSteamFarm) 并在后台配置 **ASF Base URL** ，配置教程可见 [ASF 部署教程](#asfarchisteamfarm部署教程)。
+
+## 丨安装教程
+
+### SteamUID 插件安装
+- **方法一**：从 Gscore 网页控制台安装：`网页控制台 -> 插件商城 -> 从 URL 安装`
+- **方法二**：下载此 `SteamUID` 仓库，并放置在 `gsuid_core/plugins/` 目录下。
+
+---
+
+### ASF（ArchiSteamFarm）部署教程
+
+<details>
+<summary>点击展开</summary>
+
+#### **方法一：官方教程部署**：
+1. 参考 [ASF 官方 Wiki 教程](https://github.com/JustArchiNET/ArchiSteamFarm/wiki/Setting-up-zh-CN) 安装 ASF。
+2. 参考 [ASFEnhance](https://github.com/chr233/ASFEnhance#%E5%AE%89%E8%A3%85%E6%96%B9%E5%BC%8F) 安装 ASF 扩展。
+
+#### **方法二**：Docker 容器化部署
+
+##### 1. 运行 Docker 容器
+在终端执行以下命令启动 ASF 容器：
+```bash
+docker run -d \
+  --name asf \
+  --pull always \
+  --restart unless-stopped \
+  -p 1242:1242 \
+  -v /root/ASF/config:/app/config \
+  -v /root/ASF/plugins:/app/plugins \
+  justarchi/archisteamfarm
+```
+
+##### 2. 配置 IPC 监听
+在 `/root/ASF/config/` 目录下创建 `IPC.config` 文件，写入以下内容以允许外部网络访问：
+```json
+{
+  "Kestrel": {
+    "Endpoints": {
+      "HTTP": {
+        "Url": "http://*:1242"
+      }
+    }
+  }
+}
+```
+
+##### 3. 安装 ASFEnhance 扩展插件
+1. 前往 [ASFEnhance Releases](https://github.com/chr233/ASFEnhance/releases/) 下载最新的 ASF 扩展插件压缩包并解压。
+2. 将插件文件放入宿主机的 `/root/ASF/plugins/` 目录中。
+3. 修改 `/root/ASF/config/ASF.json`（若无则创建），在根对象中追加配置：
+```json
+{
+  "ASFEnhance": {
+    "EULA": true
+  }
+}
+```
+4. 重启 ASF 容器使配置与插件生效：
+```bash
+docker restart asf
+```
+
+</details>
 
 ## 丨命令列表
+
+<details>
+<summary>点击展开</summary>
 
 ### steam帮助(图片更新可能不及时，请以下方命令说明为准)
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2NVVjN5LWxQS1RidlJmR3hwUnIzZEFWNUJ2aC1lMzVzLXl3dWR5V0RDUDhzP2U9QzVXMGVp.jpg" width="480" alt="Steam帮助菜单">
@@ -95,6 +162,8 @@
 |------|:------:|
 | `steam帮助` | 呼出本插件帮助菜单 |
 | `steam清除全部缓存` | 清除全部缓存 |
+
+</details>
 
 ## 丨效果图
 
