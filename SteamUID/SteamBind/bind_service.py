@@ -122,51 +122,6 @@ async def do_unbind(ev: Event, steamid64: str) -> str:
     return f"解绑 steamid: {maybe_hide_steamid(steamid64)} 成功"
 
 
-async def format_bind_list(
-    bot_id: str,
-    user_id: str,
-    user_type: str,
-    show_all: bool,
-    group_id: str | None = None,
-) -> str | None:
-    """格式化绑定列表"""
-    subs = await SteamBind.get_binds_by_user(
-        bot_id=bot_id,
-        user_id=user_id,
-        user_type=user_type,
-    )
-    if not subs:
-        return None
-
-    now_id_list = []
-    other_id_list = []
-    for sub in subs:
-        tag = " [主]" if (sub.is_main_id and sub.group_id == group_id) else ""
-        entry = f"{maybe_hide_steamid(sub.steamid64)}{tag}"
-        if sub.group_id == group_id:
-            now_id_list.append(entry)
-        else:
-            other_id_list.append(entry)
-
-    now_id_list = list(set(now_id_list))
-    other_id_list = list(set(other_id_list))
-
-    if not now_id_list and not other_id_list:
-        return None
-
-    sep = "-" * 20
-    now_ids = "\n".join(now_id_list)
-    other_ids = "\n".join(other_id_list)
-
-    send_msg = f"[steam] -=绑定列表=-\n{sep}\n"
-    if now_id_list:
-        send_msg += f"此群已绑定的steamid：\n{now_ids}\n{sep}\n"
-    if other_id_list and show_all:
-        send_msg += f"其他地方已绑定的steamid：\n{other_ids}\n{sep}\n"
-
-    return send_msg
-
-
 async def switch_main_id(ev: Event, steamid64: str) -> str:
     all_binds = await SteamBind.get_binds_by_user(
         bot_id=ev.bot_id,

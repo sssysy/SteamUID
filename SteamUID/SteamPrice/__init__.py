@@ -1,7 +1,6 @@
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
-from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 from gsuid_core.subscribe import gs_subscribe
 
@@ -9,7 +8,7 @@ from ..utils.database.models import SteamPriceInfo
 from ..utils.api import get_price_data
 from ..utils.exceptions import SteamError
 from ..utils.utils import resolve_target_appid
-from ..SteamConfig import SteamConfig, get_current_region
+from ..SteamConfig import get_current_region
 import json
 
 

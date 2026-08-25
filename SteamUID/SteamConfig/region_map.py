@@ -66,9 +66,6 @@ DEFAULT_REGION = _STEAM_REGIONS_LIST[0]  # 中国大陆 (cn / schinese)
 # 提供给配置项 options 的地区名称列表
 SUPPORTED_REGIONS: list[str] = [r.name for r in _STEAM_REGIONS_LIST]
 
-# 精确查找映射表
-STEAM_REGIONS_MAP: dict[str, SteamRegion] = {r.name: r for r in _STEAM_REGIONS_LIST}
-
 # 别名/代码快速索引表
 _ALIAS_MAP: dict[str, SteamRegion] = {}
 for r in _STEAM_REGIONS_LIST:
@@ -105,15 +102,7 @@ def get_region(query: Optional[str]) -> SteamRegion:
         return DEFAULT_REGION
 
     q = str(query).strip().lower()
-    if q in _ALIAS_MAP:
-        return _ALIAS_MAP[q]
-
-    # 尝试匹配 cc
-    for r in _STEAM_REGIONS_LIST:
-        if r.cc.lower() == q or r.name.lower() == q:
-            return r
-
-    return DEFAULT_REGION
+    return _ALIAS_MAP.get(q, DEFAULT_REGION)
 
 
 def get_current_region() -> SteamRegion:

@@ -14,7 +14,7 @@ from . import farm_service
 farm_sv = SV("ASF挂卡")
 
 
-@farm_sv.on_command(("开始挂卡",))
+@farm_sv.on_command(("开始挂卡", "继续挂卡"))
 async def steamasf_start_farming(bot: Bot, ev: Event):
     """启动/恢复 ASF 挂卡任务"""
     try:
@@ -82,7 +82,7 @@ async def steamasf_start_farming(bot: Bot, ev: Event):
         await bot.send("开始挂卡发生未知错误，详情请查看后台。")
 
 
-@farm_sv.on_command(("结束挂卡", "停止挂卡"))
+@farm_sv.on_command(("结束挂卡", "停止挂卡", "暂停挂卡"))
 async def steamasf_stop_farming(bot: Bot, ev: Event):
     """停止/暂停 ASF 挂卡任务"""
     try:

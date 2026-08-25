@@ -4,9 +4,9 @@ from gsuid_core.models import Event
 from gsuid_core.sv import SV
 
 from ..SteamBind import _send_bind_card
-from ..SteamBind.bind_service import do_bind, do_unbind
+from ..SteamBind.bind_service import do_bind
 from ..utils.database.models import SteamBind
-from ..utils.exceptions import SteamError, SteamValidationError
+from ..utils.exceptions import SteamError
 from ..utils.utils import auto2steamid64, maybe_hide_steamid
 from . import login
 from .asf_client import ASFClient
@@ -27,7 +27,7 @@ async def steamasf_bind(bot: Bot, ev: Event):
             if warning:
                 fallback += f"\n{warning}"
             await _send_bind_card(
-                bot, ev, fallback_msg=fallback, new_bind_steamid=steamid64, show_all=True
+                bot, ev, fallback_msg=fallback, show_all=True
             )
     except SteamError as e:
         await bot.send(str(e))

@@ -18,13 +18,12 @@ from ..utils.api import (
 )
 from ..utils.exceptions import (
     SteamError,
-    SteamRenderError,
     SteamValidationError,
 )
 from ..utils.render import render_steam_achievement
 from ..utils.utils import resolve_target_appid, resolve_target_steamid64, steamid64_to_friend_code
 
-SV = SV("steam成就服务")
+achievement_sv = SV("steam成就服务")
 
 
 async def build_achievement_data(
@@ -173,7 +172,7 @@ async def build_achievement_data(
     return game_data, user_data, all_achievements
 
 
-@SV.on_command("游戏成就")
+@achievement_sv.on_command("游戏成就")
 async def game_archivements(bot: Bot, ev: Event):
     appid = ""
     try:

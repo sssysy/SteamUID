@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Sequence, overload
+from typing import overload
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
@@ -15,7 +15,6 @@ from .api import (
 )
 from .database.models import SteamBind
 from .database.models_cache import SteamApiCache
-from .downloader import download
 from .exceptions import SteamValidationError
 from ..SteamConfig import SteamConfig
 
@@ -161,16 +160,6 @@ async def resolve_target_appid(
     return appid, limit
 
 
-async def batch_download_images(
-    urls: Sequence[str],
-    save_dir: str,
-    max_concurrency: int = 5,
-) -> list[str | None]:
-    """批量下载图片（向下兼容封装，底层使用 downloader.download）"""
-    paths = await download(urls, save_dir=save_dir, max_concurrency=max_concurrency)
-    return [str(p) if p is not None else None for p in paths]
-
-
 async def resolve_target_steamid64(ev: Event, text: str = "") -> str | None:
     """三级回退：auto2steamid64(text) → @他人的主ID → 当前用户的主ID。
     注意：会修改 ev.user_id 以支持 @他人。
@@ -313,45 +302,3 @@ async def get_user_static_avatar_frame(steamid64: str) -> str | None:
 
     return None
 
-
-async def get_user_pill_data(steamid64: str) -> dict:
-    """并发查询并聚合构建「药丸型卡片」所需的用户数据字典"""
-    players_res, miniprofile_data, items_data = await asyncio.gather(
-        get_user_Summaries(steamid64),
-        get_miniprofile(steamid64),
-        get_profile_items_equipped(steamid64),
-        return_exceptions=True,
-    )
-
-    player = players_res[0] if (isinstance(players_res, list) and players_res) else {}
-    user_name = player.get("personaname", "未知用户")
-    friend_code = steamid64_to_friend_code(steamid64)
-
-    avatar_url = player.get("avatarfull", "")
-    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
-        avatar_url = miniprofile_data["avatar_url"]
-
-    avatar_frame_url = None
-    if isinstance(items_data, dict):
-        frame = items_data.get("avatar_frame", {})
-        if frame.get("image_small"):
-            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
-    if not avatar_frame_url and isinstance(miniprofile_data, dict):
-        avatar_frame_url = miniprofile_data.get("avatar_frame")
-
-    bg_url = None
-    if isinstance(items_data, dict):
-        mini_bg = items_data.get("mini_profile_background", {})
-        if mini_bg.get("image_large"):
-            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
-    if not bg_url and isinstance(miniprofile_data, dict):
-        bg = miniprofile_data.get("profile_background", {})
-        bg_url = bg.get("image")
-
-    return {
-        "name": user_name,
-        "friend_code": friend_code,
-        "avatar_url": avatar_url,
-        "avatar_frame_url": avatar_frame_url,
-        "bg_url": bg_url,
-    }

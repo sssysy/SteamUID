@@ -4,7 +4,7 @@ from typing import Any
 from gsuid_core.models import Event
 
 from ..utils.database.models import SteamBind
-from ..utils.utils import auto2steamid64, maybe_hide_steamid
+from ..utils.utils import auto2steamid64
 from ..SteamASFLogin.login import _sanitize_bot_name
 
 

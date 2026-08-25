@@ -62,7 +62,7 @@ async def _send_bind_card(
             await bot.send(fallback_msg)
 
 
-@bind_sv.on_command(("绑定", "登录", "登陆", "bind"))
+@bind_sv.on_command(("绑定", "登录", "登陆"))
 async def steambind(bot: Bot, ev: Event):
     try:
         text = ev.text.strip()
@@ -87,7 +87,7 @@ async def steambind(bot: Bot, ev: Event):
         await bot.send("发生未知错误，详情请查看后台。")
 
 
-@bind_sv.on_command(("解绑", "unbind", "退出登录", "退出登陆"))
+@bind_sv.on_command(("解绑", "退出登录", "退出登陆"))
 async def steamunbind(bot: Bot, ev: Event):
     try:
         text = ev.text.strip()

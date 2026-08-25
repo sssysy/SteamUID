@@ -4,14 +4,13 @@ from pathlib import Path
 
 import aiofiles
 from PIL import Image
-from gsuid_core.sv import get_plugin_available_prefix
-from gsuid_core.help.model import PluginHelp
-from gsuid_core.help.draw_new_plugin_help import get_new_help
-from gsuid_core.help.utils import register_help
-from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
-from gsuid_core.models import Event
+from gsuid_core.help.draw_new_plugin_help import get_new_help
+from gsuid_core.help.model import PluginHelp
+from gsuid_core.help.utils import register_help
 from gsuid_core.logger import logger
+from gsuid_core.models import Event
+from gsuid_core.sv import SV, get_plugin_available_prefix
 
 from ..version import SteamUID_version
 

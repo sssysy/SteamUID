@@ -62,12 +62,12 @@ html, body {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-image: url('../texture2d/bg_pc.jpg');
+  background-image: url('/steam/asf/texture2d/bg_pc.jpg');
 }
 
 @media (max-width: 768px) {
   .background-stage {
-    background-image: url('../texture2d/bg_mobile.jpg');
+    background-image: url('/steam/asf/texture2d/bg_mobile.jpg');
   }
 }
 
