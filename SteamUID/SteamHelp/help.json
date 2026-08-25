@@ -11,6 +11,14 @@
         "need_admin": false
       },
       {
+        "name": "asf登录",
+        "desc": "使用 ASF 网页方式登录绑定 steam",
+        "eg": "asf登录",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "绑定12345678",
         "desc": "使用好友码 / steamid 绑定 steam",
         "eg": "绑定12345678",

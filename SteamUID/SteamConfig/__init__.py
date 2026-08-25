@@ -72,6 +72,17 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "应为 gscore 的公网地址或穿透地址",
         "http://127.0.0.1:8765",
     ),
+    "steamasfbaseurl": GsStrConfig(
+        "ASF IPC基础URL",
+        "ASF 的 IPC 服务地址，例如 http://127.0.0.1:1242",
+        "http://127.0.0.1:1242",
+    ),
+    "steamasfipckey": GsStrConfig(
+        "ASF IPC访问密钥",
+        "ASF IPC 的访问密码(IPCPassword)，未设置可留空",
+        "",
+        secret=True,
+    ),
     "OnlyOpenID": GsBoolConfig(
         "仅允许网页登录",
         "开启后将不支持用户手动传入steamid，而采用 Openid 验证 steamid 所有权后绑定",

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SteamUID · ASF登录</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 响应式背景 -->
+  <div class="background-stage"></div>
+
+  <!-- 右上角 Toast 提示容器 -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- 首次打开提示弹窗 (Notice Modal) -->
+  <div id="noticeModal" class="notice-overlay">
+    <div class="notice-card">
+      <div class="notice-title">
+        <svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24">
+          <path d="M12 2L1 21h22L12 2zm0 3.5L20 19H4L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+        </svg>
+        <span>注意</span>
+      </div>
+      <div class="notice-body">
+        您当前正在执行<span class="highlight-red">ASF登录</span>命令，此页面并非steam官方登录页面，登录时会将您的账号密码传输至机器人ASF后台进行登录。<span class="highlight-red">如您无法确认机器人来源可信，请勿登录并关闭该页面。</span>如登录后造成账号损失，本插件概不负责！
+      </div>
+      <div class="notice-links">
+        <a href="https://github.com/JustArchiNET/ArchiSteamFarm" target="_blank" rel="noopener noreferrer">ASF 项目地址</a> · <a href="https://github.com/sssysy/SteamUID" target="_blank" rel="noopener noreferrer">SteamUID 项目地址</a>
+      </div>
+      <div class="notice-signature">
+        ——SteamUID · ASF登录
+      </div>
+      <button id="btnNoticeConfirm" class="notice-btn" type="button">我已知晓并继续</button>
+    </div>
+  </div>
+
+  <!-- 主登录界面 (Main Login Form) -->
+  <div class="main-container">
+    <div class="login-card">
+      <div class="card-header">
+        <img src="../../../ICON.png" alt="SteamUID Logo" class="brand-logo-img" onerror="this.src='/steam/asf/static/ICON.png'" />
+        <h1 class="card-title">SteamUID · ASF登录</h1>
+      </div>
+
+      <form id="loginForm" onsubmit="return false">
+        <input id="authToken" type="hidden" value="{{ auth | default('') }}" />
+
+        <div class="form-group">
+          <label class="form-label" for="username">Steam 账号</label>
+          <input id="username" class="form-input" type="text" placeholder="请输入 Steam 账户名称" autocomplete="username" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Steam 密码</label>
+          <input id="password" class="form-input" type="password" placeholder="请输入密码" autocomplete="current-password" required />
+        </div>
+
+        <button id="btnLogin" class="btn-submit" type="submit">
+          <span id="btnText">登 录</span>
+          <span id="btnSpinner" class="spinner" style="display: none;"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2FA 弹窗（全屏毛玻璃灰色遮罩 + 5个矩形输入框） -->
+  <div id="twofaModal" class="twofa-overlay">
+    <div class="twofa-card">
+      <h2 class="twofa-title">Steam 令牌验证</h2>
+      <p id="twofaHint" class="twofa-desc">请输入您的 Steam 手机令牌或邮箱验证码</p>
+
+      <form id="twofaForm" onsubmit="return false">
+        <div class="twofa-inputs-group">
+          <input class="twofa-digit" type="text" maxlength="1" data-index="0" autocomplete="off" />
+          <input class="twofa-digit" type="text" maxlength="1" data-index="1" autocomplete="off" />
+          <input class="twofa-digit" type="text" maxlength="1" data-index="2" autocomplete="off" />
+          <input class="twofa-digit" type="text" maxlength="1" data-index="3" autocomplete="off" />
+          <input class="twofa-digit" type="text" maxlength="1" data-index="4" autocomplete="off" />
+        </div>
+        
+        <div class="twofa-actions">
+          <button id="btnTwofaCancel" class="btn-twofa-cancel" type="button">取消</button>
+          <button id="btnTwofaSubmit" class="btn-twofa-submit" type="submit">
+            <span id="twofaBtnText">确认验证</span>
+            <span id="twofaSpinner" class="spinner" style="display: none;"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const noticeModal = document.getElementById('noticeModal');
+    const btnNoticeConfirm = document.getElementById('btnNoticeConfirm');
+    const twofaModal = document.getElementById('twofaModal');
+    const loginForm = document.getElementById('loginForm');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const btnTwofaCancel = document.getElementById('btnTwofaCancel');
+    const btnTwofaSubmit = document.getElementById('btnTwofaSubmit');
+    const twofaBtnText = document.getElementById('twofaBtnText');
+    const twofaSpinner = document.getElementById('twofaSpinner');
+    const twofaDigits = Array.from(document.querySelectorAll('.twofa-digit'));
+    const twofaHint = document.getElementById('twofaHint');
+
+    // 获取 auth token (支持页面隐藏域或 url 参数)
+    function getAuthToken() {
+      const fieldVal = document.getElementById('authToken').value.trim();
+      if (fieldVal && !fieldVal.startsWith('{{')) return fieldVal;
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('state') || urlParams.get('auth') || '';
+    }
+
+    // 右上角毛玻璃 Toast 提示函数
+    function showToast(message, type = 'info', duration = 3000) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.add('show');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        setTimeout(() => {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 400);
+      }, duration);
+    }
+
+    // 首次打开点击确认关闭提示弹窗
+    btnNoticeConfirm.addEventListener('click', () => {
+      noticeModal.classList.add('hidden');
+      document.getElementById('username').focus();
+    });
+
+    // 2FA 五个输入框联动交互逻辑
+    twofaDigits.forEach((input, index) => {
+      input.addEventListener('input', (e) => {
+        const val = input.value.toUpperCase();
+        input.value = val;
+        if (val && index < twofaDigits.length - 1) {
+          twofaDigits[index + 1].focus();
+          twofaDigits[index + 1].select();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          if (!input.value && index > 0) {
+            twofaDigits[index - 1].focus();
+            twofaDigits[index - 1].value = '';
+          }
+        } else if (e.key === 'ArrowLeft' && index > 0) {
+          twofaDigits[index - 1].focus();
+        } else if (e.key === 'ArrowRight' && index < twofaDigits.length - 1) {
+          twofaDigits[index + 1].focus();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text').trim().toUpperCase();
+        if (text) {
+          const chars = text.replace(/[^A-Z0-9]/gi, '').slice(0, 5).split('');
+          chars.forEach((c, i) => {
+            if (twofaDigits[i]) twofaDigits[i].value = c;
+          });
+          const nextIndex = Math.min(chars.length, twofaDigits.length - 1);
+          twofaDigits[nextIndex].focus();
+        }
+      });
+    });
+
+    function getTwofaCode() {
+      return twofaDigits.map(i => i.value.trim()).join('');
+    }
+
+    function clearTwofaDigits() {
+      twofaDigits.forEach(i => i.value = '');
+    }
+
+    function showTwofaModal(hintText) {
+      noticeModal.classList.add('hidden');
+      if (hintText) twofaHint.textContent = hintText;
+      twofaModal.classList.add('active');
+      clearTwofaDigits();
+      setTimeout(() => twofaDigits[0].focus(), 100);
+    }
+
+    // 2FA 取消按钮
+    btnTwofaCancel.addEventListener('click', () => {
+      twofaModal.classList.remove('active');
+      showToast('已取消两步验证', 'warning');
+    });
+
+    // 2FA 提交逻辑
+    btnTwofaSubmit.addEventListener('click', async () => {
+      const code = getTwofaCode();
+      if (code.length < 5) {
+        showToast('请输入完整的 5 位两步验证码', 'error');
+        return;
+      }
+
+      const auth = getAuthToken();
+      twofaBtnText.textContent = '验证中...';
+      twofaSpinner.style.display = 'inline-block';
+      btnTwofaSubmit.disabled = true;
+
+      try {
+        const resp = await fetch('/steam/asf/api/2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auth: auth, code: code })
+        });
+        const data = await resp.json();
+
+        if (data.ok && data.done) {
+          twofaModal.classList.remove('active');
+          showToast('两步验证通过，登录成功！', 'success');
+          setTimeout(() => {
+            window.location.href = data.redirect || 'success.html';
+          }, 800);
+        } else {
+          showToast(data.msg || '验证失败，请重新输入', 'error');
+          clearTwofaDigits();
+          twofaDigits[0].focus();
+        }
+      } catch (err) {
+        showToast('网络通信异常，请重试', 'error');
+      } finally {
+        twofaBtnText.textContent = '确认验证';
+        twofaSpinner.style.display = 'none';
+        btnTwofaSubmit.disabled = false;
+      }
+    });
+
+    // 登录表单提交逻辑
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const auth = getAuthToken();
+
+      if (!username || !password) {
+        showToast('请输入账号和密码', 'error');
+        return;
+      }
+
+      btnText.textContent = '登录中...';
+      btnSpinner.style.display = 'inline-block';
+      btnLogin.disabled = true;
+
+      try {
+        const resp = await fetch('/steam/asf/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            auth: auth,
+            username: username,
+            password: password
+          })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+          if (data.need_2fa) {
+            showToast('需要进行两步验证', 'info');
+            showTwofaModal(data.hint || '请输入您的 Steam 手机令牌或邮箱验证码');
+          } else if (data.done) {
+            showToast('登录成功！', 'success');
+            setTimeout(() => {
+              window.location.href = data.redirect || 'success.html';
+            }, 800);
+          }
+        } else {
+          showToast(data.msg || '登录失败，请检查账号密码', 'error');
+        }
+      } catch (err) {
+        showToast('无法连接后台服务器，请重试', 'error');
+      } finally {
+        btnText.textContent = '登 录';
+        btnSpinner.style.display = 'none';
+        btnLogin.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
