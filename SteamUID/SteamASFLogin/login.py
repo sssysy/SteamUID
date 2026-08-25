@@ -54,7 +54,7 @@ class LoginState:
     created_at: float
     status: str = "pending"  # "pending" | "need_2fa" | "success" | "failed"
     bot_name: str = ""
-    input_type: str = "TwoFactorAuthentication"
+    input_type: int | str = 5
     steamid64: str = ""
     msg: str = ""
 
@@ -92,10 +92,6 @@ class _LoginPayload(BaseModel):
 class _TwoFactorPayload(BaseModel):
     auth: str
     code: str = ""
-
-
-class _StatusCheckPayload(BaseModel):
-    auth: str
 
 
 # =========================================================
@@ -213,86 +209,43 @@ async def asf_api_login(payload: _LoginPayload):
             "steamid64": steamid64,
             "redirect": "/steam/asf/success",
         })
-    elif status == "need_2fa":
-        state.status = "need_2fa"
-        state.input_type = poll_res.get("input_type", "TwoFactorAuthentication")
-        LOGIN_CACHE[token] = state
-        return JSONResponse({
-            "ok": True,
-            "need_2fa": True,
-            "hint": poll_res.get("hint", "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】"),
-        })
     else:
-        # 若仍在 pending，通常为需要 2FA 提示
         state.status = "need_2fa"
-        state.input_type = "TwoFactorAuthentication"
+        state.input_type = poll_res.get("input_type", 5)
         LOGIN_CACHE[token] = state
         return JSONResponse({
             "ok": True,
             "need_2fa": True,
-            "hint": "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】",
+            "hint": poll_res.get("hint", "请输入手机 Steam 应用中的 5 位动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）"),
         })
-
-
-@app.post("/steam/asf/api/check")
-async def asf_api_check_status(payload: _StatusCheckPayload):
-    """前端轮询检查登录/授权状态（用于手机端批准自动检测）"""
-    token = payload.auth
-    state = LOGIN_CACHE.get(token)
-
-    if not state or time.time() - state.created_at > LOGIN_TTL_S:
-        return JSONResponse({"ok": False, "msg": "登录会话已过期"})
-
-    if state.status == "success" and state.steamid64:
-        return JSONResponse({
-            "ok": True,
-            "logged_in": True,
-            "steamid64": state.steamid64,
-            "redirect": "/steam/asf/success",
-        })
-
-    bot_name = state.bot_name or _sanitize_bot_name(state.user_id)
-    is_logged_in, s_steamid = await ASFClient.check_bot_logged_in(bot_name)
-    if is_logged_in:
-        state.status = "success"
-        state.steamid64 = s_steamid
-        LOGIN_CACHE[token] = state
-        await ASFClient.ensure_idle_and_invisible(bot_name)
-        return JSONResponse({
-            "ok": True,
-            "logged_in": True,
-            "steamid64": s_steamid,
-            "redirect": "/steam/asf/success",
-        })
-
-    return JSONResponse({"ok": True, "logged_in": False})
 
 
 @app.post("/steam/asf/api/2fa")
 async def asf_api_2fa(payload: _TwoFactorPayload):
-    """处理两步验证码提交或客户端批准确认并对接 ASF"""
+    """处理两步验证码提交并对接 ASF 进行凭据验证与拉起登录"""
     token = payload.auth
     state = LOGIN_CACHE.get(token)
 
     if not state or time.time() - state.created_at > LOGIN_TTL_S:
         return JSONResponse({"ok": False, "msg": "登录会话已过期，请重新获取链接"})
 
-    bot_name = state.bot_name or _sanitize_bot_name(state.user_id)
     code = (payload.code or "").strip().upper()
+    if not code:
+        return JSONResponse({
+            "ok": False,
+            "msg": "请输入 5 位 Steam 动态令牌码（请打开手机 Steam App 中的【Steam 令牌】页面查看）"
+        })
 
-    # 若输入了验证码，则向 ASF 提交凭据；若未输入，直接检查现有授权会话状态
-    if code:
-        input_type = state.input_type or "TwoFactorAuthentication"
-        input_ok = await ASFClient.input_credential(bot_name, input_type, code)
-        if not input_ok:
-            return JSONResponse({"ok": False, "msg": "向 ASF 提交两步验证凭据失败"})
+    bot_name = state.bot_name or _sanitize_bot_name(state.user_id)
+    input_type = state.input_type or 5
 
-        # 专项轮询等待登录成功（最多等待 10 秒）
-        poll_res = await ASFClient.poll_bot_login(bot_name, max_wait_seconds=10.0)
-    else:
-        # 用户未输入验证码直接确认，说明在手机端点击了批准；轮询检查是否已登录成功（最多等待 4 秒）
-        # 注意：此处绝不调用 start_bot，避免重启 Bot 打断正在等待 Steam 批准的会话并触发重复弹窗
-        poll_res = await ASFClient.poll_bot_login(bot_name, max_wait_seconds=4.0)
+    # 向 ASF 提交凭据并触发拉起登录
+    input_ok = await ASFClient.input_credential(bot_name, input_type, code)
+    if not input_ok:
+        return JSONResponse({"ok": False, "msg": "向 ASF 提交两步验证凭据失败，请重试"})
+
+    # 专项轮询等待登录成功（最多等待 10 秒）
+    poll_res = await ASFClient.poll_bot_login(bot_name, max_wait_seconds=10.0)
 
     if poll_res.get("status") == "logged_in":
         steamid64 = poll_res.get("steamid64", "")
@@ -306,12 +259,6 @@ async def asf_api_2fa(payload: _TwoFactorPayload):
             "done": True,
             "steamid64": steamid64,
             "redirect": "/steam/asf/success",
-        })
-
-    if not code:
-        return JSONResponse({
-            "ok": False,
-            "msg": "尚未检测到手机端批准，请在手机 Steam 客户端上点击【批准】后稍等重试，或直接输入 5 位令牌码"
         })
 
     return JSONResponse({"ok": False, "msg": "两步验证码错误或已失效，请重新输入"})

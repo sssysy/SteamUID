@@ -68,7 +68,7 @@
   <div id="twofaModal" class="twofa-overlay">
     <div class="twofa-card">
       <h2 class="twofa-title">Steam 令牌验证</h2>
-      <p id="twofaHint" class="twofa-desc">请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】</p>
+      <p id="twofaHint" class="twofa-desc">请输入手机 Steam 应用中的 5 位动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）</p>
 
       <form id="twofaForm" onsubmit="return false">
         <div class="twofa-inputs-group">
@@ -187,43 +187,6 @@
       btnTwofaSubmit.click();
     });
 
-    let twofaPollInterval = null;
-
-    function startTwofaPolling() {
-      stopTwofaPolling();
-      const auth = getAuthToken();
-      if (!auth) return;
-
-      twofaPollInterval = setInterval(async () => {
-        if (btnTwofaSubmit.disabled) return;
-        try {
-          const resp = await fetch('/steam/asf/api/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ auth: auth })
-          });
-          const data = await resp.json();
-          if (data.ok && data.logged_in) {
-            stopTwofaPolling();
-            twofaModal.classList.remove('active');
-            showToast('检测到手机端已批准，登录成功！', 'success');
-            setTimeout(() => {
-              window.location.href = data.redirect || 'success.html';
-            }, 800);
-          }
-        } catch (e) {
-          // ignore network glitch during background polling
-        }
-      }, 1500);
-    }
-
-    function stopTwofaPolling() {
-      if (twofaPollInterval) {
-        clearInterval(twofaPollInterval);
-        twofaPollInterval = null;
-      }
-    }
-
     function getTwofaCode() {
       return twofaDigits.map(i => i.value.trim()).join('');
     }
@@ -237,13 +200,11 @@
       if (hintText) twofaHint.textContent = hintText;
       twofaModal.classList.add('active');
       clearTwofaDigits();
-      startTwofaPolling();
       setTimeout(() => twofaDigits[0].focus(), 100);
     }
 
     // 2FA 取消按钮
     btnTwofaCancel.addEventListener('click', () => {
-      stopTwofaPolling();
       twofaModal.classList.remove('active');
       showToast('已取消两步验证', 'warning');
     });
@@ -251,13 +212,13 @@
     // 2FA 提交逻辑
     btnTwofaSubmit.addEventListener('click', async () => {
       const code = getTwofaCode();
-      if (code.length > 0 && code.length < 5) {
-        showToast('若输入验证码，请输入完整的 5 位验证码；若已在手机批准登录，请清空后直接点击确认验证', 'warning');
+      if (!code || code.length < 5) {
+        showToast('请输入完整的 5 位 Steam 动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）', 'warning');
         return;
       }
 
       const auth = getAuthToken();
-      twofaBtnText.textContent = code ? '验证中...' : '检查授权中...';
+      twofaBtnText.textContent = '验证中...';
       twofaSpinner.style.display = 'inline-block';
       btnTwofaSubmit.disabled = true;
 
@@ -270,18 +231,15 @@
         const data = await resp.json();
 
         if (data.ok && data.done) {
-          stopTwofaPolling();
           twofaModal.classList.remove('active');
           showToast('验证通过，登录成功！', 'success');
           setTimeout(() => {
             window.location.href = data.redirect || 'success.html';
           }, 800);
         } else {
-          showToast(data.msg || (code ? '验证失败，请重新输入' : '未检测到授权，请在手机 Steam 点击【批准】后再试'), 'error');
-          if (code) {
-            clearTwofaDigits();
-            twofaDigits[0].focus();
-          }
+          showToast(data.msg || '两步验证码错误或已失效，请重新输入', 'error');
+          clearTwofaDigits();
+          twofaDigits[0].focus();
         }
       } catch (err) {
         showToast('网络通信异常，请重试', 'error');
@@ -323,7 +281,7 @@
         if (data.ok) {
           if (data.need_2fa) {
             showToast('需要进行两步验证', 'info');
-            showTwofaModal(data.hint || '请输入您的 Steam 手机令牌或邮箱验证码');
+            showTwofaModal(data.hint || '请输入手机 Steam 应用中的 5 位动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）');
           } else if (data.done) {
             showToast('登录成功！', 'success');
             setTimeout(() => {

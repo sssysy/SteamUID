@@ -91,13 +91,12 @@ class ASFClient:
                 # 尝试创建
                 resp = await client.post(url, headers=cls._headers(), json=payload)
                 if resp.status_code == 200:
+                    await cls.start_bot(bot_name)
                     return True
                 # 若已存在则尝试更新
                 resp = await client.put(url, headers=cls._headers(), json=payload)
                 if resp.status_code == 200:
-                    # 尝试启动 Bot
-                    start_url = f"{cls._base_url()}/Api/Bot/{bot_name}/Start"
-                    await client.post(start_url, headers=cls._headers())
+                    await cls.start_bot(bot_name)
                     return True
                 logger.warning(f"[SteamASF] 创建/更新 Bot {bot_name} 返回错误: {resp.status_code} {resp.text}")
         except Exception as e:
@@ -114,6 +113,18 @@ class ASFClient:
                 return resp.status_code == 200
         except Exception as e:
             logger.error(f"[SteamASF] 启动 Bot {bot_name} 请求失败: {e!r}")
+            return False
+
+    @classmethod
+    async def stop_bot(cls, bot_name: str) -> bool:
+        """停止 ASF Bot 实例"""
+        url = f"{cls._base_url()}/Api/Bot/{bot_name}/Stop"
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.post(url, headers=cls._headers())
+                return resp.status_code == 200
+        except Exception as e:
+            logger.error(f"[SteamASF] 停止 Bot {bot_name} 请求失败: {e!r}")
             return False
 
     @classmethod
@@ -170,16 +181,42 @@ class ASFClient:
 
     @classmethod
     async def input_credential(
-        cls, bot_name: str, input_type: str, value: str
+        cls, bot_name: str, input_type: int | str, value: str
     ) -> bool:
-        """向 ASF Bot 提交 2FA 令牌 / 验证码凭据"""
-        cmd = f"input {bot_name} {input_type} {value}"
-        ok, res = await cls.send_command(cmd)
-        if not ok:
-            logger.warning(f"[SteamASF] 提交 2FA 凭据命令失败 bot={bot_name}: {res}")
-            return False
-        
-        logger.info(f"[SteamASF] 已向 Bot {bot_name} 提交 2FA 凭据: {res}")
+        """向 ASF Bot 提交 2FA 令牌 / 验证码凭据并重新拉起 Bot 进行登录验证"""
+        input_success = False
+
+        # 1. 优先使用 ASF 官方 REST API: POST /Api/Bot/{bot_name}/Input
+        url = f"{cls._base_url()}/Api/Bot/{bot_name}/Input"
+        payload = {"Type": input_type, "Value": value}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.post(url, headers=cls._headers(), json=payload)
+                if resp.status_code == 200 and resp.json().get("Success"):
+                    input_success = True
+                    logger.info(f"[SteamASF] 通过 REST API 成功向 Bot {bot_name} 提交 Input 凭据")
+        except Exception as e:
+            logger.warning(f"[SteamASF] REST API Input 失败，准备回退 Command: {e!r}")
+
+        # 2. 回退机制：使用 ASF 命令 input <bot> <type> <value>
+        if not input_success:
+            cmd_type = "TwoFactorAuthentication"
+            if input_type in (3, "SteamGuard", "3"):
+                cmd_type = "SteamGuard"
+            elif input_type in (4, "SteamParentalCode", "4"):
+                cmd_type = "SteamParentalCode"
+            elif input_type in (5, "TwoFactorAuthentication", "5"):
+                cmd_type = "TwoFactorAuthentication"
+
+            cmd = f"input {bot_name} {cmd_type} {value}"
+            ok, res = await cls.send_command(cmd)
+            if not ok:
+                logger.warning(f"[SteamASF] 提交 2FA 凭据命令失败 bot={bot_name}: {res}")
+                return False
+            logger.info(f"[SteamASF] 通过 Command 成功向 Bot {bot_name} 提交凭据: {res}")
+
+        # 3. 关键步骤（ASF Headless 规范）：提交凭据后调用 Start 启动 Bot 进行 Steam 登录
+        await cls.start_bot(bot_name)
         return True
 
     @classmethod
@@ -206,35 +243,42 @@ class ASFClient:
                     }
 
                 req_input = bot_info.get("RequiredInput")
-                # RequiredInput: 1 (SteamGuard), 2 (TwoFactorAuthentication), 3 (SteamParentalCode), 4 (Password), etc.
-                if req_input in (1, "SteamGuard", "1"):
+                # ASF RequiredInput: 0=None, 1=Login, 2=Password, 3=SteamGuard, 4=SteamParentalCode, 5=TwoFactorAuthentication
+                if req_input in (3, "SteamGuard", "3"):
                     return {
                         "status": "need_2fa",
-                        "input_type": "SteamGuard",
-                        "hint": "请输入发送至您邮箱的 SteamGuard 验证码",
+                        "input_type": 3,
+                        "hint": "请输入发送至您邮箱的 SteamGuard 验证码（5 位）",
                     }
-                elif req_input:
+                elif req_input in (4, "SteamParentalCode", "4"):
                     return {
                         "status": "need_2fa",
-                        "input_type": "TwoFactorAuthentication",
-                        "hint": "请输入 5 位 Steam 令牌码；若手机端已弹出登录确认，请在手机上点击【批准】后直接点击【确认验证】",
+                        "input_type": 4,
+                        "hint": "请输入您的 Steam 家庭监护 4 位 PIN 码",
+                    }
+                elif req_input in (5, "TwoFactorAuthentication", "5") or (req_input and req_input != 0):
+                    return {
+                        "status": "need_2fa",
+                        "input_type": 5,
+                        "hint": "请输入手机 Steam 应用中的 5 位动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）",
                     }
 
             await asyncio.sleep(interval)
             elapsed += interval
 
         return {
-            "status": "pending",
-            "msg": "正在等待 ASF 登录响应...",
+            "status": "need_2fa",
+            "input_type": 5,
+            "hint": "请输入手机 Steam 应用中的 5 位动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）",
         }
 
     @classmethod
     async def poll_bot_login(
-        cls, bot_name: str, max_wait_seconds: float = 12.0
+        cls, bot_name: str, max_wait_seconds: float = 10.0
     ) -> dict[str, Any]:
         """
-        提交 2FA 凭据或手机端批准后的专项登录轮询
-        持续等待 Bot 建立连接并登录成功，不打断现有授权会话
+        提交 2FA 凭据后的专项登录轮询
+        等待 Bot 建立连接并登录成功
         """
         interval = 0.8
         elapsed = 0.0
@@ -262,5 +306,5 @@ class ASFClient:
 
         return {
             "status": "failed",
-            "msg": "登录等待超时",
+            "msg": "登录等待超时，请检查令牌码是否过期",
         }
