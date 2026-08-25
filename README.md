@@ -4,7 +4,7 @@
   <a href="https://github.com/Genshin-bots/gsuid_core"><img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQk10SGVBTlRQalRiVFM0TUdKRGV6UkFacXppQ0JVd0VZZzFXRmVYdnJ6UXFjP2U9TzZQejBi.gif" width="256" height="256" alt="SteamUID"></a>
 </p>
 <h1 align="center">SteamUID 0.1.0</h1>
-<h4 align="center">基于 gsuid_core 的 steam 状态推送插件</h4>
+<h4 align="center">基于 gsuid_core 的 steam 多功能插件</h4>
 <div align="center">
   <a href="https://docs.sayu-bot.com/" target="_blank">安装文档</a> &nbsp; · &nbsp;
   <a href="https://github.com/Genshin-bots/gsuid_core" target="_blank">gsuid_core</a>
@@ -197,21 +197,6 @@ docker restart asf
 <img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRFFncUhDM082N1FxNUQxTVphT2p3cUFYNTNTYzc1MlV4OGdYZC02bDBXc0tNP2U9dVV3ZkZp.png" width="320">
 
 </details>
-
-## 计划功能
-
-- [x] 支持设置所有状态推送推送默认值
-- [ ] 玩家上下线状态推送
-- [ ] 带游玩时长的游戏库存图片
-- [x] 游戏降价 / 打折信息订阅推送
-- [x] steam玩什么 (随机抽游戏)
-- [x] 游戏名 / 成就名本地化名字获取
-- [ ] 总结推送功能 (定时总结周期内游戏情况而不每次状态变化都推送)
-- [x] 群游玩时长排行榜
-- [x] 隐藏 steamid / 好友码
-- [x] steam游戏库价值计算
-
-
 
 ## 丨其他
 
