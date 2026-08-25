@@ -19,9 +19,41 @@ from gsuid_core.web_app import app
 from ..SteamConfig import SteamConfig
 from .asf_client import ASFClient
 
+import base64
+
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _TEXTURE2D_DIR = Path(__file__).parent / "texture2d"
-_ICON_PATH = Path(__file__).parents[1] / "ICON.png"
+
+
+def _find_icon_path() -> Path | None:
+    """在各层级路径寻找 ICON.png 资源"""
+    for p in (
+        Path(__file__).parents[2] / "ICON.png",
+        Path(__file__).parents[1] / "ICON.png",
+        Path(__file__).parent / "ICON.png",
+    ):
+        if p.exists():
+            return p
+    return None
+
+
+_CACHED_ICON_BASE64: str | None = None
+
+
+def _get_icon_base64() -> str:
+    """获取 Logo 的 Base64 字符串并进行内存缓存"""
+    global _CACHED_ICON_BASE64
+    if _CACHED_ICON_BASE64:
+        return _CACHED_ICON_BASE64
+    icon_p = _find_icon_path()
+    if icon_p and icon_p.exists():
+        try:
+            b64 = base64.b64encode(icon_p.read_bytes()).decode("utf-8")
+            _CACHED_ICON_BASE64 = f"data:image/png;base64,{b64}"
+            return _CACHED_ICON_BASE64
+        except Exception as e:
+            logger.warning(f"[SteamASF] 读取 Logo Base64 失败: {e!r}")
+    return "/steam/asf/static/ICON.png"
 
 LOGIN_TTL_S = 300
 LOGIN_POLL_INTERVAL = 1.5
@@ -91,13 +123,24 @@ async def asf_static_css():
     return Response(status_code=404)
 
 
+@app.get("/steam/asf/ICON.png")
+@app.get("/steam/ICON.png")
+@app.get("/steam/asf/static/ICON.png")
+async def asf_icon_file():
+    """提供 Logo 图片"""
+    icon_p = _find_icon_path()
+    if icon_p and icon_p.exists():
+        return Response(content=icon_p.read_bytes(), media_type="image/png")
+    return Response(status_code=404)
+
+
 @app.get("/steam/asf/texture2d/{filename}")
 @app.get("/steam/texture2d/{filename}")
 @app.get("/steam/asf/static/{filename}")
 async def asf_static_file(filename: str):
     """提供静态图片资源"""
-    if filename == "ICON.png" and _ICON_PATH.exists():
-        return Response(content=_ICON_PATH.read_bytes(), media_type="image/png")
+    if filename == "ICON.png":
+        return await asf_icon_file()
     
     file_path = _TEXTURE2D_DIR / filename
     if file_path.exists():
@@ -125,6 +168,9 @@ async def _render_login_page(token: str) -> HTMLResponse:
     html_content = index_html.read_text(encoding="utf-8")
     # 注入 auth token 到隐藏域中
     html_content = html_content.replace('value="{{ auth | default(\'\') }}"', f'value="{token}"')
+    # 注入 Base64 Logo
+    html_content = html_content.replace('{{ logo_src }}', _get_icon_base64())
+    html_content = html_content.replace('src="../../../ICON.png"', f'src="{_get_icon_base64()}"')
     return HTMLResponse(html_content, status_code=200)
 
 
