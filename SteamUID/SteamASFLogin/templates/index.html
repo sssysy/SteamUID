@@ -187,6 +187,43 @@
       btnTwofaSubmit.click();
     });
 
+    let twofaPollInterval = null;
+
+    function startTwofaPolling() {
+      stopTwofaPolling();
+      const auth = getAuthToken();
+      if (!auth) return;
+
+      twofaPollInterval = setInterval(async () => {
+        if (btnTwofaSubmit.disabled) return;
+        try {
+          const resp = await fetch('/steam/asf/api/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth: auth })
+          });
+          const data = await resp.json();
+          if (data.ok && data.logged_in) {
+            stopTwofaPolling();
+            twofaModal.classList.remove('active');
+            showToast('检测到手机端已批准，登录成功！', 'success');
+            setTimeout(() => {
+              window.location.href = data.redirect || 'success.html';
+            }, 800);
+          }
+        } catch (e) {
+          // ignore network glitch during background polling
+        }
+      }, 1500);
+    }
+
+    function stopTwofaPolling() {
+      if (twofaPollInterval) {
+        clearInterval(twofaPollInterval);
+        twofaPollInterval = null;
+      }
+    }
+
     function getTwofaCode() {
       return twofaDigits.map(i => i.value.trim()).join('');
     }
@@ -200,11 +237,13 @@
       if (hintText) twofaHint.textContent = hintText;
       twofaModal.classList.add('active');
       clearTwofaDigits();
+      startTwofaPolling();
       setTimeout(() => twofaDigits[0].focus(), 100);
     }
 
     // 2FA 取消按钮
     btnTwofaCancel.addEventListener('click', () => {
+      stopTwofaPolling();
       twofaModal.classList.remove('active');
       showToast('已取消两步验证', 'warning');
     });
@@ -231,6 +270,7 @@
         const data = await resp.json();
 
         if (data.ok && data.done) {
+          stopTwofaPolling();
           twofaModal.classList.remove('active');
           showToast('验证通过，登录成功！', 'success');
           setTimeout(() => {

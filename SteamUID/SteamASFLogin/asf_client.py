@@ -158,10 +158,21 @@ class ASFClient:
             logger.warning(f"[SteamASF] 确保 Bot {bot_name} 隐身并暂停挂卡失败: {e!r}")
 
     @classmethod
+    async def check_bot_logged_in(cls, bot_name: str) -> tuple[bool, str]:
+        """快速检查 Bot 是否已登录成功并返回 (是否成功, steamid64)"""
+        bot_info = await cls.get_bot(bot_name)
+        if bot_info:
+            is_logged_in = bot_info.get("IsConnectedAndLoggedOn", False)
+            s_steamid = str(bot_info.get("s_SteamID") or bot_info.get("SteamID") or "")
+            if is_logged_in and s_steamid and s_steamid != "0":
+                return True, s_steamid
+        return False, ""
+
+    @classmethod
     async def input_credential(
         cls, bot_name: str, input_type: str, value: str
     ) -> bool:
-        """向 ASF Bot 提交 2FA 令牌 / 验证码凭据并重新拉起 Bot 登录"""
+        """向 ASF Bot 提交 2FA 令牌 / 验证码凭据"""
         cmd = f"input {bot_name} {input_type} {value}"
         ok, res = await cls.send_command(cmd)
         if not ok:
@@ -169,8 +180,6 @@ class ASFClient:
             return False
         
         logger.info(f"[SteamASF] 已向 Bot {bot_name} 提交 2FA 凭据: {res}")
-        # 关键步骤：提交凭据后立即启动 Bot 实例以完成 Steam 登录流程
-        await cls.start_bot(bot_name)
         return True
 
     @classmethod
@@ -225,42 +234,31 @@ class ASFClient:
     ) -> dict[str, Any]:
         """
         提交 2FA 凭据或手机端批准后的专项登录轮询
-        持续等待 Bot 建立连接并登录成功，不因为初始存在的 RequiredInput 而中途提前退出
+        持续等待 Bot 建立连接并登录成功，不打断现有授权会话
         """
-        interval = 1.0
+        interval = 0.8
         elapsed = 0.0
 
         while elapsed < max_wait_seconds:
-            bot_info = await cls.get_bot(bot_name)
-            if bot_info:
-                is_logged_in = bot_info.get("IsConnectedAndLoggedOn", False)
-                s_steamid = str(bot_info.get("s_SteamID") or bot_info.get("SteamID") or "")
-                if is_logged_in and s_steamid and s_steamid != "0":
-                    return {
-                        "status": "logged_in",
-                        "steamid64": s_steamid,
-                        "msg": "登录成功",
-                    }
-
-                # 若 Bot 已处于未运行状态且未登录成功，在等待数秒后尝试再次 start
-                keep_running = bot_info.get("KeepRunning", False)
-                if not keep_running and not is_logged_in and elapsed >= 2.0:
-                    await cls.start_bot(bot_name)
-
-            await asyncio.sleep(interval)
-            elapsed += interval
-
-        # 超时后再做一次最终状态判定
-        bot_info = await cls.get_bot(bot_name)
-        if bot_info:
-            is_logged_in = bot_info.get("IsConnectedAndLoggedOn", False)
-            s_steamid = str(bot_info.get("s_SteamID") or bot_info.get("SteamID") or "")
-            if is_logged_in and s_steamid and s_steamid != "0":
+            is_logged_in, s_steamid = await cls.check_bot_logged_in(bot_name)
+            if is_logged_in:
                 return {
                     "status": "logged_in",
                     "steamid64": s_steamid,
                     "msg": "登录成功",
                 }
+
+            await asyncio.sleep(interval)
+            elapsed += interval
+
+        # 超时后再做一次最终状态判定
+        is_logged_in, s_steamid = await cls.check_bot_logged_in(bot_name)
+        if is_logged_in:
+            return {
+                "status": "logged_in",
+                "steamid64": s_steamid,
+                "msg": "登录成功",
+            }
 
         return {
             "status": "failed",
