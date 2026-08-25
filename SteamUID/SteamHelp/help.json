@@ -86,6 +86,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "探索队列",
+        "desc": "调用 ASF (ASFEnhance) 自动完成 Steam 探索队列并返回游戏列表",
+        "eg": "探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

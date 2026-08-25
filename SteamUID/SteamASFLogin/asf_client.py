@@ -119,12 +119,12 @@ class ASFClient:
             return False
 
     @classmethod
-    async def send_command(cls, command: str) -> tuple[bool, str]:
+    async def send_command(cls, command: str, timeout: float = 10.0) -> tuple[bool, str]:
         """向 ASF IPC 发送控制命令并返回响应结果"""
         url = f"{cls._base_url()}/Api/Command"
         payload = {"Command": command}
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(url, headers=cls._headers(), json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
