@@ -51,10 +51,14 @@ if _file_cache_days and _file_cache_days > 0:
 
 # steam 每日自动探索队列任务
 def _parse_discovery_queue_time() -> tuple[int, int]:
-    raw = SteamConfig.get_config("AutoDiscoveryQueueTime").data.strip()
+    val = SteamConfig.get_config("AutoDiscoveryQueueTime").data
     try:
-        if ":" in raw:
-            parts = raw.split(":")
+        if isinstance(val, (tuple, list)) and len(val) >= 2:
+            h, m = int(val[0]), int(val[1])
+            if 0 <= h <= 23 and 0 <= m <= 59:
+                return h, m
+        elif isinstance(val, str) and ":" in val:
+            parts = val.strip().split(":")
             h, m = int(parts[0]), int(parts[1])
             if 0 <= h <= 23 and 0 <= m <= 59:
                 return h, m

@@ -3,7 +3,8 @@ from gsuid_core.utils.plugins_config.models import (
     GsStrConfig,
     GsIntConfig,
     GsBoolConfig,
-    GsListStrConfig
+    GsListStrConfig,
+    GsTimeRConfig,
 )
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
 from gsuid_core.data_store import get_res_path
@@ -83,10 +84,10 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "",
         secret=True,
     ),
-    "AutoDiscoveryQueueTime": GsStrConfig(
+    "AutoDiscoveryQueueTime": GsTimeRConfig(
         "自动探索队列执行时间",
-        "每日自动探索队列的时间，格式为 HH:MM (例如 02:00)。修改后需重启 GsCore 生效",
-        "02:00",
+        "每日自动探索队列的时间。修改后需重启 GsCore 生效",
+        (2, 0),
     ),
     "OnlyOpenID": GsBoolConfig(
         "仅允许网页登录",
