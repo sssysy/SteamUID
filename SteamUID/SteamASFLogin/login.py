@@ -192,8 +192,8 @@ async def asf_api_login(payload: _LoginPayload):
     if not created:
         return JSONResponse({"ok": False, "msg": "连接 ASF IPC 服务失败，请联系管理员检查配置"})
 
-    # 轮询鉴权状态（最长等待 5 秒）
-    poll_res = await ASFClient.poll_bot_status(bot_name, max_wait_seconds=5.0)
+    # 轮询鉴权状态（最长等待 6 秒）
+    poll_res = await ASFClient.poll_bot_status(bot_name, max_wait_seconds=6.0)
     status = poll_res.get("status")
 
     if status == "logged_in":
@@ -221,6 +221,7 @@ async def asf_api_login(payload: _LoginPayload):
     else:
         # 若仍在 pending，通常为需要 2FA 提示
         state.status = "need_2fa"
+        state.input_type = "TwoFactorAuthentication"
         LOGIN_CACHE[token] = state
         return JSONResponse({
             "ok": True,
@@ -241,14 +242,17 @@ async def asf_api_2fa(payload: _TwoFactorPayload):
     bot_name = state.bot_name or _sanitize_bot_name(state.user_id)
     code = (payload.code or "").strip().upper()
 
-    # 若输入了验证码，则向 ASF 提交凭据；若未输入，则直接等待并检测手机端是否已批准登录
+    # 若输入了验证码，则向 ASF 提交凭据并触发拉起；若未输入，则主动触发拉起以刷新手机授权会话
     if code:
-        input_ok = await ASFClient.input_credential(bot_name, state.input_type, code)
+        input_type = state.input_type or "TwoFactorAuthentication"
+        input_ok = await ASFClient.input_credential(bot_name, input_type, code)
         if not input_ok:
             return JSONResponse({"ok": False, "msg": "向 ASF 提交两步验证凭据失败"})
+    else:
+        await ASFClient.start_bot(bot_name)
 
-    # 等待登录成功（最多等待 8 秒）
-    poll_res = await ASFClient.poll_bot_status(bot_name, max_wait_seconds=8.0)
+    # 专项轮询等待登录成功（最多等待 12 秒）
+    poll_res = await ASFClient.poll_bot_login(bot_name, max_wait_seconds=12.0)
     if poll_res.get("status") == "logged_in":
         steamid64 = poll_res.get("steamid64", "")
         state.status = "success"
