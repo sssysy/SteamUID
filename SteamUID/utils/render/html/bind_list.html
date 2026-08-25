@@ -109,18 +109,33 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 20px;
             margin-top: 6px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             padding-left: 0;
         }
 
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .legend-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            background-color: #66c0f4;
             flex-shrink: 0;
+        }
+
+        .legend-dot.main-dot {
+            background-color: #66c0f4;
+            box-shadow: 0 0 6px rgba(102, 192, 244, 0.6);
+        }
+
+        .legend-dot.asf-dot {
+            background-color: #f0b232;
+            box-shadow: 0 0 6px rgba(240, 178, 50, 0.6);
         }
 
         .legend-text {
@@ -238,6 +253,13 @@
             justify-content: center;
         }
 
+        .steam-name-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+        }
+
         .steam-name {
             font-size: 16.5px;
             font-weight: 700;
@@ -249,9 +271,29 @@
             text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
         }
 
-        .pill-item.is-main .steam-name {
-            color: #66c0f4;
-            text-shadow: 0 1px 6px rgba(102, 192, 244, 0.4), 0 1px 4px rgba(0, 0, 0, 0.85);
+        .status-dots {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .status-dot.main-dot {
+            background-color: #66c0f4;
+            box-shadow: 0 0 6px rgba(102, 192, 244, 0.8);
+        }
+
+        .status-dot.asf-dot {
+            background-color: #f0b232;
+            box-shadow: 0 0 6px rgba(240, 178, 50, 0.8);
         }
 
         .steam-friend-code {
@@ -312,8 +354,14 @@
 
         <!-- 图例栏 -->
         <div class="legend-bar">
-            <div class="legend-dot"></div>
-            <div class="legend-text">本群默认账户</div>
+            <div class="legend-item">
+                <div class="legend-dot main-dot"></div>
+                <div class="legend-text">本群默认账户</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot asf-dot"></div>
+                <div class="legend-text">ASF 在线</div>
+            </div>
         </div>
 
         <!-- 账号列表 -->

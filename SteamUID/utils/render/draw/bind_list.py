@@ -54,8 +54,17 @@ def render_bind_list_html(
             avatar_frame_url = item.get("avatar_frame_url")
             bg_url = item.get("bg_url")
             is_main = bool(item.get("is_main", False))
+            is_asf = bool(item.get("is_asf", False))
 
             main_class = " is-main" if is_main else ""
+
+            # 状态圆点：is_main 为浅蓝点，is_asf 为金黄点
+            dots = []
+            if is_main:
+                dots.append('<span class="status-dot main-dot" title="本群默认账户"></span>')
+            if is_asf:
+                dots.append('<span class="status-dot asf-dot" title="ASF 在线"></span>')
+            status_dots_html = f'<div class="status-dots">{"".join(dots)}</div>' if dots else ""
 
             bg_style = f' style="background-image: url(\'{bg_url}\');"' if bg_url else ""
             bg_html = f'<div class="pill-bg"{bg_style}></div>' if bg_url else ""
@@ -77,7 +86,10 @@ def render_bind_list_html(
                 f'      {frame_html}'
                 f'    </div>'
                 f'    <div class="info-box">'
-                f'      <div class="steam-name" title="{name}">{name}</div>'
+                f'      <div class="steam-name-row">'
+                f'        <div class="steam-name" title="{name}">{name}</div>'
+                f'        {status_dots_html}'
+                f'      </div>'
                 f'      <div class="steam-friend-code">{friend_code}</div>'
                 f'    </div>'
                 f'  </div>'

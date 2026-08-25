@@ -17,12 +17,12 @@ async def steamasf_bind(bot: Bot, ev: Event):
     try:
         steamid64 = await login.request_asf_login(bot, ev)
         if steamid64:
-            success_msg, warning = await do_bind(ev, steamid64)
+            success_msg, warning = await do_bind(ev, steamid64, is_asf=True)
             fallback = success_msg
             if warning:
                 fallback += f"\n{warning}"
             await _send_bind_card(
-                bot, ev, fallback_msg=fallback, new_bind_steamid=steamid64, show_all=False
+                bot, ev, fallback_msg=fallback, new_bind_steamid=steamid64, show_all=True
             )
     except SteamError as e:
         await bot.send(str(e))

@@ -43,7 +43,7 @@ def get_push_default(name: str) -> bool:
         return False
 
 async def do_bind(
-    ev: Event, steamid64: str, is_main_id: bool = True
+    ev: Event, steamid64: str, is_main_id: bool = True, is_asf: bool = False
 ) -> tuple[str, str]:
     """成功返回 (成功消息, 可见性提醒)，校验失败 raise SteamValidationError"""
     if not steamid64 or not steamid64.isdigit():
@@ -61,7 +61,8 @@ async def do_bind(
                 for sub in existing if sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
             )
             if is_binding_here:
-                raise SteamValidationError("你已在该群绑定该steamid！")
+                if not is_asf:
+                    raise SteamValidationError("你已在该群绑定该steamid！")
         else:
             raise SteamValidationError("该steamid已被他人绑定！")
 
@@ -78,6 +79,7 @@ async def do_bind(
         group_id=ev.group_id,
         bot_self_id=ev.bot_self_id,
         is_main_id=is_main_id,
+        is_asf=is_asf,
         push_start_game=get_push_default("开始游戏"),
         push_end_game=get_push_default("结束游戏"),
         push_archivement=get_push_default("获得成就"),
@@ -279,6 +281,7 @@ async def get_bind_card_data(
             "avatar_hash": avatar_hash,
             "friend_code": steamid64_to_friend_code(sub.steamid64),
             "is_main": bool(sub.is_main_id and sub.group_id == group_id),
+            "is_asf": bool(getattr(sub, "is_asf", False)),
             "warning": warning,
         }
 

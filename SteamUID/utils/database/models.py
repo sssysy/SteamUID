@@ -288,6 +288,7 @@ class SteamBind(BaseIDModel, table=True):
     push_end_game: bool = Field(default=True, title="推送结束游戏")
     push_archivement: bool = Field(default=True, title="推送成就")
     is_main_id: bool = Field(default=False, title="是否主ID")
+    is_asf: bool = Field(default=False, title="是否绑定ASF")
 
     async def send(self, reply=None, **kwargs):
         """薄委托，路由逻辑见 push_sender.send_to_bind"""
@@ -307,6 +308,7 @@ class SteamBind(BaseIDModel, table=True):
         group_id: Optional[str] = None,
         bot_self_id: Optional[str] = None,
         is_main_id: bool = False,
+        is_asf: bool = False,
         push_start_game: bool = True,
         push_end_game: bool = True,
         push_archivement: bool = True,
@@ -340,6 +342,8 @@ class SteamBind(BaseIDModel, table=True):
             existing.WS_BOT_ID = WS_BOT_ID
             existing.bot_self_id = bot_self_id
             existing.is_main_id = is_main_id
+            if is_asf:
+                existing.is_asf = True
             session.add(existing)
         else:
             session.add(
@@ -355,6 +359,7 @@ class SteamBind(BaseIDModel, table=True):
                     push_end_game=push_end_game,
                     push_archivement=push_archivement,
                     is_main_id=is_main_id,
+                    is_asf=is_asf,
                 )
             )
         return 0
