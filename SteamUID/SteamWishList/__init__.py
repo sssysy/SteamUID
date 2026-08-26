@@ -41,8 +41,7 @@ async def get_wishlist_card(bot: Bot, ev: Event):
         if not api_key:
             raise SteamConfigError("请先配置 steam web api key")
 
-        # 2. 解析目标 SteamID64 与条数限制
-        limit = 10
+        # 2. 解析目标 SteamID64
         target_user_id = ev.user_id
         target_steamid64 = None
 
@@ -50,19 +49,13 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             if not SteamConfig.get_config("AllowAt").data:
                 raise SteamValidationError("未开启 @ 他人获取他人信息功能")
             target_user_id = ev.at
-            text = ev.text.strip()
-            if text.isdigit() and int(text) > 0:
-                limit = int(text)
         else:
             words = ev.text.strip().split()
             for word in words:
-                if not word.isdigit():
-                    continue
                 sid = auto2steamid64(word)
-                if sid and (int(word) > 1000 or len(word) >= 5):
+                if sid:
                     target_steamid64 = sid
-                elif int(word) > 0:
-                    limit = int(word)
+                    break
 
         if target_steamid64:
             steamid64 = target_steamid64
@@ -136,13 +129,33 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             "bg_url": bg_url,
         }
 
-        # 6. 处理愿望单条数与批量获取价格与详情
-        top_items = wishlist_items[:limit]
+        # 6. 处理愿望单条数（默认全部，超过100条截断并在末尾显示 ...）
+        total_count = len(wishlist_items)
+        max_display = 100
+        if total_count > max_display:
+            top_items = wishlist_items[:max_display]
+            has_more = True
+            remaining_count = total_count - max_display
+        else:
+            top_items = wishlist_items
+            has_more = False
+            remaining_count = 0
+
         appids = [str(it["appid"]) for it in top_items]
+
+        # 限制并发拉取详情
+        sem = asyncio.Semaphore(15)
+
+        async def fetch_game_info_safe(aid: str):
+            async with sem:
+                try:
+                    return await get_game_info(aid)
+                except Exception:
+                    return None
 
         prices_res, game_info_results = await asyncio.gather(
             get_price_data(appids),
-            asyncio.gather(*[get_game_info(aid) for aid in appids], return_exceptions=True),
+            asyncio.gather(*[fetch_game_info_safe(aid) for aid in appids], return_exceptions=True),
             return_exceptions=True,
         )
 
@@ -159,10 +172,11 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             g_data = {}
             if isinstance(game_info, dict) and game_info.get("success"):
                 g_data = game_info.get("data", {})
-                if g_data.get("name"):
-                    game_name = g_data["name"]
-                if g_data.get("header_image"):
-                    cover_url = g_data["header_image"]
+                if isinstance(g_data, dict):
+                    if g_data.get("name"):
+                        game_name = g_data["name"]
+                    if g_data.get("header_image"):
+                        cover_url = g_data["header_image"]
 
             # 价格与状态安全解析
             is_free = False
@@ -213,15 +227,15 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             })
 
         # 8. 渲染并发送卡片
-        total_count = len(wishlist_items)
-        disp_count = len(wishlist_data)
-        title_text = f"steam 愿望单列表 Top{disp_count}: " if total_count > disp_count else f"steam 愿望单列表 (共{disp_count}款): "
+        title_text = "steam 愿望单列表"
 
         img_bytes = await render_wishlist(
             wishlist_data=wishlist_data,
             user_data=user_data,
             title_text=title_text,
             canvas_width=800,
+            has_more=has_more,
+            remaining_count=remaining_count,
         )
         await bot.send(MessageSegment.image(img_bytes))
 

@@ -31,6 +31,8 @@ def render_wishlist_html(
     user_data: dict | None = None,
     canvas_width: int = 800,
     title_text: str | None = None,
+    has_more: bool = False,
+    remaining_count: int = 0,
 ) -> str:
     """构建 Steam 愿望单列表卡片的 HTML 字符串。
 
@@ -119,6 +121,19 @@ def render_wishlist_html(
             )
             items_html_parts.append(item_html)
 
+        if has_more or remaining_count > 0:
+            overflow_text_html = (
+                f'<div class="overflow-text">剩余 {remaining_count} 款愿望单游戏未显示</div>'
+                if remaining_count > 0
+                else ""
+            )
+            items_html_parts.append(
+                f'<div class="wishlist-overflow">'
+                f'  <div class="overflow-dots">...</div>'
+                f'  {overflow_text_html}'
+                f'</div>'
+            )
+
         items_html = "\n".join(items_html_parts)
 
     replacements = {
@@ -136,6 +151,8 @@ async def render_wishlist(
     user_data: dict | None = None,
     title_text: str | None = None,
     canvas_width: int = 800,
+    has_more: bool = False,
+    remaining_count: int = 0,
 ) -> bytes:
     """渲染 Steam 愿望单卡片为 PNG 字节。"""
     html_content = render_wishlist_html(
@@ -143,8 +160,10 @@ async def render_wishlist(
         user_data=user_data,
         canvas_width=canvas_width,
         title_text=title_text,
+        has_more=has_more,
+        remaining_count=remaining_count,
     )
-    item_count = len(wishlist_data)
+    item_count = len(wishlist_data) + (1 if (has_more or remaining_count > 0) else 0)
     est_height = max(240, 110 + item_count * 58 + 60 + 35)
 
     return await render_html(
