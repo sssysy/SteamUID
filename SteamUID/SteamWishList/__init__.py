@@ -164,27 +164,37 @@ async def get_wishlist_card(bot: Bot, ev: Event):
                 if g_data.get("header_image"):
                     cover_url = g_data["header_image"]
 
-            # 价格解析
+            # 价格与状态安全解析
             is_free = False
             is_unreleased = False
             discount_pct = 0
             price_str = ""
+            price_overview = None
 
-            # 优先从 get_price_data 获取
-            price_overview = prices_map.get(aid, {}).get("data", {}).get("price_overview")
-            if not price_overview and g_data:
-                price_overview = g_data.get("price_overview")
+            # 1. 优先从 get_price_data 获取 price_overview
+            p_entry = prices_map.get(aid)
+            if isinstance(p_entry, dict):
+                p_data = p_entry.get("data")
+                if isinstance(p_data, dict):
+                    price_overview = p_data.get("price_overview")
 
-            if g_data.get("is_free"):
+            # 2. 回退从 get_game_info 获取 price_overview
+            if not isinstance(price_overview, dict) and isinstance(g_data, dict):
+                po = g_data.get("price_overview")
+                if isinstance(po, dict):
+                    price_overview = po
+
+            # 3. 状态与价格字符串判定
+            if isinstance(g_data, dict) and g_data.get("is_free"):
                 is_free = True
                 price_str = "免费"
-            elif price_overview:
+            elif isinstance(price_overview, dict):
                 final_fmt = price_overview.get("final_formatted")
                 discount_pct = int(price_overview.get("discount_percent") or 0)
-                price_str = final_fmt if final_fmt else f"¥ {price_overview.get('final', 0) / 100:.2f}"
+                price_str = str(final_fmt) if final_fmt else f"¥ {price_overview.get('final', 0) / 100:.2f}"
             else:
-                release_info = g_data.get("release_date", {})
-                if release_info.get("coming_soon"):
+                release_info = g_data.get("release_date") if isinstance(g_data, dict) else None
+                if isinstance(release_info, dict) and release_info.get("coming_soon"):
                     is_unreleased = True
                     price_str = "即将推出"
                 else:
