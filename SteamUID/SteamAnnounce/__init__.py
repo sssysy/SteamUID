@@ -177,11 +177,9 @@ async def test_announce_push(bot: Bot, ev: Event):
 
         send_msg = [
             MessageSegment.at(ev.user_id),
-            MessageSegment.text(
-                f"\n【公告更新提醒】游戏《{game_name}》发布了新公告！\n"
-                f"🔗 查看详情: {latest_item['url']}\n"
-            ),
+            MessageSegment.text(f"\n[Steam 公告订阅]{game_name} 发布了新公告\n"),
             MessageSegment.image(img_bytes),
+            MessageSegment.text(f"公告链接: {latest_item['url']}"),
         ]
         await bot.send(send_msg)
 

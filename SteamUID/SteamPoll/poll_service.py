@@ -700,11 +700,9 @@ async def poll_and_push_game_announce() -> None:
                 try:
                     send_msg = [
                         MessageSegment.at(sub.user_id),
-                        MessageSegment.text(
-                            f"\n【公告更新提醒】您订阅的游戏《{game_name}》发布了新公告！\n"
-                            f"🔗 查看详情: {latest['url']}\n"
-                        ),
+                        MessageSegment.text(f"\n[Steam 公告订阅]{game_name} 发布了新公告\n"),
                         MessageSegment.image(img_bytes),
+                        MessageSegment.text(f"公告链接: {latest['url']}"),
                     ]
                     await sub.send(send_msg)
                 except Exception as error:
