@@ -67,6 +67,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "游戏降价轮询间隔。修改后需重启 GsCore 生效",
         6,
     ),
+    "GameAnnounceInterval": GsIntConfig(
+        "游戏公告轮询间隔 (小时)",
+        "游戏公告轮询间隔。修改后需重启 GsCore 生效",
+        1,
+    ),
     "gscoreBaseURL": GsStrConfig(
         "steamOpenid登录基础URL",
         "应为 gscore 的公网地址或穿透地址",

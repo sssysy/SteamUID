@@ -12,6 +12,7 @@ T_SteamBind = TypeVar("T_SteamBind", bound="SteamBind")
 T_SteamIDInfo = TypeVar("T_SteamIDInfo", bound="SteamIDInfo")
 T_SteamArchivementInfo = TypeVar("T_SteamArchivementInfo", bound="SteamArchivementInfo")
 T_SteamPriceInfo = TypeVar("T_SteamPriceInfo", bound="SteamPriceInfo")
+T_SteamAnnounceInfo = TypeVar("T_SteamAnnounceInfo", bound="SteamAnnounceInfo")
 T_SteamPlayRecord = TypeVar("T_SteamPlayRecord", bound="SteamPlayRecord")
 
 class SteamIDInfo(BaseIDModel, table=True):
@@ -269,6 +270,117 @@ class SteamPriceInfo(BaseIDModel, table=True):
         session: AsyncSession,
     ) -> list["SteamPriceInfo"]:
         """获取所有订阅记录（含价格数据）"""
+        stmt = select(cls)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+class SteamAnnounceInfo(BaseIDModel, table=True):
+    """Steam公告订阅表：记录需要轮询公告的 appid 及其最后推送的公告GID与时间戳"""
+    __table_args__: Dict[str, Any] = {"extend_existing": True}
+
+    appid: str = Field(default=None, index=True, unique=True, title="游戏AppID")
+    last_gid: str = Field(default="", title="最后公告GID")
+    last_time: int = Field(default=0, title="最后公告时间戳")
+
+    @classmethod
+    @with_session
+    async def subscribe(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+        appid: str,
+        last_gid: str = "",
+        last_time: int = 0,
+    ) -> int:
+        """订阅公告：若已存在则更新基线数据，否则新增。返回 0 表示成功。"""
+        stmt = select(cls).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is not None:
+            if last_gid:
+                existing.last_gid = last_gid
+            if last_time:
+                existing.last_time = last_time
+            session.add(existing)
+        else:
+            session.add(cls(appid=appid, last_gid=last_gid, last_time=last_time))  # type: ignore
+        return 0
+
+    @classmethod
+    @with_session
+    async def unsubscribe(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+        appid: str,
+    ) -> int:
+        """取消公告订阅。0: 成功, -1: 未找到"""
+        stmt = delete(cls).where(cls.appid == appid)  # type: ignore
+        result = await session.execute(stmt)
+        if result.rowcount and result.rowcount > 0:  # type: ignore
+            return 0
+        return -1
+
+    @classmethod
+    @with_session
+    async def is_subscribed(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+        appid: str,
+    ) -> bool:
+        """检查某 appid 是否已被订阅"""
+        stmt = select(cls.id).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        return result.scalars().first() is not None
+
+    @classmethod
+    @with_session
+    async def get_announce_info(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+        appid: str,
+    ) -> Optional["SteamAnnounceInfo"]:
+        """获取指定 appid 的公告订阅记录"""
+        stmt = select(cls).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def update_announce_data(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+        appid: str,
+        last_gid: str,
+        last_time: int,
+    ) -> int:
+        """更新指定 appid 的最后公告信息。0: 成功, -1: 未找到"""
+        stmt = select(cls).where(cls.appid == appid)
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+        if existing is None:
+            return -1
+        existing.last_gid = last_gid
+        existing.last_time = last_time
+        session.add(existing)
+        return 0
+
+    @classmethod
+    @with_session
+    async def get_all_appids(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+    ) -> list[str]:
+        """获取所有已订阅公告的 appid 列表（供定时任务轮询使用）"""
+        stmt = select(cls.appid)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
+    async def get_all_announce_subs(
+        cls: Type[T_SteamAnnounceInfo],
+        session: AsyncSession,
+    ) -> list["SteamAnnounceInfo"]:
+        """获取所有公告订阅记录"""
         stmt = select(cls)
         result = await session.execute(stmt)
         return list(result.scalars().all())

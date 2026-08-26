@@ -50,7 +50,7 @@ def format_ranking_duration(seconds: int | float) -> str:
 
 
 # ============================================================
-# 通用渲染：HTML → PNG 截图
+# 通用渲染：HTML → JPEG 截图
 # ============================================================
 
 async def render_html(
@@ -60,10 +60,11 @@ async def render_html(
     viewport_width: int = 492,
     viewport_height: int = 600,
     device_scale_factor: float = 2.0,
+    quality: int = 85,
 ) -> bytes:
     """通用 HTML 渲染：将 HTML 字符串注入浏览器并截图指定元素。
 
-    自动检测 <video> 元素并等待其就绪。
+    自动检测 <video> 元素并等待其就绪。所有图片统一渲染为 JPEG 格式以降低带宽消耗。
 
     参数:
         html_content: 完整的 HTML 字符串
@@ -71,9 +72,10 @@ async def render_html(
         viewport_width: 浏览器视口宽度
         viewport_height: 浏览器视口高度
         device_scale_factor: 缩放倍率（默认 2.0 渲染高清图）
+        quality: JPEG 压缩质量（默认 85）
 
     返回:
-        PNG 格式的图片字节数据
+        JPEG 格式的图片字节数据
     """
     try:
         from playwright.async_api import async_playwright
@@ -114,6 +116,16 @@ async def render_html(
                 except Exception:
                     pass  # 视频加载超时降级
 
+            # 等待所有图片加载完成，确保元素高度计算准确、避免长图被截断
+            try:
+                await page.wait_for_function(
+                    "() => Array.from(document.querySelectorAll('img')).every(img => img.complete)",
+                    timeout=15000,
+                )
+                await page.wait_for_timeout(200)
+            except Exception:
+                pass  # 图片加载超时降级
+
             # 截图指定元素
             # 使用 page.screenshot(clip=精确浮点 bbox) 替代 element.screenshot()，
             # 避免 element.screenshot() 在 sub-pixel 高度时向上取整到下一个整数，
@@ -123,14 +135,28 @@ async def render_html(
             bbox = await element.bounding_box()
             if bbox is None:
                 raise SteamError("无法获取目标元素位置")
+
+            # 若元素高度超出当前视口高度，动态扩展视口大小以保证完整长图内容不会被截断
+            needed_height = int(bbox["y"] + bbox["height"] + 50)
+            if needed_height > viewport_height:
+                await page.set_viewport_size({"width": viewport_width, "height": needed_height})
+                await page.wait_for_timeout(100)
+                bbox = await element.bounding_box()
+                if bbox is None:
+                    raise SteamError("无法获取目标元素位置")
+
+            clip_rect = {
+                "x": bbox["x"],
+                "y": bbox["y"],
+                "width": bbox["width"],
+                "height": bbox["height"],
+            }
+
+            # 统一使用高画质 JPEG 截图，大幅减小单图体积并降低网络带宽需求
             screenshot_bytes = await page.screenshot(
-                clip={
-                    "x": bbox["x"],
-                    "y": bbox["y"],
-                    "width": bbox["width"],
-                    "height": bbox["height"],
-                },
-                type="png",
+                clip=clip_rect,
+                type="jpeg",
+                quality=quality,
             )
 
             await browser.close()
@@ -140,6 +166,7 @@ async def render_html(
     except Exception as e:
         logger.exception(f"[SteamUID - 渲染] Playwright 渲染 HTML 失败: {e!r}")
         raise SteamRenderError("Playwright 渲染 HTML 发生错误，详情请查看后台。")
+
 
 
 # ============================================================

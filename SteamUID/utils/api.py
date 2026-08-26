@@ -322,3 +322,81 @@ async def search_game_store(keyword: str) -> list[dict]:
     if items:
         await SteamApiCache.upsert_cache(cache_key, json.dumps(items, ensure_ascii=False))
     return items
+
+
+async def get_game_announcements(
+    appid: str,
+    lang: str | None = None,
+    count: int = 5,
+    offset: int = 0,
+) -> list[dict]:
+    """获取指定游戏的多语言官方公告列表。
+    
+    请求 store.steampowered.com/events/ajaxgetpartnereventspageable/ 接口，
+    Steam 将根据 lang 返回对应语言版本的公告内容（若无对应语言则自动回退）。
+    """
+    if lang is None:
+        lang = get_current_lang()
+
+    base_url = SteamConfig.get_config("storeBaseURL").data
+    url = f"{base_url}{SteamAPI.events_GetPartnerEventsPageable}"
+    params = {
+        "appid": str(appid),
+        "clan_accountid": 0,
+        "offset": offset,
+        "count": count,
+        "l": lang,
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params, headers=headers)
+            if response.status_code != 200:
+                logger.warning(
+                    f"[SteamUID] 获取游戏公告失败 appid={appid}, status_code={response.status_code}"
+                )
+                return []
+            data = response.json()
+    except Exception as e:
+        logger.warning(f"[SteamUID] 请求游戏公告接口异常 appid={appid}: {e!r}")
+        return []
+
+    events = data.get("events", []) if isinstance(data, dict) else []
+    result = []
+    for event in events:
+        announcement = event.get("announcement_body") or {}
+        gid = str(event.get("gid") or announcement.get("gid") or "")
+        title = event.get("event_name") or announcement.get("headline") or "无标题公告"
+        post_time = int(event.get("rtime32_post_time") or event.get("rtime32_start_time") or 0)
+        event_type = int(event.get("event_type") or 28)
+        headline = announcement.get("headline") or ""
+        body = announcement.get("body") or ""
+        
+        # 尝试从 jsondata 中获取封面图等
+        clan_image = None
+        try:
+            jsondata_str = event.get("jsondata")
+            if jsondata_str:
+                jsondata = json.loads(jsondata_str) if isinstance(jsondata_str, str) else jsondata_str
+                if isinstance(jsondata, dict):
+                    clan_image = jsondata.get("capsule_image")
+        except Exception:
+            pass
+
+        item = {
+            "gid": gid,
+            "title": title,
+            "post_time": post_time,
+            "event_type": event_type,
+            "headline": headline,
+            "body": body,
+            "url": f"https://store.steampowered.com/news/app/{appid}/view/{gid}",
+            "clan_image": clan_image,
+            "raw_event": event,
+        }
+        result.append(item)
+
+    return result

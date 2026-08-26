@@ -127,7 +127,7 @@
     ]
   },
   "商店相关": {
-    "desc": "订阅商店游戏降价信息等",
+    "desc": "订阅商店游戏降价、官方公告等信息",
     "data": [
       {
         "name": "订阅降价",
@@ -149,6 +149,38 @@
         "name": "订阅降价查看",
         "desc": "查看订阅的商店游戏降价信息",
         "eg": "订阅降价查看",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅公告",
+        "desc": "订阅指定游戏的官方公告更新推送",
+        "eg": "订阅公告cs2",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅公告",
+        "desc": "取消订阅指定游戏的官方公告更新",
+        "eg": "取消订阅公告cs2",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅公告列表",
+        "desc": "查看已订阅的游戏公告列表",
+        "eg": "订阅公告列表",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "测试订阅公告",
+        "desc": "直接获取指定游戏最新公告并模拟一次推送",
+        "eg": "测试订阅公告cs2",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false

@@ -14,15 +14,22 @@ from ..utils.api import (
     get_archivement_info,
     get_archivement_img,
     get_price_data,
+    get_game_announcements,
 )
 from ..utils.database.models import (
     SteamIDInfo,
     SteamBind,
     SteamArchivementInfo,
     SteamPriceInfo,
+    SteamAnnounceInfo,
     SteamPlayRecord,
 )
-from ..utils.render import render_game_status, render_achievement_push
+from ..utils.render import (
+    render_game_status,
+    render_achievement_push,
+    render_game_announce,
+)
+from ..SteamConfig.interface import SteamAPI
 from ..utils.utils import (
     PUSH_EVENTS,
     get_enabled_push_events,
@@ -617,3 +624,95 @@ async def poll_and_push_game_sale() -> None:
         await flush_price_updates(update_list)
     except Exception as error:
         logger.warning(f"[SteamPoll] 游戏降价轮询失败: {error!r}")
+
+
+#-----------------------------------------------------
+# 游戏公告轮询
+#-----------------------------------------------------
+
+async def poll_and_push_game_announce() -> None:
+    """游戏公告轮询主入口：拉取最新公告、检测更新、推送、记录基线。"""
+    try:
+        all_subs_info = await SteamAnnounceInfo.get_all_announce_subs()
+        if not all_subs_info:
+            return
+
+        for info in all_subs_info:
+            appid = info.appid
+            if not appid:
+                continue
+
+            try:
+                announcements = await get_game_announcements(appid, count=1)
+            except Exception as error:
+                logger.warning(f"[SteamPoll] 拉取公告失败 appid={appid}: {error!r}")
+                continue
+
+            if not announcements:
+                continue
+
+            latest = announcements[0]
+            latest_gid = latest.get("gid", "")
+            latest_time = latest.get("post_time", 0)
+
+            # 首次未记录基线时更新基线但不推送；已有基线且 GID 或时间戳更新时推送
+            if not info.last_gid and info.last_time == 0:
+                await SteamAnnounceInfo.update_announce_data(appid, latest_gid, latest_time)
+                continue
+
+            if info.last_gid and latest_gid == info.last_gid:
+                continue
+
+            # 检测到新公告，查找订阅者
+            subs = await gs_subscribe.get_subscribe(
+                task_name="订阅steam游戏公告",
+                uid=appid,
+            )
+            if not subs:
+                continue
+
+            # 获取游戏名称与封面
+            game_name = appid
+            game_logo_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+            try:
+                game_data = await get_game_info(appid)
+                if game_data and game_data.get("success"):
+                    d = game_data.get("data", {})
+                    game_name = d.get("name", appid)
+                    game_logo_url = d.get("header_image") or game_logo_url
+            except Exception as e:
+                logger.warning(f"[SteamPoll] 拉取游戏信息异常 appid={appid}: {e}")
+
+            # 渲染公告卡片
+            try:
+                img_bytes = await render_game_announce(
+                    announce_item=latest,
+                    appid=appid,
+                    game_name=game_name,
+                    game_logo_url=game_logo_url,
+                )
+            except Exception as error:
+                logger.warning(f"[SteamPoll] 渲染公告卡片失败 appid={appid}: {error!r}")
+                continue
+
+            # 向所有订阅者发送推送消息并 AT
+            for sub in subs:
+                try:
+                    send_msg = [
+                        MessageSegment.at(sub.user_id),
+                        MessageSegment.text(f"\n[Steam 公告订阅]{game_name} 发布了新公告\n"),
+                        MessageSegment.image(img_bytes),
+                        MessageSegment.text(f"公告链接: {latest['url']}"),
+                    ]
+                    await sub.send(send_msg)
+                except Exception as error:
+                    logger.warning(
+                        f"[SteamPoll] 推送公告失败 appid={appid}, user_id={sub.user_id}: {error!r}"
+                    )
+
+            # 更新基线数据
+            await SteamAnnounceInfo.update_announce_data(appid, latest_gid, latest_time)
+
+    except Exception as error:
+        logger.warning(f"[SteamPoll] 游戏公告轮询异常: {error!r}")
+
