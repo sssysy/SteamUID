@@ -50,7 +50,7 @@ def format_ranking_duration(seconds: int | float) -> str:
 
 
 # ============================================================
-# 通用渲染：HTML → PNG 截图
+# 通用渲染：HTML → JPEG 截图
 # ============================================================
 
 async def render_html(
@@ -60,10 +60,11 @@ async def render_html(
     viewport_width: int = 492,
     viewport_height: int = 600,
     device_scale_factor: float = 2.0,
+    quality: int = 85,
 ) -> bytes:
     """通用 HTML 渲染：将 HTML 字符串注入浏览器并截图指定元素。
 
-    自动检测 <video> 元素并等待其就绪。
+    自动检测 <video> 元素并等待其就绪。所有图片统一渲染为 JPEG 格式以降低带宽消耗。
 
     参数:
         html_content: 完整的 HTML 字符串
@@ -71,9 +72,10 @@ async def render_html(
         viewport_width: 浏览器视口宽度
         viewport_height: 浏览器视口高度
         device_scale_factor: 缩放倍率（默认 2.0 渲染高清图）
+        quality: JPEG 压缩质量（默认 85）
 
     返回:
-        PNG 格式的图片字节数据
+        JPEG 格式的图片字节数据
     """
     try:
         from playwright.async_api import async_playwright
@@ -150,20 +152,12 @@ async def render_html(
                 "height": bbox["height"],
             }
 
-            total_pixel_height = bbox["height"] * device_scale_factor
-
-            # 若实际像素高度超过 5000px，使用高画质 JPEG 压缩以大幅减小单图体积
-            if total_pixel_height > 5000:
-                screenshot_bytes = await page.screenshot(
-                    clip=clip_rect,
-                    type="jpeg",
-                    quality=85,
-                )
-            else:
-                screenshot_bytes = await page.screenshot(
-                    clip=clip_rect,
-                    type="png",
-                )
+            # 统一使用高画质 JPEG 截图，大幅减小单图体积并降低网络带宽需求
+            screenshot_bytes = await page.screenshot(
+                clip=clip_rect,
+                type="jpeg",
+                quality=quality,
+            )
 
             await browser.close()
             return screenshot_bytes
