@@ -16,6 +16,44 @@ import json
 
 announce_SV = SV("steam游戏公告订阅")
 
+@announce_SV.on_command(("订阅公告查看", "订阅公告列表", "查看订阅公告"))
+async def query_announce_subs(bot: Bot, ev: Event):
+    try:
+        sub_list = await gs_subscribe.get_subscribe(
+            task_name="订阅steam游戏公告",
+            user_id=ev.user_id,
+            bot_id=ev.bot_id,
+            user_type=ev.user_type,
+            WS_BOT_ID=ev.WS_BOT_ID,
+        )
+
+        if not sub_list:
+            await bot.send("您当前没有订阅任何游戏公告。")
+            return
+
+        lines = ["[SteamUID] 当前已订阅的游戏公告:"]
+        for sub in sub_list:
+            aid = sub.uid
+            if not aid:
+                continue
+            game_name = aid
+            # 尝试从缓存读取游戏名
+            cached = await SteamApiCache.get_cache(aid)
+            if cached:
+                try:
+                    c_data = json.loads(cached)
+                    name = c_data.get("data", {}).get("name") if isinstance(c_data, dict) else None
+                    if name:
+                        game_name = name
+                except Exception:
+                    pass
+            lines.append(f"• {game_name} ({aid})")
+
+        await bot.send("\n".join(lines))
+
+    except Exception as e:
+        logger.exception(f"[SteamAnnounce] 查询订阅列表异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
 
 @announce_SV.on_command("订阅公告")
 async def subscribe_announce(bot: Bot, ev: Event):
@@ -99,46 +137,6 @@ async def unsubscribe_announce(bot: Bot, ev: Event):
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamAnnounce] 取消订阅公告命令异常: {e!r}")
-        await bot.send("发生未知错误，详情请查看后台。")
-
-
-@announce_SV.on_command(("订阅公告查看", "订阅公告列表", "查看订阅公告"))
-async def query_announce_subs(bot: Bot, ev: Event):
-    try:
-        sub_list = await gs_subscribe.get_subscribe(
-            task_name="订阅steam游戏公告",
-            user_id=ev.user_id,
-            bot_id=ev.bot_id,
-            user_type=ev.user_type,
-            WS_BOT_ID=ev.WS_BOT_ID,
-        )
-
-        if not sub_list:
-            await bot.send("您当前没有订阅任何游戏公告。")
-            return
-
-        lines = ["[SteamUID] 当前已订阅的游戏公告:"]
-        for sub in sub_list:
-            aid = sub.uid
-            if not aid:
-                continue
-            game_name = aid
-            # 尝试从缓存读取游戏名
-            cached = await SteamApiCache.get_cache(aid)
-            if cached:
-                try:
-                    c_data = json.loads(cached)
-                    name = c_data.get("data", {}).get("name") if isinstance(c_data, dict) else None
-                    if name:
-                        game_name = name
-                except Exception:
-                    pass
-            lines.append(f"• {game_name} ({aid})")
-
-        await bot.send("\n".join(lines))
-
-    except Exception as e:
-        logger.exception(f"[SteamAnnounce] 查询订阅列表异常: {e!r}")
         await bot.send("发生未知错误，详情请查看后台。")
 
 
