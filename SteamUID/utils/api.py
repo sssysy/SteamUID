@@ -400,3 +400,39 @@ async def get_game_announcements(
         result.append(item)
 
     return result
+
+
+async def get_user_wishlist(steamid64: str) -> list[dict]:
+    """获取玩家的 Steam 愿望单列表。
+
+    返回 items 列表，每项包含:
+        - appid: int
+        - priority: int
+        - date_added: int (Unix 秒时间戳)
+    按 priority 升序排序。
+    """
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetWishlist}"
+    params = {
+        "key": api_key,
+        "steamid": steamid64,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                logger.warning(
+                    f"[SteamUID] 获取愿望单失败 steamid={steamid64}, status_code={response.status_code}"
+                )
+                return []
+            data = response.json()
+            items = data.get("response", {}).get("items", [])
+            if isinstance(items, list):
+                # 按 priority 升序排序（0 优先级最高）
+                items.sort(key=lambda x: (x.get("priority", 0), -x.get("date_added", 0)))
+                return items
+    except Exception as e:
+        logger.warning(f"[SteamUID] 请求愿望单接口异常 steamid={steamid64}: {e!r}")
+    return []
+

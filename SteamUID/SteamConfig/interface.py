@@ -32,6 +32,9 @@ class SteamAPI:
     # 获取玩家装备项（背景/头像框/动画头像）
     api_GetProfileItemsEquipped = "/IPlayerService/GetProfileItemsEquipped/v1/"
 
+    # 获取玩家愿望单
+    api_GetWishlist = "/IWishlistService/GetWishlist/v1/"
+
     # 获取年度回顾分享图片
     api_GetUserYearInReviewShareImage = "/ISaleFeatureService/GetUserYearInReviewShareImage/v1"
 

@@ -25,6 +25,8 @@ from .draw import (
     render_steam_wall_html,
     render_user_ranking,
     render_user_ranking_html,
+    render_wishlist,
+    render_wishlist_html,
 )
 from .render import (
     format_ranking_duration,
@@ -62,5 +64,8 @@ __all__ = [
     "render_steam_wall_html",
     "render_user_ranking",
     "render_user_ranking_html",
+    "render_wishlist",
+    "render_wishlist_html",
 ]
+
 
