@@ -6,7 +6,7 @@ from ...bbcode import steam_bbcode_to_html
 from ..render import (
     _DEFAULT_GAME_COVER_SVG,
     _fill_template,
-    render_html,
+    render_html_multipage,
 )
 
 _GAME_ANNOUNCE_TEMPLATE_PATH = (
@@ -113,8 +113,12 @@ async def render_game_announce(
     game_name: str,
     game_logo_url: str,
     canvas_width: int = 720,
-) -> bytes:
-    """渲染指定游戏的公告卡片为 PNG 图片字节。"""
+    max_page_pixel_height: int = 5000,
+) -> list[bytes]:
+    """渲染指定游戏的公告卡片为 PNG 图片字节列表。
+
+    当总高度超过 max_page_pixel_height（默认 5000px）时自动按元素分界线切割并标注页码。
+    """
     html_content = render_game_announce_html(
         announce_item=announce_item,
         appid=appid,
@@ -122,9 +126,11 @@ async def render_game_announce(
         game_logo_url=game_logo_url,
         canvas_width=canvas_width,
     )
-    return await render_html(
+    return await render_html_multipage(
         html_content,
         selector=".announce-container",
+        split_selector=".announce-header, .announce-content > *, .card-footer",
+        max_page_pixel_height=max_page_pixel_height,
         viewport_width=canvas_width + 40,
         viewport_height=1200,
         device_scale_factor=2.0,

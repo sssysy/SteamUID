@@ -22,7 +22,7 @@ def steam_bbcode_to_html(bbcode_text: str) -> str:
         src_match = re.search(r'(?:src=|=)\s*["\']?([^"\'\]\s>]+)', full_tag, re.IGNORECASE)
         if src_match:
             url = src_match.group(1).strip()
-            return f'<div class="content-media-wrapper"><img class="content-img" src="{url}" alt="" loading="lazy"></div>'
+            return f'<div class="content-media-wrapper"><img class="content-img" src="{url}" alt=""></div>'
         return ""
 
     text = re.sub(
@@ -36,7 +36,7 @@ def steam_bbcode_to_html(bbcode_text: str) -> str:
     def _parse_img_body(match):
         url = match.group(1).strip()
         if url:
-            return f'<div class="content-media-wrapper"><img class="content-img" src="{url}" alt="" loading="lazy"></div>'
+            return f'<div class="content-media-wrapper"><img class="content-img" src="{url}" alt=""></div>'
         return ""
 
     text = re.sub(

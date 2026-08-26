@@ -114,6 +114,16 @@ async def render_html(
                 except Exception:
                     pass  # 视频加载超时降级
 
+            # 等待所有图片加载完成，确保元素高度计算准确、避免长图被截断
+            try:
+                await page.wait_for_function(
+                    "() => Array.from(document.querySelectorAll('img')).every(img => img.complete)",
+                    timeout=15000,
+                )
+                await page.wait_for_timeout(200)
+            except Exception:
+                pass  # 图片加载超时降级
+
             # 截图指定元素
             # 使用 page.screenshot(clip=精确浮点 bbox) 替代 element.screenshot()，
             # 避免 element.screenshot() 在 sub-pixel 高度时向上取整到下一个整数，
@@ -123,6 +133,16 @@ async def render_html(
             bbox = await element.bounding_box()
             if bbox is None:
                 raise SteamError("无法获取目标元素位置")
+
+            # 若元素高度超出当前视口高度，动态扩展视口大小以保证完整长图内容不会被截断
+            needed_height = int(bbox["y"] + bbox["height"] + 50)
+            if needed_height > viewport_height:
+                await page.set_viewport_size({"width": viewport_width, "height": needed_height})
+                await page.wait_for_timeout(100)
+                bbox = await element.bounding_box()
+                if bbox is None:
+                    raise SteamError("无法获取目标元素位置")
+
             screenshot_bytes = await page.screenshot(
                 clip={
                     "x": bbox["x"],
@@ -140,6 +160,210 @@ async def render_html(
     except Exception as e:
         logger.exception(f"[SteamUID - 渲染] Playwright 渲染 HTML 失败: {e!r}")
         raise SteamRenderError("Playwright 渲染 HTML 发生错误，详情请查看后台。")
+
+
+def draw_page_badge(img_bytes: bytes, page_idx: int, total_pages: int) -> bytes:
+    """在图片右下角绘制页码角标（如 1/5）。"""
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+
+    im = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    badge_text = f"{page_idx}/{total_pages}"
+
+    font_size = 24
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except Exception:
+        font = ImageFont.load_default()
+
+    draw = ImageDraw.Draw(im)
+    bbox = draw.textbbox((0, 0), badge_text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    pad_x, pad_y = 16, 8
+    badge_w = tw + pad_x * 2
+    badge_h = th + pad_y * 2
+
+    x2 = im.width - 24
+    y2 = im.height - 24
+    x1 = x2 - badge_w
+    y1 = y2 - badge_h
+
+    overlay = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ol_draw = ImageDraw.Draw(overlay)
+    ol_draw.rounded_rectangle(
+        [x1, y1, x2, y2],
+        radius=6,
+        fill=(15, 23, 36, 220),
+        outline=(103, 193, 245, 140),
+        width=1,
+    )
+    ol_draw.text((x1 + pad_x, y1 + pad_y - 2), badge_text, fill=(255, 255, 255, 250), font=font)
+
+    res = Image.alpha_composite(im, overlay).convert("RGB")
+    buf = io.BytesIO()
+    res.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+async def render_html_multipage(
+    html_content: str,
+    selector: str,
+    *,
+    split_selector: str = ".announce-header, .announce-content > *, .card-footer",
+    max_page_pixel_height: int = 5000,
+    viewport_width: int = 492,
+    viewport_height: int = 600,
+    device_scale_factor: float = 2.0,
+) -> list[bytes]:
+    """支持超长图智能元素级分割与多页渲染。
+
+    当渲染后的实际像素高度超过 max_page_pixel_height（默认 5000px）时，
+    会以元素分界线为切点进行精准无损分割，并在每张图片的右下角标注页码（如 1/5）。
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        raise SteamError("playwright 库未安装，此功能无法使用")
+
+    try:
+        html_content = await replace_html_urls_with_local(html_content)
+    except Exception as e:
+        logger.warning(f"[SteamUID - 渲染] 预处理本地化静态资源异常，降级使用原 HTML: {e}")
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                viewport={"width": viewport_width, "height": viewport_height},
+                device_scale_factor=device_scale_factor,
+            )
+            page = await context.new_page()
+
+            # 注入 HTML 并等待网络就绪
+            await page.set_content(html_content, wait_until="networkidle")
+
+            # 自动检测并等待视频就绪
+            has_video = await page.evaluate("!!document.querySelector('video')")
+            if has_video:
+                try:
+                    await page.wait_for_function(
+                        "document.querySelector('video')?.readyState >= 2",
+                        timeout=5000,
+                    )
+                    await page.evaluate("""
+                        const v = document.querySelector('video');
+                        if (v && v.duration > 1) { v.currentTime = 1; }
+                    """)
+                    await page.wait_for_timeout(500)
+                except Exception:
+                    pass
+
+            # 等待所有图片加载完成
+            try:
+                await page.wait_for_function(
+                    "() => Array.from(document.querySelectorAll('img')).every(img => img.complete)",
+                    timeout=20000,
+                )
+                await page.wait_for_timeout(200)
+            except Exception:
+                pass
+
+            element = page.locator(selector)
+            await element.wait_for(state="visible")
+            bbox = await element.bounding_box()
+            if bbox is None:
+                raise SteamError("无法获取目标元素位置")
+
+            total_css_height = bbox["height"]
+            total_pixel_height = total_css_height * device_scale_factor
+
+            # 动态扩展视口大小
+            needed_height = int(bbox["y"] + total_css_height + 50)
+            if needed_height > viewport_height:
+                await page.set_viewport_size({"width": viewport_width, "height": needed_height})
+                await page.wait_for_timeout(100)
+                bbox = await element.bounding_box()
+                if bbox is None:
+                    raise SteamError("无法获取目标元素位置")
+
+            # 判断是否需要分页切割
+            if total_pixel_height <= max_page_pixel_height:
+                screenshot_bytes = await page.screenshot(
+                    clip={
+                        "x": bbox["x"],
+                        "y": bbox["y"],
+                        "width": bbox["width"],
+                        "height": bbox["height"],
+                    },
+                    type="png",
+                )
+                await browser.close()
+                return [screenshot_bytes]
+
+            # 获取所有分界子元素的位置
+            elements_bounds = await page.evaluate(f"""() => {{
+                const container = document.querySelector('{selector}');
+                if (!container) return [];
+                const containerTop = container.getBoundingClientRect().top;
+                const nodes = Array.from(document.querySelectorAll('{split_selector}'));
+                return nodes.map(el => {{
+                    const r = el.getBoundingClientRect();
+                    return {{
+                        top: r.top - containerTop,
+                        bottom: r.bottom - containerTop,
+                        height: r.height
+                    }};
+                }}).filter(b => b.height > 0);
+            }}""")
+
+            max_css_per_page = max_page_pixel_height / device_scale_factor
+            slices = []
+            curr_start = 0.0
+
+            while curr_start < total_css_height - 10:
+                target_end = curr_start + max_css_per_page
+                if target_end >= total_css_height:
+                    slices.append((curr_start, total_css_height))
+                    break
+
+                # 寻找在 target_end 之前结束的最后一个元素的 bottom
+                valid_bottoms = [
+                    b["bottom"]
+                    for b in elements_bounds
+                    if curr_start < b["bottom"] <= target_end
+                ]
+                if valid_bottoms:
+                    split_y = max(valid_bottoms)
+                else:
+                    split_y = target_end
+
+                slices.append((curr_start, split_y))
+                curr_start = split_y
+
+            total_pages = len(slices)
+            results: list[bytes] = []
+
+            for idx, (s, e) in enumerate(slices):
+                clip_rect = {
+                    "x": bbox["x"],
+                    "y": bbox["y"] + s,
+                    "width": bbox["width"],
+                    "height": e - s,
+                }
+                page_bytes = await page.screenshot(clip=clip_rect, type="png")
+                if total_pages > 1:
+                    page_bytes = draw_page_badge(page_bytes, idx + 1, total_pages)
+                results.append(page_bytes)
+
+            await browser.close()
+            return results
+    except SteamError:
+        raise
+    except Exception as e:
+        logger.exception(f"[SteamUID - 渲染] Playwright 渲染 HTML 失败: {e!r}")
+        raise SteamRenderError("Playwright 渲染 HTML 发生错误，详情请查看后台。")
+
 
 
 # ============================================================
