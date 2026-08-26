@@ -247,12 +247,18 @@ async def replace_html_urls_with_local(
     if not html_content:
         return html_content
 
+    # 忽略字体文件，字体直接由网页/浏览器加载或回退，不下载到本地缓存
+    _IGNORED_EXTS = {".woff", ".woff2", ".ttf", ".otf", ".eot"}
+
     # 1. 匹配所有 http(s) 链接
     matches = _HTML_RES_URL_PATTERN.findall(html_content)
     raw_urls: set[str] = set()
     for m in matches:
         for u in m:
             if u and u.startswith(("http://", "https://")):
+                clean = u.split("?")[0].split("#")[0].lower()
+                if any(clean.endswith(ext) for ext in _IGNORED_EXTS):
+                    continue
                 raw_urls.add(u)
 
     if not raw_urls:
