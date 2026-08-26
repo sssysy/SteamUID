@@ -16,7 +16,7 @@ import json
 
 announce_SV = SV("steam游戏公告订阅")
 
-@announce_SV.on_command(("订阅公告查看", "订阅公告列表", "查看订阅公告"))
+@announce_SV.on_command(("订阅公告查看", "订阅公告列表", "查看订阅公告"), block=True)
 async def query_announce_subs(bot: Bot, ev: Event):
     try:
         sub_list = await gs_subscribe.get_subscribe(
