@@ -683,16 +683,14 @@ async def poll_and_push_game_announce() -> None:
             except Exception as e:
                 logger.warning(f"[SteamPoll] 拉取游戏信息异常 appid={appid}: {e}")
 
-            # 渲染公告卡片（支持超长自动分页切片）
+            # 渲染公告卡片
             try:
-                images = await render_game_announce(
+                img_bytes = await render_game_announce(
                     announce_item=latest,
                     appid=appid,
                     game_name=game_name,
                     game_logo_url=game_logo_url,
                 )
-                if isinstance(images, bytes):
-                    images = [images]
             except Exception as error:
                 logger.warning(f"[SteamPoll] 渲染公告卡片失败 appid={appid}: {error!r}")
                 continue
@@ -703,10 +701,9 @@ async def poll_and_push_game_announce() -> None:
                     send_msg = [
                         MessageSegment.at(sub.user_id),
                         MessageSegment.text(f"\n[Steam 公告订阅]{game_name} 发布了新公告\n"),
+                        MessageSegment.image(img_bytes),
+                        MessageSegment.text(f"公告链接: {latest['url']}"),
                     ]
-                    for img in images:
-                        send_msg.append(MessageSegment.image(img))
-                    send_msg.append(MessageSegment.text(f"公告链接: {latest['url']}"))
                     await sub.send(send_msg)
                 except Exception as error:
                     logger.warning(

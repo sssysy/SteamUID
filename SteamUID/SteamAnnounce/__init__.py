@@ -167,23 +167,20 @@ async def test_announce_push(bot: Bot, ev: Event):
 
         latest_item = announcements[0]
 
-        # 渲染公告卡片（支持超长自动分页切片）
-        images = await render_game_announce(
+        # 渲染公告卡片
+        img_bytes = await render_game_announce(
             announce_item=latest_item,
             appid=appid,
             game_name=game_name,
             game_logo_url=game_logo_url,
         )
-        if isinstance(images, bytes):
-            images = [images]
 
         send_msg = [
             MessageSegment.at(ev.user_id),
             MessageSegment.text(f"\n[Steam 公告订阅]{game_name} 发布了新公告\n"),
+            MessageSegment.image(img_bytes),
+            MessageSegment.text(f"公告链接: {latest_item['url']}"),
         ]
-        for img in images:
-            send_msg.append(MessageSegment.image(img))
-        send_msg.append(MessageSegment.text(f"公告链接: {latest_item['url']}"))
         await bot.send(send_msg)
 
     except SteamError as e:
