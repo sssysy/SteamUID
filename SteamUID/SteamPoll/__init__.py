@@ -28,6 +28,14 @@ async def check_archivement():
 async def check_game_sale():
     await poll_service.poll_and_push_game_sale()
 
+# steam 游戏公告状态轮询
+@scheduler.scheduled_job(
+    'interval',
+    hours=SteamConfig.get_config("GameAnnounceInterval").data,
+)
+async def check_game_announce():
+    await poll_service.poll_and_push_game_announce()
+
 # steam 数据库缓存清理
 @scheduler.scheduled_job(
     'interval',

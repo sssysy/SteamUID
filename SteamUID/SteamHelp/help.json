@@ -155,6 +155,43 @@
       }
     ]
   },
+  "公告订阅": {
+    "desc": "订阅 Steam 游戏官方公告与更新日志推送",
+    "data": [
+      {
+        "name": "订阅公告",
+        "desc": "订阅指定游戏的官方公告更新推送",
+        "eg": "订阅公告cs2",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅公告",
+        "desc": "取消订阅指定游戏的官方公告更新",
+        "eg": "取消订阅公告cs2",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅公告列表",
+        "desc": "查看已订阅的游戏公告列表",
+        "eg": "订阅公告列表",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "测试订阅公告",
+        "desc": "直接获取指定游戏最新公告并模拟一次推送",
+        "eg": "测试订阅公告cs2",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "排行相关": {
     "desc": "排行榜功能",
     "data": [

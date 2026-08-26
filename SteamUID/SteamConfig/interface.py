@@ -23,6 +23,9 @@ class SteamAPI:
     # 商店搜索
     store_Search = "/api/storesearch/"
 
+    # 获取游戏公告 / 活动
+    events_GetPartnerEventsPageable = "/events/ajaxgetpartnereventspageable/"
+
     # 获取服务器状态
     api_GetServerInfo = "/ISteamWebAPIUtil/GetServerInfo/v1"
 

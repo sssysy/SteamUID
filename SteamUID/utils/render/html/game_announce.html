@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .announce-container {
+            width: {{canvas_width}}px;
+            background: #171d25;
+            padding: 24px 28px;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+        }
+
+        /* 顶部标题栏 */
+        .announce-header {
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 16px;
+        }
+
+        .announce-header-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .announce-title-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .announce-tag {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #67c1f5;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            background: rgba(103, 193, 245, 0.12);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .announce-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.2px;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .game-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            max-width: 260px;
+        }
+
+        .game-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: #11141a;
+            flex-shrink: 0;
+            display: block;
+        }
+
+        .game-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #67c1f5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+        }
+
+        /* 正文区域 */
+        .announce-content {
+            font-size: 15px;
+            line-height: 1.65;
+            color: #dcdedf;
+            word-break: break-word;
+        }
+
+        .announce-h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 18px 0 10px 0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .announce-h2 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 16px 0 8px 0;
+        }
+
+        .announce-h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #67c1f5;
+            margin: 14px 0 6px 0;
+        }
+
+        .announce-content strong {
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .announce-content em {
+            color: #c4c6cb;
+            font-style: italic;
+        }
+
+        .text-underline {
+            text-decoration: underline;
+        }
+
+        .spoiler-text {
+            background: #232d3b;
+            color: #232d3b;
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .announce-link {
+            color: #67c1f5;
+            text-decoration: underline;
+        }
+
+        .announce-quote {
+            margin: 12px 0;
+            padding: 10px 16px;
+            background: rgba(103, 193, 245, 0.06);
+            border-left: 3px solid #67c1f5;
+            border-radius: 0 4px 4px 0;
+            color: #b8bcbf;
+            font-size: 14px;
+        }
+
+        .announce-code {
+            margin: 12px 0;
+            padding: 10px 14px;
+            background: #0f1318;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, "Courier New", Courier, monospace;
+            font-size: 13px;
+            color: #e6e6e6;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .announce-list {
+            margin: 10px 0;
+            padding-left: 24px;
+        }
+
+        .announce-list li {
+            margin-bottom: 4px;
+            color: #dcdedf;
+        }
+
+        /* 居中多媒体/图片 */
+        .content-media-wrapper {
+            margin: 16px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .content-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+            display: block;
+            object-fit: cover;
+        }
+
+        .youtube-preview {
+            position: relative;
+            max-width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .video-play-badge {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* 底部 Footer */
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            margin-top: 24px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            box-sizing: border-box;
+            font-size: 11px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
+        }
+
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div class="announce-container">
+    <div class="announce-header">
+        <div class="announce-header-top">
+            <div class="announce-title-col">
+                <div class="announce-tag">{{event_tag}}</div>
+                <div class="announce-title">{{announce_title}}</div>
+            </div>
+            <div class="game-badge">
+                <img class="game-logo" src="{{game_logo_url}}" onerror="this.onerror=null;this.src='{{default_cover}}'" alt="">
+                <div class="game-name" title="{{game_name}}">{{game_name}}</div>
+            </div>
+        </div>
+    </div>
+    <div class="announce-content">
+        {{content_html}}
+    </div>
+    <div class="card-footer">
+        Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
+    </div>
+</div>
+</body>
+</html>
