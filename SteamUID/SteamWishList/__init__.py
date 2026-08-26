@@ -32,7 +32,7 @@ from ..utils.utils import (
 wishlist_sv = SV("steam愿望单相关")
 
 
-@wishlist_sv.on_command(("愿望单列表", "愿望单", "愿望清单", "wishlist"))
+@wishlist_sv.on_command(("愿望单列表", "愿望单", "愿望清单", "wishlist"), block=True)
 async def get_wishlist_card(bot: Bot, ev: Event):
     """获取指定 Steam 用户的愿望单列表并渲染为图片。"""
     try:
@@ -129,9 +129,9 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             "bg_url": bg_url,
         }
 
-        # 6. 处理愿望单条数（默认全部，超过100条截断并在末尾显示 ...）
+        # 6. 处理愿望单条数（默认全部，超过20条截断并在末尾显示 ...）
         total_count = len(wishlist_items)
-        max_display = 100
+        max_display = 20
         if total_count > max_display:
             top_items = wishlist_items[:max_display]
             has_more = True
