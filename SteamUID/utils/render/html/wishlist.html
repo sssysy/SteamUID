@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .wishlist-container {
+            width: {{canvas_width}}px;
+            background: #171d25;
+            padding: 24px 28px;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+        }
+
+        /* 顶部表头与账号胶囊 */
+        .wishlist-header {
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+        }
+
+        .wishlist-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .wishlist-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+        }
+
+        .wishlist-header-cols {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 20px;
+            margin-top: 14px;
+            padding-right: 6px;
+        }
+
+        .header-col-date {
+            width: 120px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: 700;
+            color: #8f98a0;
+            letter-spacing: 0.2px;
+        }
+
+        .header-col-price {
+            width: 140px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: 700;
+            color: #8f98a0;
+            letter-spacing: 0.2px;
+        }
+
+        /* 列表区域 */
+        .wishlist-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .wishlist-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 6px 4px 0;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            transition: background 0.2s;
+        }
+
+        .wishlist-item:nth-child(even) {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .game-info-col {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+            padding-right: 16px;
+        }
+
+        .game-cover-wrapper {
+            width: 116px;
+            height: 48px;
+            flex-shrink: 0;
+            border-radius: 3px;
+            overflow: hidden;
+            background: #11141a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-cover {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .game-meta {
+            margin-left: 16px;
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .game-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: #f3f3f3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+        }
+
+        .game-appid {
+            font-size: 12px;
+            font-weight: 400;
+            color: #8f98a0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+            letter-spacing: 0.2px;
+        }
+
+        .data-cols {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .date-text {
+            width: 120px;
+            text-align: right;
+            font-size: 15px;
+            font-weight: 500;
+            color: #8f98a0;
+            letter-spacing: 0.2px;
+        }
+
+        .price-col {
+            width: 140px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .discount-badge {
+            background: #4c6b22;
+            color: #a4d007;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+            line-height: 1.3;
+        }
+
+        .price-text {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.2px;
+        }
+
+        .price-free {
+            font-size: 15px;
+            font-weight: 700;
+            color: #5cbe32;
+        }
+
+        .price-unreleased {
+            font-size: 14px;
+            font-weight: 500;
+            color: #8f98a0;
+        }
+
+        .wishlist-overflow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 10px 0;
+            margin-top: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            color: #8f98a0;
+            gap: 2px;
+        }
+
+        .overflow-dots {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: #8f98a0;
+            line-height: 1;
+        }
+
+        .overflow-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: #8f98a0;
+            letter-spacing: 0.3px;
+        }
+
+        .empty-state {
+            padding: 40px 0;
+            text-align: center;
+            color: #8f98a0;
+            font-size: 15px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            margin-top: 18px;
+            box-sizing: border-box;
+            font-size: 11px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
+        }
+
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div class="wishlist-container">
+    <div class="wishlist-header">
+        <div class="wishlist-header-top">
+            <div class="wishlist-title">{{title_text}}</div>
+            {{account_pill_html}}
+        </div>
+        <div class="wishlist-header-cols">
+            <div class="header-col-date">添加日期</div>
+            <div class="header-col-price">当前售价</div>
+        </div>
+    </div>
+    <div class="wishlist-list">
+        {{items_html}}
+    </div>
+    <div class="card-footer">
+        Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
+    </div>
+</div>
+</body>
+</html>

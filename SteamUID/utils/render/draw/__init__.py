@@ -12,6 +12,7 @@ from .steam_achievement import render_steam_achievement, render_steam_achievemen
 from .steam_info import render_steam_info, render_steam_info_html
 from .steam_wall import render_steam_wall, render_steam_wall_html
 from .user_ranking import render_user_ranking, render_user_ranking_html
+from .wishlist import render_wishlist, render_wishlist_html
 
 __all__ = [
     "render_account_pill_html",
@@ -40,5 +41,8 @@ __all__ = [
     "render_steam_wall_html",
     "render_user_ranking",
     "render_user_ranking_html",
+    "render_wishlist",
+    "render_wishlist_html",
 ]
+
 

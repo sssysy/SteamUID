@@ -90,25 +90,76 @@ async def get_user_Summaries(steamid64: str | list[str]) -> list:
     return all_players
 
 
+# Steam 商店年龄与成年内容验证静态 Cookie
+STEAM_STORE_COOKIES = {
+    "birthtime": "786297601",
+    "lastagecheckage": "1-0-1995",
+    "wants_mature_content": "1",
+}
+
+
 async def get_game_info(appid: str) -> dict:
-    """获取游戏详情（带缓存：命中缓存则不请求API）"""
+    """获取游戏详情（带缓存：命中有效缓存则不请求API）"""
     cached = await SteamApiCache.get_cache(appid)
     if cached is not None:
-        return json.loads(cached)
+        try:
+            parsed = json.loads(cached)
+            if isinstance(parsed, dict) and parsed.get("success"):
+                return parsed
+            else:
+                await SteamApiCache.delete_cache(appid)
+        except Exception:
+            await SteamApiCache.delete_cache(appid)
 
     base_url = SteamConfig.get_config("storeBaseURL").data
     url = f"{base_url}{SteamAPI.store_GetGameDetails}"
     params = {
         "appids": appid,
+        "cc": get_current_cc(),
         "l": get_current_lang(),
     }
-    async with httpx.AsyncClient(timeout=5) as client:
-        response = await client.get(url, params=params)
-        data = response.json()
-        result = data.get(appid, {}) if isinstance(data, dict) else {}
+    result = {}
+    try:
+        async with httpx.AsyncClient(timeout=10, cookies=STEAM_STORE_COOKIES) as client:
+            response = await client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                result = data.get(appid, {}) if isinstance(data, dict) else {}
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取游戏详情异常 appid={appid}: {e}")
 
-    if result:
+    # 仅在成功获取到游戏详情时持久化缓存
+    if isinstance(result, dict) and result.get("success"):
         await SteamApiCache.upsert_cache(appid, json.dumps(result, ensure_ascii=False))
+        return result
+
+    # 二级保底：通过 GetSchemaForGame 提取官方游戏名称
+    try:
+        api_key = SteamConfig.get_config("SteamWebAPIKey").data
+        if api_key:
+            api_base_url = SteamConfig.get_config("APIBaseURL").data
+            schema_url = f"{api_base_url}{SteamAPI.api_GetSchemaForGame}"
+            schema_params = {"key": api_key, "appid": appid, "l": get_current_lang()}
+            async with httpx.AsyncClient(timeout=5) as client:
+                schema_res = await client.get(schema_url, params=schema_params)
+                if schema_res.status_code == 200:
+                    game_data = schema_res.json().get("game", {})
+                    game_name = game_data.get("gameName")
+                    if game_name:
+                        fallback_result = {
+                            "success": True,
+                            "data": {
+                                "steam_appid": int(appid) if appid.isdigit() else appid,
+                                "name": game_name,
+                                "header_image": f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg",
+                                "is_free": False,
+                            },
+                        }
+                        await SteamApiCache.upsert_cache(appid, json.dumps(fallback_result, ensure_ascii=False))
+                        return fallback_result
+    except Exception:
+        pass
+
     return result
 
 
@@ -232,7 +283,7 @@ async def get_price_data(appid: str | list[str]) -> dict:
             logger.warning(f"[SteamUID] 批量获取游戏价格异常 batch={batch[:3]}...: {e}")
         return {}
 
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=15, cookies=STEAM_STORE_COOKIES) as client:
         tasks = [fetch_batch(client, batch) for batch in batches]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -400,3 +451,39 @@ async def get_game_announcements(
         result.append(item)
 
     return result
+
+
+async def get_user_wishlist(steamid64: str) -> list[dict]:
+    """获取玩家的 Steam 愿望单列表。
+
+    返回 items 列表，每项包含:
+        - appid: int
+        - priority: int
+        - date_added: int (Unix 秒时间戳)
+    按 priority 升序排序。
+    """
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    base_url = SteamConfig.get_config("APIBaseURL").data
+    url = f"{base_url}{SteamAPI.api_GetWishlist}"
+    params = {
+        "key": api_key,
+        "steamid": steamid64,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                logger.warning(
+                    f"[SteamUID] 获取愿望单失败 steamid={steamid64}, status_code={response.status_code}"
+                )
+                return []
+            data = response.json()
+            items = data.get("response", {}).get("items", [])
+            if isinstance(items, list):
+                # 按 priority 升序排序（0 优先级最高）
+                items.sort(key=lambda x: (x.get("priority", 0), -x.get("date_added", 0)))
+                return items
+    except Exception as e:
+        logger.warning(f"[SteamUID] 请求愿望单接口异常 steamid={steamid64}: {e!r}")
+    return []
+
