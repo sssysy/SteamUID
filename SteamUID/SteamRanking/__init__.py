@@ -5,7 +5,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
-
+from ..SteamConfig import SteamConfig
 from ..utils.api import (
     get_game_icon_url,
     get_game_info,

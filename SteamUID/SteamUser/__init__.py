@@ -28,7 +28,12 @@ from ..utils.utils import (
     resolve_target_steamid64,
     resolve_player_status,
 )
-from ..utils.render import render_miniprofile, render_steam_info
+from ..utils.render import (
+    render_html,
+    render_html_gif,
+    render_miniprofile,
+    render_steam_info,
+)
 from ..utils.exceptions import SteamValidationError, SteamAPIError, SteamError, SteamConfigError
 from ..SteamBind import _send_bind_card
 

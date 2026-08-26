@@ -9,6 +9,7 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
+from ..SteamConfig.interface import SteamAPI
 from ..utils.api import (
     get_game_info,
     get_steamlibrary_by_steamid64,
