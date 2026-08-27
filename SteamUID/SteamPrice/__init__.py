@@ -6,10 +6,12 @@ from gsuid_core.sv import SV
 from gsuid_core.subscribe import gs_subscribe
 
 from ..utils.database.models import SteamPriceInfo
-from ..utils.api import get_price_data
+from ..utils.api import get_game_info, get_price_data
 from ..utils.exceptions import SteamError
+from ..utils.render import render_game_price_drop
 from ..utils.utils import resolve_target_appid
 from ..SteamConfig import SteamConfig, get_current_region
+from ..SteamConfig.interface import SteamAPI
 import json
 
 
@@ -94,3 +96,70 @@ async def steam_query(bot: Bot, ev: Event):
     except Exception as e:
         logger.exception(f"[SteamPrice] 查询命令异常: {e!r}")
         await bot.send("发生未知错误，详情请查看后台。")
+
+
+@price_SV.on_command("测试降价订阅")
+async def test_price_drop(bot: Bot, ev: Event):
+    try:
+        appid = await resolve_target_appid(bot, ev.text.strip())
+
+        # 获取游戏基本信息与价格数据
+        game_name = appid
+        game_desc = ""
+        cover_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+        discount_percent = 0
+        original_price = ""
+        final_price = ""
+
+        try:
+            game_data = await get_game_info(appid)
+            if game_data and game_data.get("success"):
+                d = game_data.get("data", {})
+                game_name = d.get("name", appid)
+                game_desc = d.get("short_description", "")
+                cover_url = d.get("header_image") or cover_url
+
+                price_overview = d.get("price_overview", {})
+                if price_overview:
+                    discount_percent = price_overview.get("discount_percent", 0)
+                    original_price = price_overview.get("initial_formatted", "")
+                    final_price = price_overview.get("final_formatted", "")
+                elif d.get("is_free"):
+                    final_price = "免费开玩"
+        except Exception as e:
+            logger.warning(f"[SteamPrice] 测试降价订阅获取游戏信息异常 appid={appid}: {e}")
+
+        if not final_price:
+            try:
+                prices = await get_price_data(appid)
+                po = prices.get(appid, {}).get("data", {}).get("price_overview", {})
+                if po:
+                    discount_percent = po.get("discount_percent", 0)
+                    original_price = po.get("initial_formatted", "")
+                    final_price = po.get("final_formatted", "")
+            except Exception as e:
+                logger.warning(f"[SteamPrice] 测试降价订阅补充获取价格异常 appid={appid}: {e}")
+
+        # 渲染降价卡片
+        img_bytes = await render_game_price_drop(
+            game_name=game_name,
+            game_desc=game_desc,
+            cover_url=cover_url,
+            discount_percent=discount_percent,
+            original_price=original_price,
+            final_price=final_price or "暂无价格信息",
+        )
+
+        send_msg = [
+            MessageSegment.at(ev.user_id),
+            MessageSegment.text("\n[Steam 降价订阅] 您订阅的游戏降价了！\n"),
+            MessageSegment.image(img_bytes),
+            MessageSegment.text(f"商店链接：https://store.steampowered.com/app/{appid}"),
+        ]
+        await bot.send(send_msg)
+
+    except SteamError as e:
+        await bot.send(str(e))
+    except Exception as e:
+        logger.exception(f"[SteamPrice] 测试降价订阅命令异常: {e!r}")
+        await bot.send("发生未知错误，详情请查看后台。")
