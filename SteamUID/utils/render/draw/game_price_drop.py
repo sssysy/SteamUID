@@ -18,7 +18,7 @@ def render_game_price_drop_html(
     discount_percent: int | str = 0,
     original_price: str = "",
     final_price: str = "",
-    canvas_width: int = 380,
+    canvas_width: int = 800,
 ) -> str:
     """构建 Steam 游戏降价卡片的 HTML 字符串。
 
@@ -29,7 +29,7 @@ def render_game_price_drop_html(
         discount_percent: 折扣百分比数字（如 50 代表 -50%）
         original_price: 原价格式化字符串（如 ¥ 198）
         final_price: 现价/折后价格式化字符串（如 ¥ 99）
-        canvas_width: 卡片宽度（默认 380px）
+        canvas_width: 卡片宽度（默认 800px）
     """
     template = _PRICE_DROP_TEMPLATE_PATH.read_text(encoding="utf-8")
 
@@ -91,7 +91,7 @@ async def render_game_price_drop(
     discount_percent: int | str = 0,
     original_price: str = "",
     final_price: str = "",
-    canvas_width: int = 380,
+    canvas_width: int = 800,
 ) -> bytes:
     """渲染 Steam 游戏降价卡片为 JPEG 图片字节。"""
     html_content = render_game_price_drop_html(
@@ -107,6 +107,7 @@ async def render_game_price_drop(
         html_content,
         ".price-drop-card",
         viewport_width=canvas_width + 40,
-        viewport_height=400,
+        viewport_height=500,
         device_scale_factor=2.0,
+        quality=95,
     )
