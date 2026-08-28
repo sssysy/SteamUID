@@ -28,6 +28,7 @@ from ..utils.render import (
     render_game_status,
     render_achievement_push,
     render_game_announce,
+    render_game_price_drop,
 )
 from ..SteamConfig.interface import SteamAPI
 from ..utils.utils import (
@@ -577,24 +578,66 @@ async def process_game_sale_push(drops: list) -> None:
         subs = subs_by_appid.get(appid)
         if not subs:
             continue
-        send_msg = _render_sale_message(appid, old_overview, new_overview)
+
+        # 获取游戏名称、简介与封面图
+        game_name = appid
+        game_desc = ""
+        cover_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+        try:
+            game_data = await get_game_info(appid)
+            if game_data and game_data.get("success"):
+                d = game_data.get("data", {})
+                game_name = d.get("name", appid)
+                game_desc = d.get("short_description", "")
+                cover_url = d.get("header_image") or cover_url
+        except Exception as e:
+            logger.warning(f"[SteamPoll] 降价推送获取游戏详情异常 appid={appid}: {e}")
+
+        discount_percent = new_overview.get("discount_percent", 0)
+        original_price = new_overview.get("initial_formatted") or old_overview.get("final_formatted", "")
+        final_price = new_overview.get("final_formatted", "")
+
+        # 优先使用 Playwright 渲染降价卡片
+        img_bytes = None
+        try:
+            img_bytes = await render_game_price_drop(
+                game_name=game_name,
+                game_desc=game_desc,
+                cover_url=cover_url,
+                discount_percent=discount_percent,
+                original_price=original_price,
+                final_price=final_price,
+            )
+        except Exception as error:
+            logger.warning(f"[SteamPoll] 渲染降价卡片失败 appid={appid}: {error!r}")
+
+        # 向每个订阅者发送推送消息
         for sub in subs:
             try:
-                await sub.send([MessageSegment.at(sub.user_id), send_msg])
+                if img_bytes:
+                    send_msg = [
+                        MessageSegment.at(sub.user_id),
+                        MessageSegment.text("\n[Steam 降价订阅] 您订阅的游戏降价了！\n"),
+                        MessageSegment.image(img_bytes),
+                        MessageSegment.text(f"商店链接：https://store.steampowered.com/app/{appid}"),
+                    ]
+                else:
+                    send_msg = [
+                        MessageSegment.at(sub.user_id),
+                        MessageSegment.text(
+                            f"\n[Steam 降价订阅] 您订阅的游戏降价了！\n"
+                            f"游戏：{game_name}\n"
+                            f"原价：{original_price}\n"
+                            f"现价：{final_price}\n"
+                            f"折扣：-{discount_percent}%\n"
+                            f"商店链接：https://store.steampowered.com/app/{appid}"
+                        ),
+                    ]
+                await sub.send(send_msg)
             except Exception as error:
                 logger.warning(
-                    f"[SteamPoll] 推送降价失败 appid={appid}: {error!r}"
+                    f"[SteamPoll] 推送降价失败 appid={appid}, user_id={sub.user_id}: {error!r}"
                 )
-
-
-def _render_sale_message(appid, old_overview, new_overview) -> Message:
-    """生成降价推送文本消息"""
-    text = MessageSegment.text(f"游戏 {appid} 降价！\n"
-           f"旧价：{old_overview.get('final_formatted', 'N/A')}\n"
-           f"现价：{new_overview.get('final_formatted', 'N/A')}\n"
-           f"折扣：{new_overview.get('discount_percent', 'N/A')}%\n"
-           f"点击查看: https://store.steampowered.com/app/{appid}")
-    return text
 
 
 

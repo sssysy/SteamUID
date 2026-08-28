@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'Motiva Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            background: transparent;
+            display: inline-block;
+        }
+
+        .price-drop-card {
+            position: relative;
+            width: {{canvas_width}}px;
+            background: #171d25;
+            border-radius: 0;
+            overflow: hidden;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            border: none;
+            box-shadow: none;
+        }
+
+        /* 游戏横板封面图背景：拉伸覆盖包括 Footer 在内的整张卡片高度，右半边渐隐 */
+        .cover-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 60%;
+            background-size: cover;
+            background-position: left center;
+            background-repeat: no-repeat;
+            -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.15) 70%, transparent 100%);
+            mask-image: linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.15) 70%, transparent 100%);
+            z-index: 1;
+        }
+
+        /* 渐变遮罩：右半边纯色过渡，保证右侧文字绝对清晰锐利 */
+        .cover-mask {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, transparent 0%, rgba(23, 29, 37, 0.15) 25%, rgba(23, 29, 37, 0.85) 45%, #171d25 60%);
+            z-index: 2;
+        }
+
+        /* 主体布局：左侧留空展示拉伸后的封面背景，右半边集中展示所有文字与价格 */
+        .card-main {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            flex-direction: row;
+            min-height: 200px;
+            padding: 22px 26px 18px 26px;
+        }
+
+        .left-spacer {
+            width: 42%;
+            flex-shrink: 0;
+        }
+
+        .right-content {
+            width: 58%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+            padding-left: 14px;
+        }
+
+        .game-title {
+            font-size: 21px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
+        }
+
+        .game-desc {
+            font-size: 14px;
+            font-weight: 400;
+            color: #b8bcbf;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+        }
+
+        /* 价格区域 */
+        .price-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 6px;
+        }
+
+        /* Steam 官方风格折扣价格标签条（直角、清晰） */
+        .discount-block {
+            display: inline-flex;
+            align-items: stretch;
+            background: #000000;
+            border-radius: 0;
+            overflow: hidden;
+            border: none;
+        }
+
+        .discount-pct {
+            background: #4c6b22;
+            color: #a4d007;
+            font-size: 17px;
+            font-weight: 700;
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            letter-spacing: -0.3px;
+        }
+
+        .discount-prices {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            line-height: 1;
+        }
+
+        .discount-original-price {
+            color: #738895;
+            font-size: 13.5px;
+            text-decoration: line-through;
+            font-weight: 500;
+        }
+
+        .discount-final-price {
+            color: #beee11;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        /* 底部 Footer：纯直角，透明底色融入封面与底色 */
+        .card-footer {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            padding: 10px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            box-sizing: border-box;
+            font-size: 12px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
+            background: transparent;
+            border-radius: 0;
+        }
+
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="price-drop-card">
+        {{cover_html}}
+        <div class="cover-mask"></div>
+        <div class="card-main">
+            <div class="left-spacer"></div>
+            <div class="right-content">
+                <div class="game-title" title="{{game_name}}">{{game_name}}</div>
+                <div class="game-desc" title="{{game_desc}}">{{game_desc}}</div>
+                <div class="price-row">
+                    {{price_html}}
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
+        </div>
+    </div>
+</body>
+</html>
