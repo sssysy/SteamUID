@@ -1,3 +1,6 @@
+TIMEOUT_ERR_MSG = "网络请求超时，请检查后台代理设置或重试。"
+
+
 class SteamError(Exception):
     """str(e) 即用户可见错误消息"""
 
@@ -14,5 +17,13 @@ class SteamRenderError(SteamError):
     """图片渲染失败"""
 
 
+class SteamTimeoutError(SteamError):
+    """网络请求或渲染超时"""
+
+    def __init__(self, message: str = TIMEOUT_ERR_MSG):
+        super().__init__(message)
+
+
 class SteamConfigError(SteamError):
     """配置缺失或无效"""
+

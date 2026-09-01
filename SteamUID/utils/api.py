@@ -6,6 +6,7 @@ from gsuid_core.logger import logger
 from ..SteamConfig.interface import SteamAPI
 from ..SteamConfig import SteamConfig, get_current_cc, get_current_lang
 from .database.models_cache import SteamApiCache, SteamArchivementCache
+from .exceptions import TIMEOUT_ERR_MSG, SteamAPIError, SteamTimeoutError
 
 # 内存 TTL 缓存字典及锁
 # key -> (data, expire_at)
@@ -69,19 +70,32 @@ async def get_user_Summaries(steamid64: str | list[str]) -> list:
     url = f"{base_url}{SteamAPI.api_GetPlayerSummaries}"
     batches = [steamids[i:i + 50] for i in range(0, len(steamids), 50)]
 
+    timeout_count = 0
+
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> list:
+        nonlocal timeout_count
         try:
             params = {"key": api_key, "steamids": ','.join(batch)}
             response = await client.get(url, params=params)
             data = response.json()
             return data.get("response", {}).get("players", [])
+        except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+            logger.warning(f"[SteamUID] 获取玩家摘要超时 batch={batch[:3]}: {e}")
+            timeout_count += 1
+            return []
         except Exception as e:
             logger.warning(f"[SteamUID] 获取玩家摘要失败 batch={batch[:3]}: {e}")
             return []
 
-    async with httpx.AsyncClient(timeout=5) as client:
-        tasks = [fetch_batch(client, batch) for batch in batches]
-        results = await asyncio.gather(*tasks)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            tasks = [fetch_batch(client, batch) for batch in batches]
+            results = await asyncio.gather(*tasks)
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
+
+    if timeout_count > 0 and timeout_count == len(batches):
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
 
     all_players: list[dict] = []
     for players in results:
@@ -125,6 +139,8 @@ async def get_game_info(appid: str) -> dict:
             if response.status_code == 200:
                 data = response.json()
                 result = data.get(appid, {}) if isinstance(data, dict) else {}
+    except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+        logger.warning(f"[SteamUID] 获取游戏详情超时 appid={appid}: {e}")
     except Exception as e:
         logger.warning(f"[SteamUID] 获取游戏详情异常 appid={appid}: {e}")
 
@@ -198,10 +214,17 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
         "include_appinfo": True,
         "include_played_free_games": True,
     }
-    async with httpx.AsyncClient(timeout=5) as client:
-        response = await client.get(url, params=params)
-        data = response.json()
-        return data.get("response", {})
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            data = response.json()
+            return data.get("response", {})
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        logger.warning(f"[SteamUID] 获取玩家游戏库超时 steamid={steamid64}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取玩家游戏库异常 steamid={steamid64}: {e}")
+        return {}
 
 
 async def get_archivement_info(appid: str, steamid64: str):
@@ -215,10 +238,17 @@ async def get_archivement_info(appid: str, steamid64: str):
         "steamid": steamid64,
         "l": get_current_lang(),
     }
-    async with httpx.AsyncClient(timeout=5) as client:
-        response = await client.get(url, params=params)
-        data = response.json()
-        return data.get("playerstats", {})
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            data = response.json()
+            return data.get("playerstats", {})
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        logger.warning(f"[SteamUID] 获取玩家成就超时 appid={appid} steamid={steamid64}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取玩家成就异常 appid={appid} steamid={steamid64}: {e}")
+        return {}
 
 
 async def get_archivement_img(appid: str, archivement_name: str) -> str:
@@ -248,10 +278,18 @@ async def get_archivement_schema(appid: str) -> list[dict]:
         "appid": appid,
         "l": get_current_lang(),
     }
-    async with httpx.AsyncClient(timeout=5) as client:
-        response = await client.get(url, params=params)
-        data = response.json()
-        achievements = data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
+    achievements = []
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            data = response.json()
+            achievements = data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        logger.warning(f"[SteamUID] 获取成就 Schema 超时 appid={appid}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
+    except Exception as e:
+        logger.warning(f"[SteamUID] 获取成就 Schema 异常 appid={appid}: {e}")
+        achievements = []
 
     if achievements:
         await SteamArchivementCache.upsert_cache(appid, json.dumps(achievements, ensure_ascii=False))
@@ -270,8 +308,10 @@ async def get_price_data(appid: str | list[str]) -> dict:
 
     # 分批，每批最多50个
     batches = [appid[i:i + 50] for i in range(0, len(appid), 50)]
+    timeout_count = 0
 
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> dict:
+        nonlocal timeout_count
         try:
             params = {"appids": ','.join(batch), "cc": cc, "filters": "price_overview"}
             response = await client.get(url, params=params)
@@ -279,13 +319,22 @@ async def get_price_data(appid: str | list[str]) -> dict:
                 data = response.json()
                 if isinstance(data, dict):
                     return data
+        except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+            logger.warning(f"[SteamUID] 批量获取游戏价格超时 batch={batch[:3]}...: {e}")
+            timeout_count += 1
         except Exception as e:
             logger.warning(f"[SteamUID] 批量获取游戏价格异常 batch={batch[:3]}...: {e}")
         return {}
 
-    async with httpx.AsyncClient(timeout=15, cookies=STEAM_STORE_COOKIES) as client:
-        tasks = [fetch_batch(client, batch) for batch in batches]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+    try:
+        async with httpx.AsyncClient(timeout=15, cookies=STEAM_STORE_COOKIES) as client:
+            tasks = [fetch_batch(client, batch) for batch in batches]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
+
+    if timeout_count > 0 and timeout_count == len(batches):
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
 
     # 合并所有批次结果
     all_prices: dict = {}
@@ -307,13 +356,16 @@ async def get_profile_items_equipped(steamid64: str, ttl_seconds: float | None =
     url = f"{base_url}{SteamAPI.api_GetProfileItemsEquipped}"
     params = {"key": api_key, "steamid": steamid64, "l": get_current_lang()}
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=8) as client:
             response = await client.get(url, params=params)
             data = response.json()
             res = data.get("response", {})
             if res:
                 await set_to_mem_cache(cache_key, res, ttl_seconds=ttl_seconds)
             return res
+    except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+        logger.warning(f"[SteamUID] 获取玩家装备项超时 steamid={steamid64}: {e}")
+        return {}
     except Exception as e:
         logger.warning(f"[SteamUID] 获取玩家装备项失败 steamid={steamid64}: {e}")
         return {}
@@ -336,6 +388,9 @@ async def get_miniprofile(steamid64: str, ttl_seconds: float | None = None) -> d
             if res and isinstance(res, dict):
                 await set_to_mem_cache(cache_key, res, ttl_seconds=ttl_seconds)
             return res
+    except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+        logger.warning(f"[SteamUID] 获取 miniprofile 超时 steamid={steamid64}: {e}")
+        return {}
     except Exception as e:
         logger.warning(f"[SteamUID] 获取 miniprofile 失败 steamid={steamid64}: {e}")
         return {}
@@ -363,12 +418,19 @@ async def search_game_store(keyword: str) -> list[dict]:
         "l": get_current_lang(),
         "cc": cc,
     }
-    async with httpx.AsyncClient(timeout=8) as client:
-        response = await client.get(url, params=params)
-        if response.status_code != 200:
-            return []
-        data = response.json()
-        items = data.get("items", []) if isinstance(data, dict) else []
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                return []
+            data = response.json()
+            items = data.get("items", []) if isinstance(data, dict) else []
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        logger.warning(f"[SteamUID] 搜索游戏超时 keyword={keyword}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
+    except Exception as e:
+        logger.warning(f"[SteamUID] 搜索游戏异常 keyword={keyword}: {e}")
+        return []
 
     if items:
         await SteamApiCache.upsert_cache(cache_key, json.dumps(items, ensure_ascii=False))
@@ -411,6 +473,9 @@ async def get_game_announcements(
                 )
                 return []
             data = response.json()
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        logger.warning(f"[SteamUID] 请求游戏公告接口超时 appid={appid}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
     except Exception as e:
         logger.warning(f"[SteamUID] 请求游戏公告接口异常 appid={appid}: {e!r}")
         return []
@@ -483,6 +548,9 @@ async def get_user_wishlist(steamid64: str) -> list[dict]:
                 # 按 priority 升序排序（0 优先级最高）
                 items.sort(key=lambda x: (x.get("priority", 0), -x.get("date_added", 0)))
                 return items
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        logger.warning(f"[SteamUID] 请求愿望单接口超时 steamid={steamid64}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
     except Exception as e:
         logger.warning(f"[SteamUID] 请求愿望单接口异常 steamid={steamid64}: {e!r}")
     return []

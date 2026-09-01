@@ -9,7 +9,12 @@ import time
 from gsuid_core.logger import logger
 
 from ..downloader import replace_html_urls_with_local
-from ..exceptions import SteamError, SteamRenderError
+from ..exceptions import (
+    TIMEOUT_ERR_MSG,
+    SteamError,
+    SteamRenderError,
+    SteamTimeoutError,
+)
 
 _DEFAULT_ICON_PATH = pathlib.Path(__file__).parent.parent / "texture2d" / "default_icon.jpg"
 
@@ -61,6 +66,7 @@ async def render_html(
     viewport_height: int = 600,
     device_scale_factor: float = 2.0,
     quality: int = 85,
+    timeout: float = 25.0,
 ) -> bytes:
     """通用 HTML 渲染：将 HTML 字符串注入浏览器并截图指定元素。
 
@@ -73,12 +79,13 @@ async def render_html(
         viewport_height: 浏览器视口高度
         device_scale_factor: 缩放倍率（默认 2.0 渲染高清图）
         quality: JPEG 压缩质量（默认 85）
+        timeout: 渲染超时时间（秒，默认 25.0）
 
     返回:
         JPEG 格式的图片字节数据
     """
     try:
-        from playwright.async_api import async_playwright
+        from playwright.async_api import TimeoutError as PlaywrightTimeoutError, async_playwright
     except ImportError:
         raise SteamError("playwright 库未安装，此功能无法使用")
 
@@ -95,9 +102,11 @@ async def render_html(
                 device_scale_factor=device_scale_factor,
             )
             page = await context.new_page()
+            page.set_default_timeout(int(timeout * 1000))
+            page.set_default_navigation_timeout(int(timeout * 1000))
 
             # 注入 HTML，等待网络资源加载完成
-            await page.set_content(html_content, wait_until="networkidle")
+            await page.set_content(html_content, wait_until="networkidle", timeout=int(timeout * 1000))
 
             # 自动检测并等待视频就绪
             has_video = await page.evaluate("!!document.querySelector('video')")
@@ -161,9 +170,15 @@ async def render_html(
 
             await browser.close()
             return screenshot_bytes
+    except (PlaywrightTimeoutError, asyncio.TimeoutError, TimeoutError) as e:
+        logger.warning(f"[SteamUID - 渲染] Playwright 渲染 HTML 超时: {e!r}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
     except SteamError:
         raise
     except Exception as e:
+        if "timeout" in type(e).__name__.lower() or "timeout" in str(e).lower():
+            logger.warning(f"[SteamUID - 渲染] Playwright 渲染 HTML 超时: {e!r}")
+            raise SteamTimeoutError(TIMEOUT_ERR_MSG)
         logger.exception(f"[SteamUID - 渲染] Playwright 渲染 HTML 失败: {e!r}")
         raise SteamRenderError("Playwright 渲染 HTML 发生错误，详情请查看后台。")
 
@@ -179,6 +194,7 @@ async def render_html_gif(
     *,
     viewport_width: int = 492,
     viewport_height: int = 600,
+    timeout: float = 30.0,
 ) -> bytes:
     """录制页面视频并转换为 GIF。
 
@@ -190,12 +206,13 @@ async def render_html_gif(
         selector: 要录制的 CSS 选择器（如 ".miniprofile_container"）
         viewport_width: 浏览器视口宽度
         viewport_height: 浏览器视口高度
+        timeout: 渲染超时时间（秒，默认 30.0）
 
     返回:
         GIF 格式的图片字节数据
     """
     try:
-        from playwright.async_api import async_playwright
+        from playwright.async_api import TimeoutError as PlaywrightTimeoutError, async_playwright
     except ImportError:
         raise SteamError("playwright 库未安装，此功能无法使用")
 
@@ -221,6 +238,8 @@ async def render_html_gif(
                 record_video_dir=tmp_dir,
             )
             page = await context.new_page()
+            page.set_default_timeout(int(timeout * 1000))
+            page.set_default_navigation_timeout(int(timeout * 1000))
 
             # 获取视频录制保存路径（需在关闭 context 前获取）
             video_path = await page.video.path()  # type: ignore[union-attr]
@@ -229,7 +248,7 @@ async def render_html_gif(
             load_start = time.monotonic()
 
             # 注入 HTML，等待网络资源加载完成
-            await page.set_content(html_content, wait_until="networkidle")
+            await page.set_content(html_content, wait_until="networkidle", timeout=int(timeout * 1000))
 
             # 等待所有图片加载完成（GIF 头像/头像框/徽章图标等）
             try:
@@ -316,9 +335,15 @@ async def render_html_gif(
 
         return gif_bytes
 
+    except (PlaywrightTimeoutError, asyncio.TimeoutError, TimeoutError) as e:
+        logger.warning(f"[SteamUID - 渲染] Playwright 渲染 GIF 超时: {e!r}")
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
     except SteamError:
         raise
     except Exception as e:
+        if "timeout" in type(e).__name__.lower() or "timeout" in str(e).lower():
+            logger.warning(f"[SteamUID - 渲染] Playwright 渲染 GIF 超时: {e!r}")
+            raise SteamTimeoutError(TIMEOUT_ERR_MSG)
         logger.exception(f"[SteamUID - 渲染] Playwright 渲染 GIF 失败: {e!r}")
         raise SteamRenderError("Playwright 渲染 GIF 发生错误，详情请查看后台。")
     finally:

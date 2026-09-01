@@ -1,9 +1,11 @@
 import re
+import asyncio
 import httpx
 from gsuid_core.logger import logger
 
 from ..SteamConfig import SteamConfig, get_current_lang
 from ..SteamConfig.interface import SteamAPI
+from ..utils.exceptions import TIMEOUT_ERR_MSG, SteamTimeoutError
 
 
 async def get_user_year_in_review_share_images(
@@ -20,6 +22,7 @@ async def get_user_year_in_review_share_images(
         language = get_current_lang()
     base_cdn = "https://shared.fastly.steamstatic.com/social_sharing/"
     image_urls: list[str] = []
+    timeout_errors = 0
 
     # 1. 优先调用官方 Web API
     api_cfg = SteamConfig.get_config("APIBaseURL").data
@@ -53,6 +56,11 @@ async def get_user_year_in_review_share_images(
                         full_url = f"{base_cdn}{url_path.lstrip('/')}"
                         if full_url not in image_urls:
                             image_urls.append(full_url)
+    except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+        logger.warning(
+            f"[SteamUID] WebAPI 获取年度回顾分享图超时 steamid={steamid64} year={year}: {e}"
+        )
+        timeout_errors += 1
     except Exception as e:
         logger.warning(
             f"[SteamUID] WebAPI 获取年度回顾分享图异常 steamid={steamid64} year={year}: {e}"
@@ -97,9 +105,17 @@ async def get_user_year_in_review_share_images(
                     if "social_sharing/replay" in img or "/social_sharing/" in img:
                         if img not in image_urls:
                             image_urls.append(img)
+    except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+        logger.warning(
+            f"[SteamUID] 商店页解析年度回顾分享图超时 steamid={steamid64} year={year}: {e}"
+        )
+        timeout_errors += 1
     except Exception as e:
         logger.warning(
             f"[SteamUID] 商店页解析年度回顾分享图异常 steamid={steamid64} year={year}: {e}"
         )
+
+    if timeout_errors >= 2 and not image_urls:
+        raise SteamTimeoutError(TIMEOUT_ERR_MSG)
 
     return image_urls

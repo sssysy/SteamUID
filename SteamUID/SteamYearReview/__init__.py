@@ -9,7 +9,7 @@ from gsuid_core.logger import logger
 from ..utils.api import get_user_Summaries
 from .review_service import get_user_year_in_review_share_images
 from ..utils.utils import resolve_target_steamid64
-from ..utils.exceptions import SteamValidationError, SteamAPIError
+from ..utils.exceptions import SteamError
 
 
 year_review_sv = SV("steam年度回顾相关")
@@ -40,9 +40,9 @@ def _parse_args(text: str) -> tuple[str | None, int]:
             return t2, int(t1)
         elif t2_is_year and not t1_is_year:
             return t1, int(t2)
-        raise SteamValidationError(_get_usage_msg())
+        raise SteamError(_get_usage_msg())
     else:
-        raise SteamValidationError(_get_usage_msg())
+        raise SteamError(_get_usage_msg())
 
 
 @year_review_sv.on_command(("年度回顾", "年度报告"))
@@ -52,12 +52,12 @@ async def get_year_review(bot: Bot, ev: Event):
         raw_id, year = _parse_args(ev.text.strip())
 
         if year < 2022:
-            raise SteamValidationError(usage_msg)
+            raise SteamError(usage_msg)
 
         # 解析目标 steamid64（支持 @他人、好友码/SteamID 输入与默认已绑定账号）
         steamid64 = await resolve_target_steamid64(ev, raw_id or "")
         if not steamid64:
-            raise SteamValidationError("请先绑定 steam 账号，或输入 好友码/SteamID")
+            raise SteamError("请先绑定 steam 账号，或输入 好友码/SteamID")
 
         # 调用 API 获取年度回顾分享图片直链列表
         image_urls = await get_user_year_in_review_share_images(steamid64, year)
@@ -78,9 +78,7 @@ async def get_year_review(bot: Bot, ev: Event):
             send_img.append(MessageSegment.image(url))
         await bot.send(send_img)
 
-    except SteamValidationError as e:
-        await bot.send(str(e))
-    except SteamAPIError as e:
+    except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
         logger.exception(f"[SteamYearReview] 年度回顾命令异常: {e!r}")
