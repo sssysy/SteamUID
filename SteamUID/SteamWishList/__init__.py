@@ -85,6 +85,11 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             return_exceptions=True,
         )
 
+        if isinstance(players_res, SteamError):
+            raise players_res
+        if isinstance(wishlist_items, SteamError):
+            raise wishlist_items
+
         # 4. 基础资料校验与私有检查
         if isinstance(players_res, Exception) or not players_res:
             raise SteamAPIError("未找到该 Steam 用户")

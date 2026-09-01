@@ -42,6 +42,10 @@ async def build_achievement_data(
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
+    for r in (results[0], results[1], results[3]):
+        if isinstance(r, SteamError):
+            raise r
+
     playerstats = results[0] if not isinstance(results[0], Exception) else {}
     schema_list = results[1] if not isinstance(results[1], Exception) else []
     game_info = results[2] if not isinstance(results[2], Exception) else {}

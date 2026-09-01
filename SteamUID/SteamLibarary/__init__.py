@@ -54,6 +54,11 @@ async def build_library_wall(steamid64: str) -> bytes:
         return_exceptions=True,
     )
 
+    if isinstance(players_res, SteamError):
+        raise players_res
+    if isinstance(library_res, SteamError):
+        raise library_res
+
     # 2. 用户校验与可见性检查
     if isinstance(players_res, Exception) or not players_res:
         raise SteamAPIError("未找到该 Steam 用户")
@@ -139,6 +144,11 @@ async def build_random_pick(steamid64: str) -> bytes:
         get_steamlibrary_by_steamid64(api_key, steamid64),
         return_exceptions=True,
     )
+
+    if isinstance(players_res, SteamError):
+        raise players_res
+    if isinstance(library_res, SteamError):
+        raise library_res
 
     # 2. 用户校验与可见性检查
     if isinstance(players_res, Exception) or not players_res:
