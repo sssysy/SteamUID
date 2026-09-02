@@ -19,6 +19,7 @@
 <p align="center">
   <img src="https://count.getloli.com/get/@SteamUID?theme=booru-jaypee&padding=6" />
 </p>
+
 ## 丨安装提醒
 
 > **注意：该插件为 [早柚核心(gsuid_core)](https://github.com/Genshin-bots/gsuid_core) 的扩展，具体安装方式可参考上方安装文档**
