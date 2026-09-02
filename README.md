@@ -5,11 +5,20 @@
 </p>
 <h1 align="center">SteamUID 0.1.0</h1>
 <h4 align="center">基于 gsuid_core 的 steam 状态推送插件</h4>
+
+<p align="center">
+  <a href="https://www.python.org/" target="_blank"><img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python 3.12+"></a>
+  <a href="https://github.com/Genshin-bots/gsuid_core" target="_blank"><img src="https://img.shields.io/badge/gsuid_core-0.10.7+-orange" alt="gsuid_core 0.10.7+"></a>
+</p>
+
 <div align="center">
   <a href="https://docs.sayu-bot.com/" target="_blank">安装文档</a> &nbsp; · &nbsp;
   <a href="https://github.com/Genshin-bots/gsuid_core" target="_blank">gsuid_core</a>
 </div>
 
+<p align="center">
+  <img src="https://count.getloli.com/get/@SteamUID?theme=booru-jaypee&padding=6" />
+</p>
 ## 丨安装提醒
 
 > **注意：该插件为 [早柚核心(gsuid_core)](https://github.com/Genshin-bots/gsuid_core) 的扩展，具体安装方式可参考上方安装文档**
