@@ -35,3 +35,10 @@ async def check():
     except Exception as e:
         logger.error(f"[SteamUID] 连接 steam api 失败，当前baseurl: {api_url}, 错误信息: {e}")
         return
+
+    # 检查是否有新添加/缺失的绑定账号，并同步拉取最新信息写入轮询表建立基线
+    try:
+        from .SteamBind.bind_service import sync_missing_bindings
+        await sync_missing_bindings()
+    except Exception as e:
+        logger.warning(f"[SteamUID] 启动时同步绑定账号异常: {e!r}")

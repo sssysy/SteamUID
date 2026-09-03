@@ -1,6 +1,7 @@
 import json
 import asyncio
 
+from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
 from ..utils.api import (
@@ -289,3 +290,40 @@ async def get_bind_card_data(
                 other_items.append(item)
 
     return now_items, other_items
+
+
+async def sync_missing_bindings() -> int:
+    """检查 SteamBind 中存在但 SteamIDInfo 中缺失的 steamid，拉取摘要并写入 SteamIDInfo 建立基线"""
+    try:
+        bind_sids = set(await SteamBind.get_all_steamid64())
+        if not bind_sids:
+            return 0
+        info_sids = set(await SteamIDInfo.get_all_steamid64())
+        missing = list(bind_sids - info_sids)
+        if not missing:
+            return 0
+
+        logger.info(f"[SteamUID] 检测到 {len(missing)} 个未初始化的 Steam 绑定账号，正在拉取信息建立轮询基线...")
+        players = await get_user_Summaries(missing)
+        synced_count = 0
+        saved_sids = set()
+        for player in players:
+            sid = player.get("steamid")
+            if sid:
+                await SteamIDInfo.upsert_steamuserinfo(
+                    sid, json.dumps(player, ensure_ascii=False)
+                )
+                saved_sids.add(sid)
+                synced_count += 1
+
+        # 若个别账号未能通过 API 获取到详情，写入空记录兜底以确保纳入后续轮询
+        for sid in missing:
+            if sid not in saved_sids:
+                await SteamIDInfo.upsert_steamuserinfo(sid, "{}")
+                synced_count += 1
+
+        logger.success(f"[SteamUID] 成功同步 {synced_count} 个 Steam 账号到轮询数据库！")
+        return synced_count
+    except Exception as e:
+        logger.warning(f"[SteamUID] 同步缺失 Steam 绑定信息异常: {e!r}")
+        return 0

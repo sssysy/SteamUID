@@ -718,6 +718,17 @@ class SteamBind(BaseIDModel, table=True):
         result = await session.execute(stmt)
         return result.scalars().first()
 
+    @classmethod
+    @with_session
+    async def get_all_steamid64(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+    ) -> list[str]:
+        """获取所有已绑定的去重 steamid64 列表"""
+        stmt = select(cls.steamid64).distinct()
+        result = await session.execute(stmt)
+        return [sid for sid in result.scalars().all() if sid]
+
 
 class SteamPlayRecord(BaseIDModel, table=True):
     """Steam游戏游玩记录表（用于游戏排行榜及衍生功能）"""
