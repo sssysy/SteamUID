@@ -87,6 +87,30 @@ async def steam_login_success():
     return HTMLResponse(success_html.read_text(encoding="utf-8"), status_code=200)
 
 
+@app.get("/steam/login/preview")
+async def steam_login_preview(request: Request):
+    """开发与演示预览入口（自动弹出 2FA 手机确认界面）"""
+    index_html = _TEMPLATES_DIR / "index.html"
+    if not index_html.exists():
+        return HTMLResponse("<h3>模板文件不存在</h3>", status_code=500)
+
+    html_content = index_html.read_text(encoding="utf-8")
+    html_content = html_content.replace("value=\"{{ auth | default('') }}\"", 'value="preview_token"')
+    html_content = html_content.replace("{{ logo_src }}", _get_icon_base64())
+
+    preview_script = """
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          showTwofaModal('请在 Steam App 中确认登录，或在下方输入 5 位动态令牌', true);
+        }, 300);
+      });
+    </script>
+    """
+    html_content = html_content.replace("</body>", f"{preview_script}</body>")
+    return HTMLResponse(html_content, status_code=200)
+
+
 @app.get("/steam/login")
 async def steam_login_entry(request: Request):
     """网页登录入口页，接收 ?state=xxx 或 ?auth=xxx"""

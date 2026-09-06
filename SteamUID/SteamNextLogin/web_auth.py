@@ -205,7 +205,7 @@ class SteamWebAuth:
             if using_email:
                 hint = "请输入发送至您绑定邮箱的验证码"
             elif can_app_confirm:
-                hint = "已向您的手机 Steam 发送确认通知，请点击【允许】，或输入 5 位动态令牌码"
+                hint = "请在 Steam App 中确认登录，或在下方输入 5 位动态令牌"
             else:
                 hint = "请输入手机 Steam 应用中的 5 位动态令牌码"
 

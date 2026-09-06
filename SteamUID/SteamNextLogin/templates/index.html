@@ -73,11 +73,7 @@
   <div id="twofaModal" class="twofa-overlay">
     <div class="twofa-card">
       <h2 class="twofa-title">Steam 令牌验证</h2>
-      <p id="twofaHint" class="twofa-desc">请输入手机 Steam 应用中的 5 位动态令牌码（或在手机 App 弹出确认通知中点击允许）</p>
-
-      <div id="twofaAppNotice" style="display: none; margin-bottom: 16px; padding: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 4px; font-size: 13px; color: #a7f3d0; text-align: center;">
-        📱 检测到已向手机 Steam App 发送登录确认，您可直接在手机上点击【允许】，或者在下方输入 5 位令牌码。
-      </div>
+      <p id="twofaHint" class="twofa-desc">请在 Steam App 中确认登录，或在下方输入 5 位动态令牌</p>
 
       <form id="twofaForm" onsubmit="return false">
         <div class="twofa-inputs-group">
@@ -88,9 +84,8 @@
           <input class="twofa-digit" type="text" maxlength="1" data-index="4" autocomplete="off" />
         </div>
 
-        <div class="twofa-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <div class="twofa-actions">
           <button id="btnTwofaCancel" class="btn-twofa-cancel" type="button">取消</button>
-          <button id="btnTwofaAppConfirm" class="btn-twofa-cancel" type="button" style="display: none; background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.5); color: #93c5fd;">已在手机确认</button>
           <button id="btnTwofaSubmit" class="btn-twofa-submit" type="submit">
             <span id="twofaBtnText">确认验证</span>
             <span id="twofaSpinner" class="spinner" style="display: none;"></span>
@@ -110,12 +105,10 @@
     const btnSpinner = document.getElementById('btnSpinner');
     const btnTwofaCancel = document.getElementById('btnTwofaCancel');
     const btnTwofaSubmit = document.getElementById('btnTwofaSubmit');
-    const btnTwofaAppConfirm = document.getElementById('btnTwofaAppConfirm');
     const twofaBtnText = document.getElementById('twofaBtnText');
     const twofaSpinner = document.getElementById('twofaSpinner');
     const twofaDigits = Array.from(document.querySelectorAll('.twofa-digit'));
     const twofaHint = document.getElementById('twofaHint');
-    const twofaAppNotice = document.getElementById('twofaAppNotice');
 
     let appConfirmTimer = null;
 
@@ -220,12 +213,8 @@
       noticeModal.classList.add('hidden');
       if (hintText) twofaHint.textContent = hintText;
       if (canAppConfirm) {
-        twofaAppNotice.style.display = 'block';
-        btnTwofaAppConfirm.style.display = 'inline-block';
         startAppConfirmPolling();
       } else {
-        twofaAppNotice.style.display = 'none';
-        btnTwofaAppConfirm.style.display = 'none';
         stopAppConfirmPolling();
       }
       twofaModal.classList.add('active');
@@ -259,36 +248,6 @@
         }
       }, 2500);
     }
-
-    // 点击“已在手机确认”按钮主动触发检查
-    btnTwofaAppConfirm.addEventListener('click', async () => {
-      const auth = getAuthToken();
-      btnTwofaAppConfirm.disabled = true;
-      btnTwofaAppConfirm.textContent = '检查中...';
-      try {
-        const resp = await fetch('/steam/login/api/check_confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auth: auth })
-        });
-        const data = await resp.json();
-        if (data.ok && data.done) {
-          stopAppConfirmPolling();
-          twofaModal.classList.remove('active');
-          showToast('手机端确认通过，登录成功！', 'success');
-          setTimeout(() => {
-            window.location.href = data.redirect || '/steam/login/success';
-          }, 800);
-        } else {
-          showToast(data.msg || '尚未检测到手机端确认，请在手机 App 上点击【允许】后再试', 'warning');
-        }
-      } catch (err) {
-        showToast('网络通信异常，请重试', 'error');
-      } finally {
-        btnTwofaAppConfirm.disabled = false;
-        btnTwofaAppConfirm.textContent = '已在手机确认';
-      }
-    });
 
     // 2FA 取消按钮
     btnTwofaCancel.addEventListener('click', () => {

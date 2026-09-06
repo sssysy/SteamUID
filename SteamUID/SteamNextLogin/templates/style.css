@@ -219,6 +219,7 @@ html, body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  display: none !important;
 }
 
 .notice-card {
@@ -399,9 +400,11 @@ html, body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  width: 100%;
 }
 
 .btn-twofa-cancel {
+  width: 100%;
   height: 44px;
   background: var(--btn-secondary);
   color: var(--text-dim);
@@ -409,18 +412,23 @@ html, body {
   font-size: 14px;
   font-weight: 500;
   border-radius: 0;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   outline: none;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .btn-twofa-cancel:hover {
   background: var(--btn-secondary-hover);
   color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .btn-twofa-submit {
+  width: 100%;
   height: 44px;
   background: var(--btn-primary);
   color: #ffffff;
@@ -431,6 +439,10 @@ html, body {
   border: none;
   outline: none;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   transition: filter 0.2s ease, box-shadow 0.2s ease;
 }
 
