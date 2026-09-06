@@ -118,6 +118,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后将会在可能出现 steamid / 好友码的地方隐藏相关数字的中间部分",
         False,
     ),
+    "HttpProxy": GsStrConfig(
+        "Steam HTTP代理URL",
+        "用于 Steam 登录及 Web 请求的代理（如 http://127.0.0.1:7890，留空则直连）",
+        "",
+    ),
 }
 
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)

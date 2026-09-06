@@ -14,6 +14,7 @@ T_SteamArchivementInfo = TypeVar("T_SteamArchivementInfo", bound="SteamArchiveme
 T_SteamPriceInfo = TypeVar("T_SteamPriceInfo", bound="SteamPriceInfo")
 T_SteamAnnounceInfo = TypeVar("T_SteamAnnounceInfo", bound="SteamAnnounceInfo")
 T_SteamPlayRecord = TypeVar("T_SteamPlayRecord", bound="SteamPlayRecord")
+T_SteamNextAccount = TypeVar("T_SteamNextAccount", bound="SteamNextAccount")
 
 class SteamIDInfo(BaseIDModel, table=True):
     __table_args__: Dict[str, Any] = {"extend_existing": True}
@@ -850,4 +851,95 @@ class SteamPlayRecord(BaseIDModel, table=True):
         return list(result.scalars().all())
 
 
-from . import admin # 注册到管理员
+class SteamNextAccount(BaseIDModel, table=True):
+    """SteamNext WebAuth 登录授权凭据表"""
+    __table_args__: Dict[str, Any] = {"extend_existing": True}
+
+    steamid64: str = Field(default=None, index=True, unique=True, title="SteamID64")
+    account_name: Optional[str] = Field(default=None, title="Steam用户名")
+    access_token: Optional[str] = Field(default=None, title="Access Token")
+    refresh_token: Optional[str] = Field(default=None, title="Refresh Token")
+    session_id: Optional[str] = Field(default=None, title="Session ID")
+    cookies_json: Optional[str] = Field(default=None, title="Cookie字典JSON")
+    updated_at: Optional[int] = Field(default=None, title="凭据更新时间戳")
+
+    @classmethod
+    @with_session
+    async def upsert_account(
+        cls: Type[T_SteamNextAccount],
+        session: AsyncSession,
+        steamid64: str,
+        account_name: Optional[str] = None,
+        access_token: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+        session_id: Optional[str] = None,
+        cookies_json: Optional[str] = None,
+        updated_at: Optional[int] = None,
+    ) -> int:
+        stmt = select(cls).where(cls.steamid64 == steamid64)
+        result = await session.execute(stmt)
+        existing = result.scalars().first()
+
+        if existing is not None:
+            if account_name is not None:
+                existing.account_name = account_name
+            if access_token is not None:
+                existing.access_token = access_token
+            if refresh_token is not None:
+                existing.refresh_token = refresh_token
+            if session_id is not None:
+                existing.session_id = session_id
+            if cookies_json is not None:
+                existing.cookies_json = cookies_json
+            existing.updated_at = updated_at
+            session.add(existing)
+        else:
+            session.add(
+                cls(
+                    steamid64=steamid64,  # type: ignore
+                    account_name=account_name,
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                    session_id=session_id,
+                    cookies_json=cookies_json,
+                    updated_at=updated_at,
+                )
+            )
+        return 0
+
+    @classmethod
+    @with_session
+    async def get_account(
+        cls: Type[T_SteamNextAccount],
+        session: AsyncSession,
+        steamid64: str,
+    ) -> Optional["SteamNextAccount"]:
+        stmt = select(cls).where(cls.steamid64 == steamid64)
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def delete_account(
+        cls: Type[T_SteamNextAccount],
+        session: AsyncSession,
+        steamid64: str,
+    ) -> int:
+        stmt = delete(cls).where(cls.steamid64 == steamid64)  # type: ignore
+        result = await session.execute(stmt)
+        if result.rowcount and result.rowcount > 0:  # type: ignore
+            return 0
+        return -1
+
+    @classmethod
+    @with_session
+    async def get_all_accounts(
+        cls: Type[T_SteamNextAccount],
+        session: AsyncSession,
+    ) -> list["SteamNextAccount"]:
+        stmt = select(cls)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+
+from . import admin  # 注册到管理员
