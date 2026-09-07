@@ -4,7 +4,7 @@
   <a href="https://github.com/Genshin-bots/gsuid_core"><img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/logo.gif" width="256" height="256" alt="SteamUID"></a>
 </p>
 <h1 align="center">SteamUID 0.1.0</h1>
-<h4 align="center">基于 gsuid_core 的 steam 状态推送插件</h4>
+<h4 align="center">基于 gsuid_core 的 steam 全功能插件</h4>
 
 <p align="center">
   <a href="https://www.python.org/" target="_blank"><img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python 3.12+"></a>
