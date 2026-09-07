@@ -85,51 +85,56 @@ async def parse_input_arguments(bot_id: str, user_id: str, raw_text: str) -> Tup
     """
     解析用户输入的参数，返回 (target_steamid, cleaned_cdks)。
     若格式或前置校验失败，抛出 SteamValidationError。
+    规则：
+      - 命令 参数1 参数2：参数1为指定 steamid/好友代码，参数2为 CDK 列表
+      - 命令 参数1：参数1为 CDK 列表，目标账号回退至当前用户绑定的主账号
+      - 有任何传错就报错
     """
-    if not raw_text:
+    if not raw_text or not raw_text.strip():
         raise SteamValidationError(
             "未检测到输入的 CDKey！\n"
-            "格式：steam激活 [steamid] <cdk1>, <cdk2>, ...\n"
-            "例如：steam激活 XXXXX-XXXXX-XXXXX"
+            "格式：\n"
+            "  steam激活 [steamid/好友代码] <cdk列表>"
         )
 
-    # 统一中文逗号与换行为半角逗号
-    text = raw_text.replace("，", ",").replace("\n", ",")
-    raw_tokens = [t.strip() for t in text.split(",") if t.strip()]
+    # 规范化：消除逗号两侧空格并将中文逗号统一为半角逗号
+    text = re.sub(r"\s*[,，]\s*", ",", raw_text.strip())
+    args = text.split()
 
-    # 支持空格分隔拆分首项或其他项
-    tokens: List[str] = []
-    for item in raw_tokens:
-        parts = [p.strip() for p in item.split() if p.strip()]
-        tokens.extend(parts)
+    if len(args) == 1:
+        raw_steamid = None
+        raw_cdk_list = args[0]
+    elif len(args) == 2:
+        raw_steamid = args[0]
+        raw_cdk_list = args[1]
+    else:
+        raise SteamValidationError(
+            "指令参数数量错误！正常指令格式为：\n"
+            "  steam激活 [steamid/好友代码] <cdk列表>"
+        )
 
-    if not tokens:
-        raise SteamValidationError("未检测到有效的 CDKey 参数！")
-
-    target_steamid: Optional[str] = None
-    cdk_tokens: List[str] = []
-
-    # 判定首项是否为指定账号（17 位纯数字或好友代码）
-    first_token = tokens[0]
-    if first_token.isdigit():
-        converted_sid = auto2steamid64(first_token)
-        if converted_sid and len(converted_sid) == 17:
-            target_steamid = converted_sid
-            cdk_tokens = tokens[1:]
-
-    # 若首项不是账号，则全部视为 CDK，目标账号回退到当前主账号
-    if target_steamid is None:
-        cdk_tokens = tokens
+    if raw_steamid is not None:
+        converted_sid = auto2steamid64(raw_steamid)
+        if not converted_sid or len(converted_sid) != 17:
+            raise SteamValidationError(f"参数 1 格式错误：{raw_steamid} 不是有效的 SteamID 或好友代码！")
+        binds = await SteamBind.get_bind_by_steamid(converted_sid)
+        if not binds:
+            raise SteamValidationError(f"未找到账号 {converted_sid} 的绑定记录，请先使用【steam绑定】进行绑定！")
+        if not any(str(b.bot_id) == str(bot_id) and str(b.user_id) == str(user_id) for b in binds):
+            raise SteamValidationError(f"账号 {converted_sid} 未绑定到当前用户，无法执行激活！")
+        target_steamid = converted_sid
+    else:
         binds = await SteamBind.get_binds_by_user_id(bot_id, user_id)
         if not binds:
             raise SteamValidationError("未找到绑定的 Steam 账号，请先使用【steam绑定 <SteamID/好友代码>】进行绑定！")
         main_bind = next((b for b in binds if b.is_main_id), binds[0])
         target_steamid = main_bind.steamid64
 
+    # 提取并严格校验 CDK 列表
+    cdk_tokens = [k.strip() for k in re.split(r"[,，\n]+", raw_cdk_list) if k.strip()]
     if not cdk_tokens:
-        raise SteamValidationError("未检测到要激活的 CDKey，请在指定账号后附带 CDKey！")
+        raise SteamValidationError("未检测到要激活的 CDKey，请检查输入的 CDKey 列表！")
 
-    # CDKey 严格格式前置校验
     cleaned_cdks: List[str] = []
     for idx, raw_k in enumerate(cdk_tokens, start=1):
         valid_cdk = normalize_and_validate_cdk(raw_k)
