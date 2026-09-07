@@ -1,5 +1,5 @@
 {
-  "绑定账号": {
+  "账号相关": {
     "desc": "",
     "data": [
       {
@@ -46,6 +46,67 @@
         "name": "查看全部",
         "desc": "查看自己所有绑定 steam",
         "eg": "查看全部",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "登录功能": {
+    "desc": "需要登录 Steam 账号后解锁的功能",
+    "data": [
+      {
+        "name": "登录",
+        "desc": "进行 Steam 网页授权登录以使用高级功能",
+        "eg": "登录",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "增加愿望单",
+        "desc": "将指定游戏添加到已授权账号的愿望单中",
+        "eg": "增加愿望单黑神话",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "移除愿望单",
+        "desc": "将指定游戏从已授权账号的愿望单中移除",
+        "eg": "移除愿望单黑神话",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "激活",
+        "desc": "私聊激活 Steam CDKey 游戏密钥到指定账户",
+        "eg": "激活 ABCDE-12345-FGHIJ",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "探索队列",
+        "desc": "立即探索已绑定Steam账号的探索队列",
+        "eg": "探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "开启自动探索队列",
+        "desc": "开启名下Steam账号的每日自动探索队列",
+        "eg": "开启自动探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭自动探索队列",
+        "desc": "关闭名下Steam账号的每日自动探索队列",
+        "eg": "关闭自动探索队列",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
@@ -192,14 +253,6 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      },
-      {
-        "name": "激活",
-        "desc": "私聊激活 Steam CDKey 游戏密钥到指定账户",
-        "eg": "steam激活 XXXXX-XXXXX-XXXXX",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
       }
     ]
   },
@@ -288,30 +341,6 @@
   "其他服务": {
     "desc": "一些杂项服务",
     "data": [
-      {
-        "name": "探索队列",
-        "desc": "立即探索已绑定Steam账号的探索队列",
-        "eg": "探索队列",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "开启自动探索队列",
-        "desc": "开启名下所有Steam账号的每日自动探索队列",
-        "eg": "开启自动探索队列",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "关闭自动探索队列",
-        "desc": "关闭名下所有Steam账号的每日自动探索队列",
-        "eg": "关闭自动探索队列",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
       {
         "name": "帮助",
         "desc": "呼出本插件帮助菜单",
