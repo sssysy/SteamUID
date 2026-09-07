@@ -141,7 +141,7 @@ async def steam_api_login(payload: _LoginPayload):
         state.auth_instance = auth_instance
 
         # 执行初次登录
-        res = auth_instance.start_session()
+        res = await auth_instance.start_session()
 
         if res.get("done"):
             # 无需 2FA，直接完成
@@ -198,7 +198,7 @@ async def steam_api_2fa(payload: _TwoFactorPayload):
         return JSONResponse({"ok": False, "msg": "未找到待验证的登录会话，请刷新重试"})
 
     try:
-        res = auth_instance.submit_2fa_code(code)
+        res = await auth_instance.submit_2fa_code(code)
         if res.get("done"):
             creds = auth_instance.get_credentials()
             await save_account_credentials(creds)
@@ -245,7 +245,7 @@ async def steam_api_check_confirm(payload: _AppConfirmPayload):
         return JSONResponse({"ok": False, "msg": "未找到待验证的登录会话"})
 
     try:
-        res = auth_instance.check_app_confirmation()
+        res = await auth_instance.check_app_confirmation()
         if res.get("done"):
             creds = auth_instance.get_credentials()
             await save_account_credentials(creds)

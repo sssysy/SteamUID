@@ -6,7 +6,7 @@ import json
 import re
 from typing import List, Optional, Tuple
 
-import requests
+import httpx
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
@@ -193,62 +193,73 @@ async def handle_cdkey_activation(bot: Bot, ev: Event):
     success_list: List[str] = []
     fail_list: List[str] = []
 
-    for i, cdk in enumerate(cleaned_cdks):
-        session = await get_valid_session(target_steamid)
-        if not session:
-            fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 获取登录凭据失败或授权已过期")
-            continue
+    session = await get_valid_session(target_steamid)
+    if not session:
+        await bot.send(f"[Steam CDKey 激活流程] 获取账号 {target_steamid} 登录凭据失败或授权已过期，请重新使用【steam登录】授权！")
+        return
 
-        sessionid = session.cookies.get("sessionid", domain="store.steampowered.com") or session.cookies.get("sessionid")
-        url = "https://store.steampowered.com/account/ajaxregisterkey/"
-        data = {
-            "product_key": cdk,
-            "sessionid": sessionid,
-        }
-        headers = {
-            "Referer": "https://store.steampowered.com/account/registerkey/",
-            "Origin": "https://store.steampowered.com",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        }
+    try:
+        for i, cdk in enumerate(cleaned_cdks):
+            sessionid = session.cookies.get("sessionid", domain="store.steampowered.com") or session.cookies.get("sessionid")
+            url = "https://store.steampowered.com/account/ajaxregisterkey/"
+            data = {
+                "product_key": cdk,
+                "sessionid": sessionid,
+            }
+            headers = {
+                "Referer": "https://store.steampowered.com/account/registerkey/",
+                "Origin": "https://store.steampowered.com",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            }
 
-        try:
-            resp_obj = await asyncio.to_thread(session.post, url, data=data, headers=headers, timeout=15)
-            if resp_obj.status_code != 200:
-                fail_list.append(f"[{len(fail_list) + 1}] {cdk} | HTTP {resp_obj.status_code}")
-                continue
+            try:
+                resp_call = session.post(url, data=data, headers=headers, timeout=15)
+                if asyncio.iscoroutine(resp_call) or hasattr(resp_call, "__await__"):
+                    resp_obj = await resp_call
+                else:
+                    resp_obj = resp_call
 
-            res_json = resp_obj.json()
-            result_code = res_json.get("purchase_result_details")
+                if resp_obj.status_code != 200:
+                    fail_list.append(f"[{len(fail_list) + 1}] {cdk} | HTTP {resp_obj.status_code}")
+                    continue
 
-            if result_code == 0:
-                # 激活成功：获取入库产品名
-                items = res_json.get("purchase_receipt_info", {}).get("line_items", [])
-                game_name = "未知游戏"
-                if items and isinstance(items, list) and items[0].get("line_item_description"):
-                    game_name = items[0]["line_item_description"]
-                # 成功显示格式：游戏名称 | xxxxx-xxxxx-xxxxx
-                success_list.append(f"[{len(success_list) + 1}] {game_name} | {cdk}")
-            elif result_code == 53:
-                # 限频熔断保护：立即中止后续所有请求
-                fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 尝试失败过多被限频")
-                for rem_idx in range(i + 1, len(cleaned_cdks)):
-                    rem_k = cleaned_cdks[rem_idx]
-                    fail_list.append(f"[{len(fail_list) + 1}] {rem_k} | 已跳过(触发限频熔断)")
-                logger.warning(f"[SteamCDKey] 账号 {target_steamid} 触发 53 限频风控，已熔断后续激活")
-                break
-            else:
-                reason = ERROR_CODE_MAP.get(result_code, f"激活失败(代码: {result_code})")
-                fail_list.append(f"[{len(fail_list) + 1}] {cdk} | {reason}")
+                res_json = resp_obj.json()
+                result_code = res_json.get("purchase_result_details")
 
-        except requests.exceptions.Timeout:
-            fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 请求 Steam 超时")
-        except Exception as e:
-            logger.warning(f"[SteamCDKey] 激活 ***{cdk[-3:]} 发生异常: {e}")
-            fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 网络请求异常")
+                if result_code == 0:
+                    # 激活成功：获取入库产品名
+                    items = res_json.get("purchase_receipt_info", {}).get("line_items", [])
+                    game_name = "未知游戏"
+                    if items and isinstance(items, list) and items[0].get("line_item_description"):
+                        game_name = items[0]["line_item_description"]
+                    # 成功显示格式：游戏名称 | xxxxx-xxxxx-xxxxx
+                    success_list.append(f"[{len(success_list) + 1}] {game_name} | {cdk}")
+                elif result_code == 53:
+                    # 限频熔断保护：立即中止后续所有请求
+                    fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 尝试失败过多被限频")
+                    for rem_idx in range(i + 1, len(cleaned_cdks)):
+                        rem_k = cleaned_cdks[rem_idx]
+                        fail_list.append(f"[{len(fail_list) + 1}] {rem_k} | 已跳过(触发限频熔断)")
+                    logger.warning(f"[SteamCDKey] 账号 {target_steamid} 触发 53 限频风控，已熔断后续激活")
+                    break
+                else:
+                    reason = ERROR_CODE_MAP.get(result_code, f"激活失败(代码: {result_code})")
+                    fail_list.append(f"[{len(fail_list) + 1}] {cdk} | {reason}")
 
-        # 若后续还有 CDK，等待安全间隔
-        if i < len(cleaned_cdks) - 1:
-            await asyncio.sleep(1.5)
+            except (httpx.TimeoutException, asyncio.TimeoutError):
+                fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 请求 Steam 超时")
+            except Exception as e:
+                logger.warning(f"[SteamCDKey] 激活 ***{cdk[-3:]} 发生异常: {e}")
+                fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 网络请求异常")
+
+            # 若后续还有 CDK，等待安全间隔
+            if i < len(cleaned_cdks) - 1:
+                await asyncio.sleep(1.5)
+    finally:
+        if hasattr(session, "aclose"):
+            close_call = session.aclose()
+            if asyncio.iscoroutine(close_call) or hasattr(close_call, "__await__"):
+                await close_call
 
     # 4. 组装最终任务汇报文本
     report_blocks = [

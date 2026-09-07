@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 from typing import Any, Optional
-import requests
+import httpx
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
@@ -33,22 +33,29 @@ class SteamAuthExpiredError(Exception):
     pass
 
 
-def _build_store_session(acc: SteamNextAccount) -> requests.Session:
-    """构建携带完整登录凭据的 Store 会话"""
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": DEFAULT_USER_AGENT,
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-    })
-
-    # 设置代理
+def _build_store_client(acc: SteamNextAccount) -> httpx.AsyncClient:
+    """构建携带完整登录凭据的 Store 会话客户端"""
+    proxy = None
     try:
-        proxy = SteamConfig.get_config("HttpProxy").data.strip()
-        if proxy:
-            session.proxies.update({"http": proxy, "https": proxy})
+        val = SteamConfig.get_config("HttpProxy").data
+        if isinstance(val, str):
+            p = val.strip()
+            if p:
+                if not p.startswith(("http://", "https://", "socks5://", "socks5h://")):
+                    p = f"http://{p}"
+                proxy = p
     except Exception:
         pass
+
+    client = httpx.AsyncClient(
+        headers={
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        },
+        proxy=proxy,
+        timeout=15,
+    )
 
     # 载入 cookies
     if acc.cookies_json:
@@ -56,35 +63,37 @@ def _build_store_session(acc: SteamNextAccount) -> requests.Session:
             cookies_dict = json.loads(acc.cookies_json)
             if isinstance(cookies_dict, dict):
                 for k, v in cookies_dict.items():
-                    session.cookies.set(k, str(v), domain="store.steampowered.com")
+                    client.cookies.set(str(k), str(v), domain="store.steampowered.com")
         except Exception as e:
             logger.warning(f"[SteamDiscoveryQueue] 账号 {acc.steamid64} 解析 Cookies 异常: {e}")
 
     # 显式覆盖核心身份 Cookie
     if acc.session_id:
-        session.cookies.set("sessionid", acc.session_id, domain="store.steampowered.com")
+        client.cookies.set("sessionid", str(acc.session_id), domain="store.steampowered.com")
     if acc.steamid64 and acc.access_token:
-        session.cookies.set(
+        client.cookies.set(
             "steamLoginSecure",
             f"{acc.steamid64}||{acc.access_token}",
             domain="store.steampowered.com",
-            secure=True,
         )
 
-    return session
+    return client
 
 
-def _fetch_queue_sync(session: requests.Session, store_base_url: str, session_id: str) -> list[int]:
-    """同步请求生成/获取新探索队列"""
+_build_store_session = _build_store_client
+
+
+async def _fetch_queue(client: httpx.AsyncClient, store_base_url: str, session_id: str) -> list[int]:
+    """异步请求生成/获取新探索队列"""
     gen_url = f"{store_base_url.rstrip('/')}/explore/generatenewdiscoveryqueue"
     headers = {
         "Origin": store_base_url,
         "Referer": f"{store_base_url.rstrip('/')}/explore/",
         "X-Requested-With": "XMLHttpRequest",
     }
-    resp = session.post(
+    resp = await client.post(
         gen_url,
-        data={"sessionid": session_id, "queuetype": 0},
+        data={"sessionid": session_id, "queuetype": "0"},
         headers=headers,
         timeout=15,
     )
@@ -96,7 +105,7 @@ def _fetch_queue_sync(session: requests.Session, store_base_url: str, session_id
     try:
         data = resp.json()
     except Exception:
-        if "login" in resp.url or "login" in resp.text:
+        if "login" in str(resp.url) or "login" in resp.text:
             raise SteamAuthExpiredError("登录凭证已失效，请重新登录")
         raise Exception("接口返回非有效 JSON 数据")
 
@@ -106,25 +115,31 @@ def _fetch_queue_sync(session: requests.Session, store_base_url: str, session_id
     return [int(x) for x in queue if str(x).isdigit()]
 
 
-def _clear_app_sync(session: requests.Session, store_base_url: str, session_id: str, appid: int):
-    """同步提交清除单个队列游戏"""
+_fetch_queue_sync = _fetch_queue
+
+
+async def _clear_app(client: httpx.AsyncClient, store_base_url: str, session_id: str, appid: int):
+    """异步提交清除单个队列游戏"""
     app_url = f"{store_base_url.rstrip('/')}/app/{appid}"
     headers = {
         "Origin": store_base_url,
         "Referer": app_url,
         "X-Requested-With": "XMLHttpRequest",
     }
-    resp = session.post(
+    resp = await client.post(
         app_url,
         data={
             "sessionid": session_id,
-            "appid_to_clear_from_queue": appid,
+            "appid_to_clear_from_queue": str(appid),
         },
         headers=headers,
         timeout=10,
     )
     if resp.status_code in (401, 403):
         raise SteamAuthExpiredError("登录凭证已失效，请重新登录")
+
+
+_clear_app_sync = _clear_app
 
 
 async def get_steam_nickname(steamid64: str) -> str:
@@ -205,46 +220,51 @@ async def execute_queue_for_steamids(
             accounts_to_run.append((steam_name, sid, acc))
 
     for acc_idx, (steam_name, sid, acc) in enumerate(accounts_to_run):
-        session = _build_store_session(acc)
+        client = _build_store_client(acc)
         account_failed = False
         fail_reason = ""
 
-        for r in range(rounds_per_account):
-            logger.info(
-                f"[SteamDiscoveryQueue] 开始执行账号 {steam_name}({sid}) "
-                f"第 {r + 1}/{rounds_per_account} 轮探索队列..."
-            )
-            try:
-                queue = await asyncio.to_thread(
-                    _fetch_queue_sync, session, store_base_url, acc.session_id
-                )
-                if queue:
-                    for appid in queue:
-                        await asyncio.to_thread(
-                            _clear_app_sync, session, store_base_url, acc.session_id, appid
-                        )
-                        await asyncio.sleep(0.3)
+        try:
+            for r in range(rounds_per_account):
                 logger.info(
-                    f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) "
-                    f"第 {r + 1} 轮探索完成（已清空 {len(queue)} 个游戏）"
+                    f"[SteamDiscoveryQueue] 开始执行账号 {steam_name}({sid}) "
+                    f"第 {r + 1}/{rounds_per_account} 轮探索队列..."
                 )
-            except SteamAuthExpiredError as e:
-                account_failed = True
-                fail_reason = str(e)
-                logger.warning(f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) 凭证已失效: {e}")
-                break
-            except Exception as e:
-                account_failed = True
-                fail_reason = f"接口异常: {e}"
-                logger.exception(f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) 探索队列异常: {e}")
-                break
+                try:
+                    res = _fetch_queue_sync(client, store_base_url, acc.session_id)
+                    queue = await res if asyncio.iscoroutine(res) or hasattr(res, "__await__") else res
+                    if queue:
+                        for appid in queue:
+                            clear_res = _clear_app_sync(client, store_base_url, acc.session_id, appid)
+                            if asyncio.iscoroutine(clear_res) or hasattr(clear_res, "__await__"):
+                                await clear_res
+                            await asyncio.sleep(0.3)
+                    logger.info(
+                        f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) "
+                        f"第 {r + 1} 轮探索完成（已清空 {len(queue)} 个游戏）"
+                    )
+                except SteamAuthExpiredError as e:
+                    account_failed = True
+                    fail_reason = str(e)
+                    logger.warning(f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) 凭证已失效: {e}")
+                    break
+                except Exception as e:
+                    account_failed = True
+                    fail_reason = f"接口异常: {e}"
+                    logger.exception(f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) 探索队列异常: {e}")
+                    break
 
-            is_last_round_overall = (acc_idx == len(accounts_to_run) - 1) and (
-                r == rounds_per_account - 1
-            )
-            if not is_last_round_overall and interval_seconds > 0:
-                logger.info(f"[SteamDiscoveryQueue] 等待探索间隔 {interval_seconds} 秒...")
-                await asyncio.sleep(interval_seconds)
+                is_last_round_overall = (acc_idx == len(accounts_to_run) - 1) and (
+                    r == rounds_per_account - 1
+                )
+                if not is_last_round_overall and interval_seconds > 0:
+                    logger.info(f"[SteamDiscoveryQueue] 等待探索间隔 {interval_seconds} 秒...")
+                    await asyncio.sleep(interval_seconds)
+        finally:
+            if hasattr(client, "aclose"):
+                close_res = client.aclose()
+                if asyncio.iscoroutine(close_res) or hasattr(close_res, "__await__"):
+                    await close_res
 
         if account_failed:
             results[sid] = (False, steam_name, fail_reason)

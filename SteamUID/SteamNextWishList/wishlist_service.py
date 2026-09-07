@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import asyncio
 from typing import Optional
-import requests
-from steam.webapi import post as steam_post
+import httpx
+
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
@@ -13,16 +13,33 @@ from ..utils.exceptions import SteamError, SteamValidationError
 from ..utils.utils import resolve_game_input
 
 
-def get_webapi_session() -> requests.Session:
-    """构建用于 Steam WebAPI 的 Session，自动适配代理配置"""
-    session = requests.Session()
+def get_proxy_url() -> Optional[str]:
+    """从 SteamConfig 获取配置的代理 URL"""
     try:
-        proxy = SteamConfig.get_config("HttpProxy").data.strip()
-        if proxy:
-            session.proxies.update({"http": proxy, "https": proxy})
+        val = SteamConfig.get_config("HttpProxy").data
+        if isinstance(val, str):
+            proxy = val.strip()
+            if proxy:
+                if not proxy.startswith(("http://", "https://", "socks5://", "socks5h://")):
+                    proxy = f"http://{proxy}"
+                return proxy
     except Exception:
         pass
-    return session
+    return None
+
+
+async def _call_wishlist_api(action: str, access_token: str, appid: int) -> dict:
+    """调用 Steam IWishlistService 异步接口"""
+    url = f"https://api.steampowered.com/IWishlistService/{action}/v1"
+    data = {
+        "access_token": access_token,
+        "appid": int(appid),
+    }
+    proxy = get_proxy_url()
+    async with httpx.AsyncClient(proxy=proxy, timeout=15) as client:
+        resp = await client.post(url, data=data)
+        resp.raise_for_status()
+        return resp.json()
 
 
 async def add_game_to_wishlist(bot: Bot, ev: Event) -> str:
@@ -44,22 +61,14 @@ async def add_game_to_wishlist(bot: Bot, ev: Event) -> str:
         await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
 
     try:
-        await asyncio.to_thread(
-            steam_post,
-            "IWishlistService",
-            "AddToWishlist",
-            version=1,
-            session=get_webapi_session(),
-            params={
-                "access_token": acc.access_token,
-                "appid": int(appid),
-            },
-        )
+        await _call_wishlist_api("AddToWishlist", acc.access_token, int(appid))
         return f"已将【{game_name}】({appid}) 添加至愿望单~"
-    except requests.exceptions.HTTPError as e:
+    except httpx.HTTPStatusError as e:
         if e.response is not None and e.response.status_code in (401, 403):
             return "Steam 登录授权已失效，请发送【steam登录】重新授权！"
         return f"操作失败：Steam API 返回 HTTP {e.response.status_code if e.response is not None else 'Error'}"
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        return "操作失败：连接 Steam 超时，请检查网络或稍后重试！"
     except Exception as e:
         logger.exception(f"[SteamNextWishList] 添加愿望单异常: {e}")
         return f"添加愿望单失败：{e}"
@@ -84,22 +93,14 @@ async def remove_game_from_wishlist(bot: Bot, ev: Event) -> str:
         await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
 
     try:
-        await asyncio.to_thread(
-            steam_post,
-            "IWishlistService",
-            "RemoveFromWishlist",
-            version=1,
-            session=get_webapi_session(),
-            params={
-                "access_token": acc.access_token,
-                "appid": int(appid),
-            },
-        )
+        await _call_wishlist_api("RemoveFromWishlist", acc.access_token, int(appid))
         return f"已将【{game_name}】({appid}) 从愿望单移除~"
-    except requests.exceptions.HTTPError as e:
+    except httpx.HTTPStatusError as e:
         if e.response is not None and e.response.status_code in (401, 403):
             return "Steam 登录授权已失效，请发送【steam登录】重新授权！"
         return f"操作失败：Steam API 返回 HTTP {e.response.status_code if e.response is not None else 'Error'}"
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        return "操作失败：连接 Steam 超时，请检查网络或稍后重试！"
     except Exception as e:
         logger.exception(f"[SteamNextWishList] 删除愿望单异常: {e}")
         return f"删除愿望单失败：{e}"
