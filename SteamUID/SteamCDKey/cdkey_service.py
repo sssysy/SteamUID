@@ -212,7 +212,7 @@ async def handle_cdkey_activation(bot: Bot, ev: Event):
         }
 
         try:
-            resp_obj = session.post(url, data=data, headers=headers, timeout=15)
+            resp_obj = await asyncio.to_thread(session.post, url, data=data, headers=headers, timeout=15)
             if resp_obj.status_code != 200:
                 fail_list.append(f"[{len(fail_list) + 1}] {cdk} | HTTP {resp_obj.status_code}")
                 continue

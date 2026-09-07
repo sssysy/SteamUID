@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import asyncio
 from typing import Optional
 import requests
 from steam.webapi import post as steam_post
@@ -43,7 +44,8 @@ async def add_game_to_wishlist(bot: Bot, ev: Event) -> str:
         await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
 
     try:
-        steam_post(
+        await asyncio.to_thread(
+            steam_post,
             "IWishlistService",
             "AddToWishlist",
             version=1,
@@ -82,7 +84,8 @@ async def remove_game_from_wishlist(bot: Bot, ev: Event) -> str:
         await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
 
     try:
-        steam_post(
+        await asyncio.to_thread(
+            steam_post,
             "IWishlistService",
             "RemoveFromWishlist",
             version=1,
