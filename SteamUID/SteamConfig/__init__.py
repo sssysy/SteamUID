@@ -123,6 +123,16 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "用于 Steam 登录及 Web 请求的代理（如 http://127.0.0.1:7890，留空则直连）",
         "",
     ),
+    "AutoQueueCount": GsIntConfig(
+        "每次自动探索队列次数",
+        "每次执行探索队列时的轮数，默认为 3 次",
+        3,
+    ),
+    "AutoQueueInterval": GsIntConfig(
+        "自动探索队列间隔",
+        "探索队列每轮之间的等待间隔（秒），默认为 15 秒",
+        15,
+    ),
 }
 
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)

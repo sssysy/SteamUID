@@ -281,6 +281,14 @@
     "desc": "一些杂项服务",
     "data": [
       {
+        "name": "探索队列",
+        "desc": "自动探索已绑定Steam账号的探索队列",
+        "eg": "探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "帮助",
         "desc": "呼出本插件帮助菜单",
         "eg": "帮助",
