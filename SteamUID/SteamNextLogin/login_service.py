@@ -158,5 +158,12 @@ async def request_web_login(bot: Bot, ev: Event) -> Optional[str]:
     if warn:
         full_reply += f"\n{warn}"
 
-    await bot.send(full_reply)
+    from ..SteamBind import _send_bind_card
+    await _send_bind_card(
+        bot,
+        ev,
+        fallback_msg=full_reply,
+        new_bind_steamid=result.steamid64,
+        show_all=False,
+    )
     return result.steamid64

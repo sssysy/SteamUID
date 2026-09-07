@@ -941,5 +941,18 @@ class SteamNextAccount(BaseIDModel, table=True):
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
+    @classmethod
+    @with_session
+    async def get_accounts_by_steamids(
+        cls: Type[T_SteamNextAccount],
+        session: AsyncSession,
+        steamids: list[str],
+    ) -> list["SteamNextAccount"]:
+        if not steamids:
+            return []
+        stmt = select(cls).where(cls.steamid64.in_(steamids))
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
 
 from . import admin  # 注册到管理员
