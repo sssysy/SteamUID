@@ -115,6 +115,8 @@ async def steam_login_entry(request: Request):
     html_content = html_content.replace("value=\"{{ auth | default('') }}\"", f'value="{token}"')
     # 注入 Logo
     html_content = html_content.replace("{{ logo_src }}", _get_icon_base64())
+    # 注入登录校验码
+    html_content = html_content.replace("{{ verify_code }}", str(state.user_id or ""))
 
     return HTMLResponse(html_content, status_code=200)
 

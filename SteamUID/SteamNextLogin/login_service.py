@@ -139,7 +139,8 @@ async def request_web_login(bot: Bot, ev: Event) -> Optional[str]:
     await bot.send(
         f"Steam 网页授权登录链接（{int(LOGIN_TTL_S)} 秒内有效）：\n"
         f"{login_url}\n"
-        f"请点击或复制链接至浏览器完成登录验证。"
+        f"请点击或复制链接至浏览器完成登录验证。\n"
+        f"登录校验码：{ev.user_id}"
     )
 
     # 异步等待登录结果

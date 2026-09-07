@@ -196,6 +196,15 @@ html, body {
   box-shadow: none;
 }
 
+.login-verify-code {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: #8f98a0;
+  user-select: text;
+  letter-spacing: 0.5px;
+}
+
 /* ========================================================= */
 /* 首次打开全屏免责风险提示 Modal（毛玻璃背景 + 纯矩形） */
 /* ========================================================= */
