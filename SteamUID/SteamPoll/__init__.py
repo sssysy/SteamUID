@@ -1,7 +1,9 @@
 from gsuid_core.aps import scheduler
+from gsuid_core.logger import logger
 
 from ..SteamCache import purge_db_cache, purge_file_cache
 from ..SteamConfig import SteamConfig
+from ..SteamDiscoveryQueue.queue_service import run_auto_discovery_queue_job
 from . import poll_service
 
 # steam 游戏状态轮询
@@ -55,3 +57,18 @@ if _file_cache_days and _file_cache_days > 0:
     )
     async def purge_file_cache_job():
         await purge_file_cache(days=_file_cache_days)
+
+# steam 自动探索队列每日定时任务
+try:
+    _queue_time = SteamConfig.get_config("AutoQueueTime").data
+    _hour, _minute = _queue_time[0], _queue_time[1]
+except Exception:
+    _hour, _minute = 8, 0
+
+
+@scheduler.scheduled_job("cron", hour=_hour, minute=_minute)
+async def auto_discovery_queue_job():
+    try:
+        await run_auto_discovery_queue_job()
+    except Exception as e:
+        logger.exception(f"[SteamDiscoveryQueue] 自动探索队列任务执行异常: {e}")

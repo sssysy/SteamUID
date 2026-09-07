@@ -9,7 +9,7 @@ from ..utils.api import (
     get_miniprofile,
     get_profile_items_equipped,
 )
-from ..utils.database.models import SteamIDInfo, SteamBind
+from ..utils.database.models import SteamIDInfo, SteamBind, SteamNextAccount
 from ..utils.exceptions import SteamValidationError
 from ..utils.utils import steamid64_to_friend_code, maybe_hide_steamid
 from ..SteamConfig import SteamConfig
@@ -242,6 +242,17 @@ async def get_bind_card_data(
         else:
             extra_map[sid] = (None, None, None)
 
+    # 查询 WebAuth 登录授权状态
+    try:
+        login_accounts = await SteamNextAccount.get_accounts_by_steamids(unique_sids)
+        login_sids = {
+            acc.steamid64 for acc in login_accounts
+            if (acc.access_token or acc.refresh_token)
+        }
+    except Exception as e:
+        logger.warning(f"[SteamBind] 获取登录凭据状态失败: {e}")
+        login_sids = set()
+
     now_items: list[dict] = []
     other_items: list[dict] = []
 
@@ -280,6 +291,7 @@ async def get_bind_card_data(
             "avatar_hash": avatar_hash,
             "friend_code": steamid64_to_friend_code(sub.steamid64),
             "is_main": bool(sub.is_main_id and sub.group_id == group_id),
+            "is_login": sub.steamid64 in login_sids,
             "warning": warning,
         }
 

@@ -3,7 +3,8 @@ from gsuid_core.utils.plugins_config.models import (
     GsStrConfig,
     GsIntConfig,
     GsBoolConfig,
-    GsListStrConfig
+    GsListStrConfig,
+    GsTimeRConfig,
 )
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
 from gsuid_core.data_store import get_res_path
@@ -117,6 +118,36 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "隐藏 steamid / 好友码",
         "开启后将会在可能出现 steamid / 好友码的地方隐藏相关数字的中间部分",
         False,
+    ),
+    "HttpProxy": GsStrConfig(
+        "Steam HTTP代理URL",
+        "用于 Steam 登录及 Web 请求的代理（如 http://127.0.0.1:7890，留空则直连）",
+        "",
+    ),
+    "AutoQueueCount": GsIntConfig(
+        "每次探索队列次数",
+        "每次执行探索队列时的轮数，默认为 3 次",
+        3,
+    ),
+    "AutoQueueInterval": GsIntConfig(
+        "探索队列间隔",
+        "探索队列每轮之间的等待间隔（秒），默认为 15 秒",
+        15,
+    ),
+    "AutoQueueTime": GsTimeRConfig(
+        "自动探索队列时间",
+        "每日自动执行探索队列的时间 (时, 分)。修改后需重启 GsCore 生效",
+        (8, 0),
+    ),
+    "QueuePushPrivate": GsBoolConfig(
+        "探索队列结果私聊推送",
+        "自动探索队列执行完毕后是否通过私聊向开启用户推送结果",
+        False,
+    ),
+    "QueuePushGroup": GsBoolConfig(
+        "探索队列结果群聊推送",
+        "自动探索队列执行完毕后是否向开启所在的群聊推送结果",
+        True,
     ),
 }
 

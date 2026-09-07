@@ -1,6 +1,6 @@
 from gsuid_core.webconsole.mount_app import PageSchema, GsAdminModel, site
 
-from .models import SteamIDInfo, SteamBind, SteamArchivementInfo, SteamPriceInfo, SteamPlayRecord
+from .models import SteamIDInfo, SteamBind, SteamArchivementInfo, SteamPriceInfo, SteamPlayRecord, SteamNextAccount
 
 
 
@@ -54,3 +54,13 @@ class SteamPlayRecordAdmin(GsAdminModel):
     )  # type: ignore
 
     model = SteamPlayRecord
+ 
+@site.register_admin
+class SteamNextAccountAdmin(GsAdminModel):
+    pk_name = "id"
+    page_schema = PageSchema(
+        label="Steam授权账号管理",
+        icon="fa fa-key",
+    )  # type: ignore
+
+    model = SteamNextAccount

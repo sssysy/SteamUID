@@ -1,10 +1,10 @@
 # steamUID
 
 <p align="center">
-  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQk10SGVBTlRQalRiVFM0TUdKRGV6UkFacXppQ0JVd0VZZzFXRmVYdnJ6UXFjP2U9TzZQejBi.gif" width="256" height="256" alt="SteamUID"></a>
+  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/logo.gif" width="256" height="256" alt="SteamUID"></a>
 </p>
 <h1 align="center">SteamUID 0.1.0</h1>
-<h4 align="center">基于 gsuid_core 的 steam 状态推送插件</h4>
+<h4 align="center">基于 gsuid_core 的 steam 全功能插件</h4>
 
 <p align="center">
   <a href="https://www.python.org/" target="_blank"><img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python 3.12+"></a>
@@ -41,66 +41,75 @@
 ## 丨命令列表
 
 ### steam帮助(图片更新可能不及时，请以下方命令说明为准)
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ2NVVjN5LWxQS1RidlJmR3hwUnIzZEFWNUJ2aC1lMzVzLXl3dWR5V0RDUDhzP2U9QzVXMGVp.jpg" width="480" alt="Steam帮助菜单">
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E5%B8%AE%E5%8A%A9.jpg" width="480" alt="Steam帮助菜单">
 
 ### 命令说明
 
-#### 绑定账号
+#### 账号相关
 | 命令 | 说明 |
 |------|:------:|
 | `steam绑定` | 使用 OpenID 方式绑定 steam |
-| `steam绑定12345678` | 使用好友码 / steamid 绑定 steam|
+| `steam绑定12345678` | 使用好友码 / steamid 绑定 steam |
 | `steam解绑` | 使用 OpenID 方式解绑 steam |
-| `steam解绑12345678` | 使用好友码 / steamid 解绑 steam|
+| `steam解绑12345678` | 使用好友码 / steamid 解绑 steam |
 | `steam查看` | 查看自己当前群绑定 steam |
 | `steam查看全部` | 查看自己所有绑定 steam |
+
+#### 登录功能
+| 命令 | 说明 |
+|------|:------:|
+| `steam登录` | 进行 Steam 网页授权登录以使用高级功能 |
+| `steam增加愿望单黑神话` | 将指定游戏添加到已授权账号的愿望单中 |
+| `steam移除愿望单黑神话` | 将指定游戏从已授权账号的愿望单中移除 |
+| `steam激活 ABCDE-12345-FGHIJ` | 私聊激活 Steam CDKey 游戏密钥到指定账户 |
+| `steam探索队列` | 立即探索已绑定Steam账号的探索队列 |
+| `steam开启自动探索队列` | 开启名下Steam账号的每日自动探索队列 |
+| `steam关闭自动探索队列` | 关闭名下Steam账号的每日自动探索队列 |
 
 #### 游戏状态
 | 命令 | 说明 |
 |------|:------:|
 | `steam开启推送` | 开启自己的所有推送功能 |
 | `steam关闭推送` | 关闭自己的所有推送功能 |
-| `steam开启开始游戏推送` | 开启自己的开始游戏推送功能 |
-| `steam关闭开始游戏推送` | 关闭自己的开始游戏推送功能 |
-| `steam开启结束游戏推送` | 开启自己的结束游戏推送功能 |
-| `steam关闭结束游戏推送` | 关闭自己的结束游戏推送功能 |
 | `steam推送状态` | 查看自己的推送开关状态 |
 
 #### 库存相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam游戏墙123456`  | 查询123456的游戏墙    |
-| `steam游戏成就cs2` | 查看 cs2 的成就详情 |
-| `steam开启成就推送` | 开启自己的成就推送功能 |
-| `steam关闭成就推送` | 关闭自己的成就推送功能 |
+| `steam游戏墙`  | 查询 steam 游戏墙 |
+| `steam游戏成就cs2` | 查看指定游戏成就 |
+| `steam开启成就推送` | 开启自己成就解锁的推送功能 |
+| `steam关闭成就推送` | 关闭自己成就解锁的推送功能 |
 | `steam玩什么` | 从自己的游戏库随机挑3个游戏 |
 
 #### 商店相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam愿望单列表` | 查看自己 / @的人的愿望单列表与当前售价 |
-| `steam订阅降价哀鸿` | 订阅商店哀鸿：城破十日记的降价信息 |
-| `steam取消订阅降价黑神话` | 取消订阅商店黑神话：悟空降价信息 |
+| `steam愿望单列表` | 查看指定 Steam 账号的愿望单列表与当前售价 |
+| `steam订阅降价黑神话` | 订阅商店游戏降价信息 |
+| `steam取消订阅降价黑神话` | 取消订阅商店游戏降价信息 |
 | `steam订阅降价查看` | 查看订阅的商店游戏降价信息 |
 | `steam订阅公告cs2` | 订阅指定游戏的官方公告更新推送 |
 | `steam取消订阅公告cs2` | 取消订阅指定游戏的官方公告更新 |
 | `steam订阅公告列表` | 查看已订阅的游戏公告列表 |
+| `steam测试订阅公告cs2` | 直接获取指定游戏最新公告并模拟一次推送 |
 
-#### 社交相关
+#### 排行相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam统计` | 查看个人在群内的游戏总时长排行榜 |
+| `steam我的统计` | 查看个人群内游玩时长排行榜 |
 | `steam群玩家排行` | 查看群玩家总时长排行榜 |
-| `steam群游戏排行` | 查看群游戏总时长排行榜 |
-| `steam群游戏玩家排行apex` | 查看群内Apex Legends的玩家游戏总时长排行榜 |
+| `steam群游戏排行` | 查看群游玩时长排行榜 |
+| `steam群游戏玩家排行apex` | 查看指定游戏在本群的玩家游玩时长排行榜 |
 | `steam群友状态` | 查看本群已绑定群友的实时在线与游戏状态 |
 
 #### 用户相关
 | 命令 | 说明 |
 |------|:------:|
-| `steam状态` | 查看自己 / @的人的迷你资料卡片  |
-| `steam信息` | 查看自己 / @的人的游戏库统计信息|
-| `steam年度回顾` | 查看自己 / @的人的年度回顾分享图 |
+| `steam状态` | 查看指定steam的迷你资料卡片 |
+| `steam信息` | 查看指定steam的账号详细信息卡片 |
+| `steam年度回顾2025` | 查看指定steam的年度回顾分享图 |
+| `steam刷新用户` | 强制重新获取并刷新绑定的steam账号信息与装扮缓存 |
 
 #### 其他服务
 | 命令 | 说明 |
@@ -114,30 +123,33 @@
 <summary>点击展开</summary>
 
 ### steam游戏成就
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRREVybU9Zd0NpdFE2cVhXT3Q0R0ZCREFUTjgybkoxLXRmNjJYdld4NENlRFU0P2U9Q3pOMnY4.png" width="320"/>
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E6%B8%B8%E6%88%8F%E6%88%90%E5%B0%B1.jpg" width="320"/>
 
 ### steam成就推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQzRtdVB5MzlKVFM2Z1NPSXo5UE8yQUFkY0NyeFk3UkZCMTkxSEt3bDZkZUE0P2U9QTZNYUp3.png" width="320"/>
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E6%88%90%E5%B0%B1%E8%AE%A2%E9%98%85.png" width="320"/>
 
 ### steam开始游戏 / 结束游戏推送
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQXpQVzRBVG5lWlNZYUtUWlBpTmhqbkFXLWlnZjJKelZsZk5GTG1rQXhSVEFZP2U9WmR6bnJX.png" width="320"/>
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E5%BC%80%E5%A7%8B%E6%B8%B8%E6%88%8F.jpg" width="320"/>
 
 ### steam游戏墙
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRGtiZ2VSMlhnZVFKSjdxU1NRdHU0aEFaaEw3NnpnbHdXNXBpX2VoQms3ODYwP2U9VmV4djlk.png" width="320"/>
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E6%B8%B8%E6%88%8F%E5%A2%99.jpg" width="320"/>
 
 ### steam玩什么
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1drYnVvMzhZS1JKclBiQnZrQXB4b0FVdmw4bFRuX1pSRmFQR2FiYVZLVXZzP2U9anBTZUx4.png" width="320">
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E7%8E%A9%E4%BB%80%E4%B9%88.jpg" width="320">
 
 ### steam状态
 
 #### 静态
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ1hsRG8wd1BnV1RKeThwcXNhelRnaEFhckFTWV91Rzh0SUVESkxVOVE0Y0JnP2U9eWdyOTlN.jpg" width="320">
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E7%8A%B6%E6%80%81%E9%9D%99%E6%80%81.jpg" width="320">
 
 #### 动态
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRQ3otNHJhXzVKdFRaTmdEVGhqZ2N6aUFma29wWWJjOHlPX0pBY1hkazhsb0pNP2U9eW1IQzFp.gif" width="320">
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E7%8A%B6%E6%80%81%E5%8A%A8%E6%80%81.gif" width="320">
 
 ### steam信息
-<img src="https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL2kvYy8xYmIyNTkxODI4ZDcyZTIzL0lRRFFncUhDM082N1FxNUQxTVphT2p3cUFYNTNTYzc1MlV4OGdYZC02bDBXc0tNP2U9dVV3ZkZp.png" width="320">
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E4%BF%A1%E6%81%AF.jpg" width="320">
+
+### steam群游戏状态
+<img src="https://cnb.cool/shiysssysy/img/-/git/raw/main/SteamUID/%E7%BE%A4%E6%B8%B8%E6%88%8F%E6%8E%92%E8%A1%8C.jpg" width="320">
 
 </details>
 
