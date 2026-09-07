@@ -192,6 +192,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "激活",
+        "desc": "私聊激活 Steam CDKey 游戏密钥到指定账户",
+        "eg": "steam激活 XXXXX-XXXXX-XXXXX",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
