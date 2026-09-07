@@ -87,7 +87,7 @@
         <div class="twofa-actions">
           <button id="btnTwofaCancel" class="btn-twofa-cancel" type="button">取消</button>
           <button id="btnTwofaSubmit" class="btn-twofa-submit" type="submit">
-            <span id="twofaBtnText">确认验证</span>
+            <span id="twofaBtnText">手机已确认</span>
             <span id="twofaSpinner" class="spinner" style="display: none;"></span>
           </button>
         </div>
@@ -147,6 +147,16 @@
       document.getElementById('username').focus();
     });
 
+    function updateTwofaSubmitButton() {
+      if (btnTwofaSubmit.disabled) return;
+      const code = getTwofaCode();
+      if (code.length > 0) {
+        twofaBtnText.textContent = '确认验证';
+      } else {
+        twofaBtnText.textContent = '手机已确认';
+      }
+    }
+
     // 2FA 五个输入框联动交互逻辑
     twofaDigits.forEach((input, index) => {
       input.addEventListener('input', (e) => {
@@ -156,6 +166,7 @@
           twofaDigits[index + 1].focus();
           twofaDigits[index + 1].select();
         }
+        updateTwofaSubmitButton();
       });
 
       input.addEventListener('keydown', (e) => {
@@ -174,6 +185,10 @@
         }
       });
 
+      input.addEventListener('keyup', () => {
+        updateTwofaSubmitButton();
+      });
+
       input.addEventListener('paste', (e) => {
         e.preventDefault();
         const text = (e.clipboardData || window.clipboardData).getData('text').trim().toUpperCase();
@@ -184,6 +199,7 @@
           });
           const nextIndex = Math.min(chars.length, twofaDigits.length - 1);
           twofaDigits[nextIndex].focus();
+          updateTwofaSubmitButton();
         }
       });
     });
@@ -200,6 +216,7 @@
 
     function clearTwofaDigits() {
       twofaDigits.forEach(i => i.value = '');
+      updateTwofaSubmitButton();
     }
 
     function stopAppConfirmPolling() {
@@ -256,15 +273,51 @@
       showToast('已取消两步验证', 'warning');
     });
 
-    // 2FA 提交逻辑
+    // 2FA 提交逻辑：未填写时执行手机确认检测，填写后走普通令牌验证
     btnTwofaSubmit.addEventListener('click', async () => {
       const code = getTwofaCode();
-      if (!code || code.length < 5) {
+      const auth = getAuthToken();
+
+      // 1. 未填写验证码：作为“手机已确认”执行手机端确认检测
+      if (!code || code.length === 0) {
+        twofaBtnText.textContent = '检测中...';
+        twofaSpinner.style.display = 'inline-block';
+        btnTwofaSubmit.disabled = true;
+
+        try {
+          const resp = await fetch('/steam/login/api/check_confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth: auth })
+          });
+          const data = await resp.json();
+
+          if (data.ok && data.done) {
+            stopAppConfirmPolling();
+            twofaModal.classList.remove('active');
+            showToast('手机端确认通过，登录成功！', 'success');
+            setTimeout(() => {
+              window.location.href = data.redirect || '/steam/login/success';
+            }, 800);
+          } else {
+            showToast(data.msg || '尚未检测到手机端确认，请在手机 Steam App 中点击【允许】', 'warning');
+          }
+        } catch (err) {
+          showToast('网络通信异常，请重试', 'error');
+        } finally {
+          twofaSpinner.style.display = 'none';
+          btnTwofaSubmit.disabled = false;
+          updateTwofaSubmitButton();
+        }
+        return;
+      }
+
+      // 2. 填写了验证码：执行普通令牌 2FA 验证
+      if (code.length < 5) {
         showToast('请输入完整的 5 位 Steam 动态令牌码（在手机 Steam 的【Steam 令牌】页面查看）', 'warning');
         return;
       }
 
-      const auth = getAuthToken();
       twofaBtnText.textContent = '验证中...';
       twofaSpinner.style.display = 'inline-block';
       btnTwofaSubmit.disabled = true;
@@ -292,9 +345,9 @@
       } catch (err) {
         showToast('网络通信异常，请重试', 'error');
       } finally {
-        twofaBtnText.textContent = '确认验证';
         twofaSpinner.style.display = 'none';
         btnTwofaSubmit.disabled = false;
+        updateTwofaSubmitButton();
       }
     });
 

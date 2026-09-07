@@ -286,6 +286,13 @@ class SteamWebAuth:
 
     def check_app_confirmation(self) -> dict:
         """检查用户是否已在手机 Steam App 上点击了允许/确认"""
+        if getattr(self, "logged_on", False):
+            return {
+                "ok": True,
+                "done": True,
+                "steamid64": self.steam_id,
+            }
+
         if not self.client_id or not self.request_id:
             raise SteamAuthError("登录会话已失效，请重新发起登录")
 

@@ -230,6 +230,14 @@ async def steam_api_check_confirm(payload: _AppConfirmPayload):
     if not state or time.time() - state.created_at > LOGIN_TTL_S:
         return JSONResponse({"ok": False, "msg": "登录会话已超时过期"})
 
+    if state.status == "success" and state.steamid64:
+        return JSONResponse({
+            "ok": True,
+            "done": True,
+            "steamid64": state.steamid64,
+            "redirect": "/steam/login/success",
+        })
+
     auth_instance = state.auth_instance
     if not auth_instance:
         return JSONResponse({"ok": False, "msg": "未找到待验证的登录会话"})
