@@ -508,6 +508,22 @@ class SteamBind(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def get_binds_by_user_id(
+        cls: Type[T_SteamBind],
+        session: AsyncSession,
+        bot_id: str,
+        user_id: str,
+    ) -> list["SteamBind"]:
+        """按用户ID获取其绑定的所有 Steam 账号（跨群/跨user_type）"""
+        stmt = select(cls).where(
+            cls.bot_id == bot_id,
+            cls.user_id == user_id,
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
     async def get_binds_by_group(
         cls: Type[T_SteamBind],
         session: AsyncSession,

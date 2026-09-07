@@ -282,8 +282,24 @@
     "data": [
       {
         "name": "探索队列",
-        "desc": "自动探索已绑定Steam账号的探索队列",
+        "desc": "立即探索已绑定Steam账号的探索队列",
         "eg": "探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "开启自动探索队列",
+        "desc": "开启名下所有Steam账号的每日自动探索队列",
+        "eg": "开启自动探索队列",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭自动探索队列",
+        "desc": "关闭名下所有Steam账号的每日自动探索队列",
+        "eg": "关闭自动探索队列",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
