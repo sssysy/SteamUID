@@ -246,20 +246,18 @@ async def handle_cdkey_activation(bot: Bot, ev: Event):
             await asyncio.sleep(1.5)
 
     # 4. 组装最终任务汇报文本
-    report_lines = [
-        "[Steam CDKey 激活流程]",
-        "CDKey激活任务结束",
-        f"成功：{len(success_list)} 个",
-        f"失败：{len(fail_list)} 个",
+    report_blocks = [
+        "[Steam CDKey 激活流程]\nCDKey激活任务结束",
     ]
 
     if success_list:
-        report_lines.append("成功列表(如果有)：")
-        report_lines.extend(success_list)
+        report_blocks.append(f"成功：{len(success_list)}个\n" + "\n".join(success_list))
 
     if fail_list:
-        report_lines.append("失败列表(如果有)：")
-        report_lines.extend(fail_list)
+        report_blocks.append(f"失败：{len(fail_list)}个\n" + "\n".join(fail_list))
 
-    final_report = "\n".join(report_lines)
+    if not success_list and not fail_list:
+        report_blocks.append("未执行任何激活操作。")
+
+    final_report = "\n\n".join(report_blocks)
     await bot.send(final_report)
