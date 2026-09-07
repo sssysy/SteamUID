@@ -142,13 +142,6 @@ async def get_steam_nickname(steamid64: str) -> str:
     except Exception:
         pass
 
-    try:
-        acc = await SteamNextAccount.get_account(steamid64)
-        if acc and acc.account_name:
-            return acc.account_name
-    except Exception:
-        pass
-
     return "未知用户"
 
 

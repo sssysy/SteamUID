@@ -140,12 +140,12 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         (8, 0),
     ),
     "QueuePushPrivate": GsBoolConfig(
-        "签到结果私聊推送",
+        "探索队列结果私聊推送",
         "自动探索队列执行完毕后是否通过私聊向开启用户推送结果",
         False,
     ),
     "QueuePushGroup": GsBoolConfig(
-        "签到结果群组群聊推送",
+        "探索队列结果群聊推送",
         "自动探索队列执行完毕后是否向开启所在的群聊推送结果",
         True,
     ),
