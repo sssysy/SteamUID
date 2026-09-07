@@ -131,9 +131,9 @@ async def steam_api_login(payload: _LoginPayload):
         return JSONResponse({"ok": False, "msg": "登录会话已超时过期，请重新在聊天界面获取链接"})
 
     username = payload.username.strip()
-    password = payload.password.strip()
+    password = payload.password
 
-    if not username or not password:
+    if not username or not password.strip():
         return JSONResponse({"ok": False, "msg": "请输入账号名称和密码"})
 
     try:
