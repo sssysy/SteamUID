@@ -243,7 +243,7 @@ async def handle_cdkey_activation(bot: Bot, ev: Event):
         except requests.exceptions.Timeout:
             fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 请求 Steam 超时")
         except Exception as e:
-            logger.warning(f"[SteamCDKey] 激活 {cdk} 发生异常: {e}")
+            logger.warning(f"[SteamCDKey] 激活 ***{cdk[-3:]} 发生异常: {e}")
             fail_list.append(f"[{len(fail_list) + 1}] {cdk} | 网络请求异常")
 
         # 若后续还有 CDK，等待安全间隔
