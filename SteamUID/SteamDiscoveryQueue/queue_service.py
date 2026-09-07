@@ -18,6 +18,9 @@ from ..utils.database.models import SteamBind, SteamIDInfo, SteamNextAccount
 
 SUBSCRIBE_TASK_NAME = "订阅Steam自动探索队列"
 
+# 正在执行探索队列的 steamid 集合（用于并发重入保护）
+_running_queue_steamids: set[str] = set()
+
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -273,7 +276,15 @@ async def handle_user_discovery_queue(bot: Bot, ev: Event):
         await bot.send("未检测到绑定的 Steam 账号，请先使用【steam绑定】进行绑定！")
         return
 
-    results = await execute_queue_for_steamids(bound_steamids)
+    if any(sid in _running_queue_steamids for sid in bound_steamids):
+        await bot.send("当前账号已有探索队列任务正在运行，请稍后再试！")
+        return
+
+    _running_queue_steamids.update(bound_steamids)
+    try:
+        results = await execute_queue_for_steamids(bound_steamids)
+    finally:
+        _running_queue_steamids.difference_update(bound_steamids)
 
     success_count = 0
     failed_count = 0
@@ -374,7 +385,16 @@ async def run_auto_discovery_queue_job():
     logger.info(
         f"[SteamDiscoveryQueue] 共有 {len(all_steamids_ordered)} 个独立 Steam 账号待执行探索..."
     )
-    results = await execute_queue_for_steamids(all_steamids_ordered)
+    steamids_to_run = [sid for sid in all_steamids_ordered if sid not in _running_queue_steamids]
+    if not steamids_to_run:
+        logger.info("[SteamDiscoveryQueue] 所有待执行账号均已有任务运行中，跳过本次自动探索。")
+        return
+
+    _running_queue_steamids.update(steamids_to_run)
+    try:
+        results = await execute_queue_for_steamids(steamids_to_run)
+    finally:
+        _running_queue_steamids.difference_update(steamids_to_run)
 
     # 1. 群聊推送
     if push_group:
