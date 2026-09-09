@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from collections import defaultdict
+from typing import Any
 
 from gsuid_core.logger import logger
 from gsuid_core.segment import MessageSegment
@@ -30,6 +31,7 @@ from ..utils.render import (
     render_game_announce,
     render_game_price_drop,
 )
+from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
 from ..utils.utils import (
     PUSH_EVENTS,
@@ -39,6 +41,44 @@ from ..utils.utils import (
     steamid64_to_friend_code,
     get_user_static_avatar_frame,
 )
+
+
+# (steamid64, group_id) -> last_push_timestamp
+_last_status_push_time: dict[tuple[str, str], float] = {}
+
+
+def check_status_change_cd(steamid64: str, group_id: str | None) -> bool:
+    """检查是否允许向群聊推送。
+    若配置了 CD 且处于冷却中，返回 False，并在控制台记录日志；
+    否则返回 True。
+    注：私聊 (group_id 为空) 不受冷却限制。
+    """
+    if not group_id:
+        return True
+
+    try:
+        cd_minutes = SteamConfig.get_config("StatusChangeCD").data
+    except Exception:
+        cd_minutes = 0
+
+    if not cd_minutes or cd_minutes <= 0:
+        return True
+
+    cd_seconds = cd_minutes * 60
+    now = time.time()
+    last_time = _last_status_push_time.get((steamid64, str(group_id)), 0.0)
+    if now - last_time < cd_seconds:
+        logger.info("[SteamUID] 推送消息在冷却 CD 中，跳过推送")
+        return False
+
+    return True
+
+
+def record_status_push_time(steamid64: str, group_id: str | None) -> None:
+    """记录向群聊成功推送的时间戳"""
+    if group_id:
+        _last_status_push_time[(steamid64, str(group_id))] = time.time()
+
 
 
 async def detect_status_changes(resp) -> tuple[list, list]:
@@ -130,16 +170,26 @@ async def process_game_status_push(
         if not any(push_subs_by_group.values()):
             continue
 
+        # 预先过滤处于冷却 CD 中的群聊，若无有效推送目标则直接跳过后续渲染与推送
+        valid_groups: list[str | None] = [
+            gid for gid in push_subs_by_group
+            if check_status_change_cd(steamid64, gid)
+        ]
+
+        if not valid_groups:
+            continue
+
         # 预取各群用户群昵称
         group_name_cache: dict[str | None, str | None] = {}
-        for gid in push_subs_by_group:
+        for gid in valid_groups:
             gsubs = push_subs_by_group[gid]
             group_name_cache[gid] = await get_user_group_nickname(
                 gsubs[0].bot_id, gsubs[0].user_id, gid
             )
 
         rendered_cache: dict[str | None, Any] = {}
-        for group_id, group_subs in push_subs_by_group.items():
+        for group_id in valid_groups:
+            group_subs = push_subs_by_group[group_id]
             group_name = group_name_cache[group_id]
             if group_name not in rendered_cache:
                 rendered_cache[group_name] = await _render_game_status_message(
@@ -159,6 +209,8 @@ async def process_game_status_push(
                     await sub.send(send_msg)
                 except Exception as error:
                     logger.warning(f"[SteamPoll] 推送 steamid={steamid64} 失败: {error!r}")
+
+            record_status_push_time(steamid64, group_id)
 
 
 async def update_achievement_baselines(push_list) -> None:
@@ -434,9 +486,24 @@ async def poll_and_push_achievements() -> None:
                 if not any(push_subs_by_group.values()):
                     continue
 
+                # 预先过滤处于冷却 CD 中的群聊
+                valid_groups: list[str | None] = [
+                    gid for gid in push_subs_by_group
+                    if check_status_change_cd(steamid64, gid)
+                ]
+
+                if not valid_groups:
+                    # 群聊均在 CD 中跳过推送，但仍需落盘成就基线，避免下次轮询重复触发这些成就
+                    await SteamArchivementInfo.upsert_archivement_data(
+                        steamid64,
+                        appid,
+                        json.dumps(new_archivement_info, ensure_ascii=False),
+                    )
+                    continue
+
                 # 预取各群用户群昵称
                 group_name_cache: dict[str | None, str | None] = {}
-                for gid in push_subs_by_group:
+                for gid in valid_groups:
                     gsubs = push_subs_by_group[gid]
                     group_name_cache[gid] = await get_user_group_nickname(
                         gsubs[0].bot_id, gsubs[0].user_id, gid
@@ -503,7 +570,8 @@ async def poll_and_push_achievements() -> None:
                     if send_msg is None:
                         send_msg = text_msg
 
-                    for group_id, group_subs in push_subs_by_group.items():
+                    for group_id in valid_groups:
+                        group_subs = push_subs_by_group[group_id]
                         for sub in group_subs:
                             try:
                                 await sub.send(send_msg)
@@ -511,6 +579,9 @@ async def poll_and_push_achievements() -> None:
                                 logger.warning(
                                     f"[SteamPoll] 推送成就失败 steamid={steamid64}: {error!r}"
                                 )
+
+                for group_id in valid_groups:
+                    record_status_push_time(steamid64, group_id)
 
                 await SteamArchivementInfo.upsert_archivement_data(
                     steamid64,
