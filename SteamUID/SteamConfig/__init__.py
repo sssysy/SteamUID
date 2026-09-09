@@ -103,6 +103,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
             "获得成就",
         ]
     ),
+    "StatusChangeCD": GsIntConfig(
+        "状态变更冷却CD (分钟)",
+        "状态变更推送群聊冷却时间 (分钟)，设置为0则不启用",
+        5,
+    ),
     "country": GsStrConfig(
         "steam地区",
         "监听游戏降价及获取商店数据的 steam 地区，默认中国大陆",
