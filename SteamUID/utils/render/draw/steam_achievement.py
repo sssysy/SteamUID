@@ -128,7 +128,7 @@ def render_steam_achievement_html(
                     card_html = (
                         f'<div class="ach-card">\n'
                         f'  <div class="ach-icon-box">\n'
-                        f'    <img class="ach-icon" src="{icon_url}" onerror="this.src=\'{default_icon}\'" alt="">\n'
+                        f'    <img class="ach-icon" src="{icon_url}" onerror="this.onerror=null;this.src=\'{default_icon}\'" alt="">\n'
                         f'  </div>\n'
                         f'  <div class="ach-info">\n'
                         f'    <div class="ach-name" title="{name}">{name}</div>\n'
@@ -141,7 +141,7 @@ def render_steam_achievement_html(
                     card_html = (
                         f'<div class="ach-card locked">\n'
                         f'  <div class="ach-icon-box">\n'
-                        f'    <img class="ach-icon" src="{icon_url}" onerror="this.src=\'{default_icon}\'" alt="">\n'
+                        f'    <img class="ach-icon" src="{icon_url}" onerror="this.onerror=null;this.src=\'{default_icon}\'" alt="">\n'
                         f'  </div>\n'
                         f'  <div class="ach-info">\n'
                         f'    <div class="ach-name" title="{name}">{name}</div>\n'

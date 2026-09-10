@@ -32,7 +32,10 @@ def _get_default_icon_b64() -> str:
 
 
 def _fill_template(template: str, replacements: dict[str, str]) -> str:
-    """用 str.replace 替换所有 {{key}} 占位符。"""
+    """用 str.replace 替换所有 {{key}} 占位符。先内联本地 CSS 确保样式中的动态变量也能被替换。"""
+    if "<link" in template:
+        from ..downloader import _inline_local_css
+        template = _inline_local_css(template)
     for key, value in replacements.items():
         template = template.replace("{{" + key + "}}", value)
     return template

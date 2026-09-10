@@ -118,7 +118,7 @@
         }
 
         .status_online { color: #57cbde; }
-        .status_ingame { color: #90ba3c; }
+        .status_ingame, .status_in-game { color: #90ba3c; }
         .status_offline { color: #898989; }
 
         .profile_summary {
