@@ -104,7 +104,7 @@ async def steamunbind(bot: Bot, ev: Event):
             if info_json:
                 info = _json.loads(info_json)
             else:
-                from ..utils.api import get_user_Summaries
+                from ..utils.Api import get_user_Summaries
 
                 sid_info = await get_user_Summaries(steamid64)
                 info = sid_info[0] if sid_info else {}

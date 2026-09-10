@@ -10,7 +10,7 @@ from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
-from ..utils.api import (
+from ..utils.Api import (
     get_game_info,
     get_steamlibrary_by_steamid64,
     get_user_Summaries,

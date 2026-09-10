@@ -13,7 +13,13 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.subscribe import gs_subscribe
 
 from ..SteamConfig import SteamConfig
-from ..utils.api import get_user_Summaries
+from ..utils.Api import (
+    SteamStoreAuthExpiredError,
+    clear_discovery_queue_app,
+    generate_discovery_queue,
+    get_user_Summaries,
+    make_async_client,
+)
 from ..utils.database.models import SteamBind, SteamIDInfo, SteamNextAccount
 
 SUBSCRIBE_TASK_NAME = "订阅Steam自动探索队列"
@@ -21,43 +27,19 @@ SUBSCRIBE_TASK_NAME = "订阅Steam自动探索队列"
 # 正在执行探索队列的 steamid 集合（用于并发重入保护）
 _running_queue_steamids: set[str] = set()
 
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/143.0.0.0 Safari/537.36"
-)
-
-
-class SteamAuthExpiredError(Exception):
-    """Steam 登录凭据失效"""
-    pass
+# 兼容旧引用：协议实现在 utils/Api/store
+SteamAuthExpiredError = SteamStoreAuthExpiredError
 
 
 def _build_store_client(acc: SteamNextAccount) -> httpx.AsyncClient:
     """构建携带完整登录凭据的 Store 会话客户端"""
-    proxy = None
-    try:
-        val = SteamConfig.get_config("HttpProxy").data
-        if isinstance(val, str):
-            p = val.strip()
-            if p:
-                if not p.startswith(("http://", "https://", "socks5://", "socks5h://")):
-                    p = f"http://{p}"
-                proxy = p
-    except Exception:
-        pass
-
-    client = httpx.AsyncClient(
+    client = make_async_client(
         headers={
-            "User-Agent": DEFAULT_USER_AGENT,
             "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
         },
-        proxy=proxy,
         timeout=15,
     )
 
-    # 载入 cookies
     if acc.cookies_json:
         try:
             cookies_dict = json.loads(acc.cookies_json)
@@ -67,7 +49,6 @@ def _build_store_client(acc: SteamNextAccount) -> httpx.AsyncClient:
         except Exception as e:
             logger.warning(f"[SteamDiscoveryQueue] 账号 {acc.steamid64} 解析 Cookies 异常: {e}")
 
-    # 显式覆盖核心身份 Cookie
     if acc.session_id:
         client.cookies.set("sessionid", str(acc.session_id), domain="store.steampowered.com")
     if acc.steamid64 and acc.access_token:
@@ -84,59 +65,14 @@ _build_store_session = _build_store_client
 
 
 async def _fetch_queue(client: httpx.AsyncClient, store_base_url: str, session_id: str) -> list[int]:
-    """异步请求生成/获取新探索队列"""
-    gen_url = f"{store_base_url.rstrip('/')}/explore/generatenewdiscoveryqueue"
-    headers = {
-        "Origin": store_base_url,
-        "Referer": f"{store_base_url.rstrip('/')}/explore/",
-        "X-Requested-With": "XMLHttpRequest",
-    }
-    resp = await client.post(
-        gen_url,
-        data={"sessionid": session_id, "queuetype": "0"},
-        headers=headers,
-        timeout=15,
-    )
-    if resp.status_code in (401, 403):
-        raise SteamAuthExpiredError("登录凭证已失效，请重新登录")
-    if resp.status_code != 200:
-        raise Exception(f"生成探索队列异常 (HTTP {resp.status_code})")
-
-    try:
-        data = resp.json()
-    except Exception:
-        if "login" in str(resp.url) or "login" in resp.text:
-            raise SteamAuthExpiredError("登录凭证已失效，请重新登录")
-        raise Exception("接口返回非有效 JSON 数据")
-
-    queue = data.get("queue", [])
-    if not isinstance(queue, list):
-        return []
-    return [int(x) for x in queue if str(x).isdigit()]
+    return await generate_discovery_queue(client, store_base_url, session_id)
 
 
 _fetch_queue_sync = _fetch_queue
 
 
 async def _clear_app(client: httpx.AsyncClient, store_base_url: str, session_id: str, appid: int):
-    """异步提交清除单个队列游戏"""
-    app_url = f"{store_base_url.rstrip('/')}/app/{appid}"
-    headers = {
-        "Origin": store_base_url,
-        "Referer": app_url,
-        "X-Requested-With": "XMLHttpRequest",
-    }
-    resp = await client.post(
-        app_url,
-        data={
-            "sessionid": session_id,
-            "appid_to_clear_from_queue": str(appid),
-        },
-        headers=headers,
-        timeout=10,
-    )
-    if resp.status_code in (401, 403):
-        raise SteamAuthExpiredError("登录凭证已失效，请重新登录")
+    await clear_discovery_queue_app(client, store_base_url, session_id, appid)
 
 
 _clear_app_sync = _clear_app

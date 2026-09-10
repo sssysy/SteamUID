@@ -7,7 +7,7 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
-from ..utils.api import (
+from ..utils.Api import (
     get_game_info,
     get_miniprofile,
     get_price_data,

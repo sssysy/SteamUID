@@ -3,7 +3,7 @@ import httpx
 from gsuid_core.logger import logger
 
 from ..SteamConfig import SteamConfig
-from ..utils.api import (
+from ..utils.Api import (
     get_user_Summaries,
     get_miniprofile,
     get_profile_items_equipped,

@@ -12,7 +12,7 @@ login_sv = SV("Steam登录")
 
 
 @login_sv.on_command(("登录", "登陆", "login"))
-async def steam_next_login(bot: Bot, ev: Event):
+async def steam_login(bot: Bot, ev: Event):
     """
     处理「steam 登录」命令
     生成 WebAuth 网页授权登录链接，引导用户在浏览器中完成账号密码及 2FA 认证
@@ -22,5 +22,5 @@ async def steam_next_login(bot: Bot, ev: Event):
     except SteamError as e:
         await bot.send(str(e))
     except Exception as e:
-        logger.exception(f"[SteamNextLogin] 登录命令执行异常: {e}")
+        logger.exception(f"[SteamLogin] 登录命令执行异常: {e}")
         await bot.send("登录请求发生异常，详情请查看后台日志。")

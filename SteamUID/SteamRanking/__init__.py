@@ -8,7 +8,7 @@ from gsuid_core.sv import SV
 from gsuid_core.utils.database.models import CoreUser
 
 from ..SteamConfig import SteamConfig
-from ..utils.api import (
+from ..utils.Api import (
     get_game_icon_url,
     get_game_info,
     get_miniprofile,

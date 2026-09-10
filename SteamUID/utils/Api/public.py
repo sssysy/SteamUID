@@ -1,17 +1,28 @@
-import json
+# -*- coding: utf-8 -*-
+"""公开 WebAPI / 商店接口（API Key 或匿名访问，无需用户 token）。"""
 import asyncio
+import json
 import time
+
 import httpx
 from gsuid_core.logger import logger
-from ..SteamConfig.interface import SteamAPI
-from ..SteamConfig import SteamConfig, get_current_cc, get_current_lang
-from .database.models_cache import SteamApiCache, SteamArchivementCache
-from .exceptions import TIMEOUT_ERR_MSG, SteamAPIError, SteamTimeoutError
+
+from ...SteamConfig import SteamConfig, get_current_cc, get_current_lang
+from ..database.models_cache import SteamApiCache, SteamArchivementCache
+from ..exceptions import TIMEOUT_ERR_MSG, SteamTimeoutError
+from .endpoints import SteamAPI
 
 # 内存 TTL 缓存字典及锁
 # key -> (data, expire_at)
 _MEM_CACHE: dict[str, tuple[any, float]] = {}
 _CACHE_LOCK = asyncio.Lock()
+
+# Steam 商店年龄与成年内容验证静态 Cookie
+STEAM_STORE_COOKIES = {
+    "birthtime": "786297601",
+    "lastagecheckage": "1-0-1995",
+    "wants_mature_content": "1",
+}
 
 
 def get_default_cache_ttl() -> float:
@@ -32,8 +43,7 @@ async def get_from_mem_cache(key: str) -> any:
             data, expire_at = item
             if time.time() < expire_at:
                 return data
-            else:
-                _MEM_CACHE.pop(key, None)
+            _MEM_CACHE.pop(key, None)
     return None
 
 
@@ -68,14 +78,14 @@ async def get_user_Summaries(steamid64: str | list[str]) -> list:
         return []
 
     url = f"{base_url}{SteamAPI.api_GetPlayerSummaries}"
-    batches = [steamids[i:i + 50] for i in range(0, len(steamids), 50)]
+    batches = [steamids[i : i + 50] for i in range(0, len(steamids), 50)]
 
     timeout_count = 0
 
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> list:
         nonlocal timeout_count
         try:
-            params = {"key": api_key, "steamids": ','.join(batch)}
+            params = {"key": api_key, "steamids": ",".join(batch)}
             response = await client.get(url, params=params)
             data = response.json()
             return data.get("response", {}).get("players", [])
@@ -104,14 +114,6 @@ async def get_user_Summaries(steamid64: str | list[str]) -> list:
     return all_players
 
 
-# Steam 商店年龄与成年内容验证静态 Cookie
-STEAM_STORE_COOKIES = {
-    "birthtime": "786297601",
-    "lastagecheckage": "1-0-1995",
-    "wants_mature_content": "1",
-}
-
-
 async def get_game_info(appid: str) -> dict:
     """获取游戏详情（带缓存：命中有效缓存则不请求API）"""
     cached = await SteamApiCache.get_cache(appid)
@@ -120,8 +122,7 @@ async def get_game_info(appid: str) -> dict:
             parsed = json.loads(cached)
             if isinstance(parsed, dict) and parsed.get("success"):
                 return parsed
-            else:
-                await SteamApiCache.delete_cache(appid)
+            await SteamApiCache.delete_cache(appid)
         except Exception:
             await SteamApiCache.delete_cache(appid)
 
@@ -144,12 +145,10 @@ async def get_game_info(appid: str) -> dict:
     except Exception as e:
         logger.warning(f"[SteamUID] 获取游戏详情异常 appid={appid}: {e}")
 
-    # 仅在成功获取到游戏详情时持久化缓存
     if isinstance(result, dict) and result.get("success"):
         await SteamApiCache.upsert_cache(appid, json.dumps(result, ensure_ascii=False))
         return result
 
-    # 二级保底：通过 GetSchemaForGame 提取官方游戏名称
     try:
         api_key = SteamConfig.get_config("SteamWebAPIKey").data
         if api_key:
@@ -171,7 +170,9 @@ async def get_game_info(appid: str) -> dict:
                                 "is_free": False,
                             },
                         }
-                        await SteamApiCache.upsert_cache(appid, json.dumps(fallback_result, ensure_ascii=False))
+                        await SteamApiCache.upsert_cache(
+                            appid, json.dumps(fallback_result, ensure_ascii=False)
+                        )
                         return fallback_result
     except Exception:
         pass
@@ -244,10 +245,14 @@ async def get_archivement_info(appid: str, steamid64: str):
             data = response.json()
             return data.get("playerstats", {})
     except (httpx.TimeoutException, asyncio.TimeoutError):
-        logger.warning(f"[SteamUID] 获取玩家成就超时 appid={appid} steamid={steamid64}")
+        logger.warning(
+            f"[SteamUID] 获取玩家成就超时 appid={appid} steamid={steamid64}"
+        )
         raise SteamTimeoutError(TIMEOUT_ERR_MSG)
     except Exception as e:
-        logger.warning(f"[SteamUID] 获取玩家成就异常 appid={appid} steamid={steamid64}: {e}")
+        logger.warning(
+            f"[SteamUID] 获取玩家成就异常 appid={appid} steamid={steamid64}: {e}"
+        )
         return {}
 
 
@@ -261,11 +266,7 @@ async def get_archivement_img(appid: str, archivement_name: str) -> str:
 
 
 async def get_archivement_schema(appid: str) -> list[dict]:
-    """一次性获取游戏成就 Schema（含 icon/icongray/displayName/description）。
-
-    返回 game.availableGameStats.achievements 列表；无数据时返回空列表。
-    带缓存：命中缓存则不请求API。供「游戏成就」命令和 get_archivement_img 共享使用。
-    """
+    """一次性获取游戏成就 Schema（含 icon/icongray/displayName/description）。"""
     cached = await SteamArchivementCache.get_cache(appid)
     if cached is not None:
         return json.loads(cached)
@@ -283,7 +284,9 @@ async def get_archivement_schema(appid: str) -> list[dict]:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(url, params=params)
             data = response.json()
-            achievements = data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
+            achievements = (
+                data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
+            )
     except (httpx.TimeoutException, asyncio.TimeoutError):
         logger.warning(f"[SteamUID] 获取成就 Schema 超时 appid={appid}")
         raise SteamTimeoutError(TIMEOUT_ERR_MSG)
@@ -292,7 +295,9 @@ async def get_archivement_schema(appid: str) -> list[dict]:
         achievements = []
 
     if achievements:
-        await SteamArchivementCache.upsert_cache(appid, json.dumps(achievements, ensure_ascii=False))
+        await SteamArchivementCache.upsert_cache(
+            appid, json.dumps(achievements, ensure_ascii=False)
+        )
     return achievements
 
 
@@ -305,29 +310,37 @@ async def get_price_data(appid: str | list[str]) -> dict:
         appid = [appid]
 
     url = f"{base_url}{SteamAPI.store_GetGameDetails}"
-
-    # 分批，每批最多50个
-    batches = [appid[i:i + 50] for i in range(0, len(appid), 50)]
+    batches = [appid[i : i + 50] for i in range(0, len(appid), 50)]
     timeout_count = 0
 
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> dict:
         nonlocal timeout_count
         try:
-            params = {"appids": ','.join(batch), "cc": cc, "filters": "price_overview"}
+            params = {
+                "appids": ",".join(batch),
+                "cc": cc,
+                "filters": "price_overview",
+            }
             response = await client.get(url, params=params)
             if response.status_code == 200:
                 data = response.json()
                 if isinstance(data, dict):
                     return data
         except (httpx.TimeoutException, asyncio.TimeoutError) as e:
-            logger.warning(f"[SteamUID] 批量获取游戏价格超时 batch={batch[:3]}...: {e}")
+            logger.warning(
+                f"[SteamUID] 批量获取游戏价格超时 batch={batch[:3]}...: {e}"
+            )
             timeout_count += 1
         except Exception as e:
-            logger.warning(f"[SteamUID] 批量获取游戏价格异常 batch={batch[:3]}...: {e}")
+            logger.warning(
+                f"[SteamUID] 批量获取游戏价格异常 batch={batch[:3]}...: {e}"
+            )
         return {}
 
     try:
-        async with httpx.AsyncClient(timeout=15, cookies=STEAM_STORE_COOKIES) as client:
+        async with httpx.AsyncClient(
+            timeout=15, cookies=STEAM_STORE_COOKIES
+        ) as client:
             tasks = [fetch_batch(client, batch) for batch in batches]
             results = await asyncio.gather(*tasks, return_exceptions=True)
     except (httpx.TimeoutException, asyncio.TimeoutError):
@@ -336,7 +349,6 @@ async def get_price_data(appid: str | list[str]) -> dict:
     if timeout_count > 0 and timeout_count == len(batches):
         raise SteamTimeoutError(TIMEOUT_ERR_MSG)
 
-    # 合并所有批次结果
     all_prices: dict = {}
     for res in results:
         if isinstance(res, dict):
@@ -344,8 +356,10 @@ async def get_price_data(appid: str | list[str]) -> dict:
     return all_prices
 
 
-async def get_profile_items_equipped(steamid64: str, ttl_seconds: float | None = None) -> dict:
-    """获取玩家装备项（头像框/动画头像/迷你资料背景，带根据设置 CacheTime 的内存 TTL 缓存）"""
+async def get_profile_items_equipped(
+    steamid64: str, ttl_seconds: float | None = None
+) -> dict:
+    """获取玩家装备项（头像框/动画头像/迷你资料背景，带内存 TTL 缓存）"""
     cache_key = f"profile_items_{steamid64}"
     cached = await get_from_mem_cache(cache_key)
     if cached is not None:
@@ -372,7 +386,7 @@ async def get_profile_items_equipped(steamid64: str, ttl_seconds: float | None =
 
 
 async def get_miniprofile(steamid64: str, ttl_seconds: float | None = None) -> dict:
-    """获取 Steam miniprofile JSON 数据（等级/徽章/背景/头像，带根据设置 CacheTime 的内存 TTL 缓存）"""
+    """获取 Steam miniprofile JSON 数据（等级/徽章/背景/头像，带内存 TTL 缓存）"""
     cache_key = f"miniprofile_{steamid64}"
     cached = await get_from_mem_cache(cache_key)
     if cached is not None:
@@ -412,11 +426,10 @@ async def search_game_store(keyword: str) -> list[dict]:
 
     base_url = SteamConfig.get_config("storeBaseURL").data
     url = f"{base_url}{SteamAPI.store_Search}"
-    cc = get_current_cc()
     params = {
         "term": term,
         "l": get_current_lang(),
-        "cc": cc,
+        "cc": get_current_cc(),
     }
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -443,11 +456,7 @@ async def get_game_announcements(
     count: int = 5,
     offset: int = 0,
 ) -> list[dict]:
-    """获取指定游戏的多语言官方公告列表。
-    
-    请求 store.steampowered.com/events/ajaxgetpartnereventspageable/ 接口，
-    Steam 将根据 lang 返回对应语言版本的公告内容（若无对应语言则自动回退）。
-    """
+    """获取指定游戏的多语言官方公告列表。"""
     if lang is None:
         lang = get_current_lang()
 
@@ -486,17 +495,22 @@ async def get_game_announcements(
         announcement = event.get("announcement_body") or {}
         gid = str(event.get("gid") or announcement.get("gid") or "")
         title = event.get("event_name") or announcement.get("headline") or "无标题公告"
-        post_time = int(event.get("rtime32_post_time") or event.get("rtime32_start_time") or 0)
+        post_time = int(
+            event.get("rtime32_post_time") or event.get("rtime32_start_time") or 0
+        )
         event_type = int(event.get("event_type") or 28)
         headline = announcement.get("headline") or ""
         body = announcement.get("body") or ""
-        
-        # 尝试从 jsondata 中获取封面图等
+
         clan_image = None
         try:
             jsondata_str = event.get("jsondata")
             if jsondata_str:
-                jsondata = json.loads(jsondata_str) if isinstance(jsondata_str, str) else jsondata_str
+                jsondata = (
+                    json.loads(jsondata_str)
+                    if isinstance(jsondata_str, str)
+                    else jsondata_str
+                )
                 if isinstance(jsondata, dict):
                     clan_image = jsondata.get("capsule_image")
         except Exception:
@@ -519,14 +533,7 @@ async def get_game_announcements(
 
 
 async def get_user_wishlist(steamid64: str) -> list[dict]:
-    """获取玩家的 Steam 愿望单列表。
-
-    返回 items 列表，每项包含:
-        - appid: int
-        - priority: int
-        - date_added: int (Unix 秒时间戳)
-    按 priority 升序排序。
-    """
+    """获取玩家的 Steam 愿望单列表（按 priority 升序）。"""
     api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetWishlist}"
@@ -545,7 +552,6 @@ async def get_user_wishlist(steamid64: str) -> list[dict]:
             data = response.json()
             items = data.get("response", {}).get("items", [])
             if isinstance(items, list):
-                # 按 priority 升序排序（0 优先级最高）
                 items.sort(key=lambda x: (x.get("priority", 0), -x.get("date_added", 0)))
                 return items
     except (httpx.TimeoutException, asyncio.TimeoutError):
@@ -554,4 +560,3 @@ async def get_user_wishlist(steamid64: str) -> list[dict]:
     except Exception as e:
         logger.warning(f"[SteamUID] 请求愿望单接口异常 steamid={steamid64}: {e!r}")
     return []
-

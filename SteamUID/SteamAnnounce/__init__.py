@@ -5,7 +5,7 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 from gsuid_core.subscribe import gs_subscribe
 
-from ..utils.api import get_game_announcements, get_game_info
+from ..utils.Api import get_game_announcements, get_game_info
 from ..utils.database.models import SteamAnnounceInfo
 from ..utils.database.models_cache import SteamApiCache
 from ..utils.exceptions import SteamError

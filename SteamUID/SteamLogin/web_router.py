@@ -14,7 +14,7 @@ from gsuid_core.logger import logger
 from gsuid_core.web_app import app
 
 from .login_service import LOGIN_CACHE, LOGIN_TTL_S, save_account_credentials
-from .web_auth import (
+from ..utils.Api import (
     AuthCodeInvalid,
     LoginIncorrect,
     SteamAuthError,
@@ -176,7 +176,7 @@ async def steam_api_login(payload: _LoginPayload):
     except SteamAuthError as e:
         return JSONResponse({"ok": False, "msg": f"登录失败: {e}"})
     except Exception as e:
-        logger.exception(f"[SteamNextLogin] API 登录异常: {e}")
+        logger.exception(f"[SteamLogin] API 登录异常: {e}")
         return JSONResponse({"ok": False, "msg": "登录请求异常，请检查后台日志或稍后重试"})
 
 
@@ -219,7 +219,7 @@ async def steam_api_2fa(payload: _TwoFactorPayload):
     except AuthCodeInvalid as e:
         return JSONResponse({"ok": False, "msg": str(e)})
     except Exception as e:
-        logger.exception(f"[SteamNextLogin] 提交 2FA 异常: {e}")
+        logger.exception(f"[SteamLogin] 提交 2FA 异常: {e}")
         return JSONResponse({"ok": False, "msg": "验证码校验异常，请稍后重试"})
 
 

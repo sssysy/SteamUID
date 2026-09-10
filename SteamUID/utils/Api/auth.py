@@ -1,50 +1,44 @@
 # -*- coding: utf-8 -*-
-import json
+"""Steam WebAuth：IAuthenticationService 凭据登录协议（不依赖 steam-next 包）。"""
 import os
-import time
 from base64 import b64encode
 from binascii import hexlify
-from typing import Any, Optional, Dict, List
-import httpx
+from typing import Any, Dict, List, Optional
 
+import httpx
 from Cryptodome.Cipher import PKCS1_v1_5
 from Cryptodome.PublicKey.RSA import construct as rsa_construct
 from gsuid_core.logger import logger
 
-from ..SteamConfig import SteamConfig
-
-# 默认浏览器 User-Agent
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/143.0.0.0 Safari/537.36"
+from .client import (
+    DEFAULT_ACCEPT_LANGUAGE,
+    DEFAULT_USER_AGENT,
+    STEAM_DOMAINS,
+    get_proxy_url,
 )
-
-STEAM_DOMAINS = [
-    "store.steampowered.com",
-    "help.steampowered.com",
-    "steamcommunity.com",
-]
+from .endpoints import (
+    API_BASE_DEFAULT,
+    AUTH_BEGIN_CREDENTIALS,
+    AUTH_GET_RSA_KEY,
+    AUTH_POLL_STATUS,
+    AUTH_UPDATE_GUARD_CODE,
+)
 
 
 class SteamAuthError(Exception):
     """Steam 认证基类异常"""
-    pass
 
 
 class LoginIncorrect(SteamAuthError):
     """账号或密码错误"""
-    pass
 
 
 class TwoFactorAuthRequired(SteamAuthError):
     """需要两步验证"""
-    pass
 
 
 class AuthCodeInvalid(SteamAuthError):
     """两步验证码无效或已过期"""
-    pass
 
 
 def rsa_encrypt_password(publickey_mod: str, publickey_exp: str, password: str) -> str:
@@ -59,10 +53,7 @@ def generate_session_id() -> str:
 
 
 class SteamWebAuth:
-    """
-    Steam Web 授权核心认证器
-    对接官方 IAuthenticationService API (基于 steam-next 规范)
-    """
+    """Steam Web 授权核心认证器，对接官方 IAuthenticationService API。"""
 
     def __init__(self, username: str = "", password: str = ""):
         self.username = username
@@ -77,33 +68,21 @@ class SteamWebAuth:
         self.session_id: Optional[str] = None
         self.logged_on: bool = False
 
-        self.proxy: Optional[str] = None
-        try:
-            val = SteamConfig.get_config("HttpProxy").data
-            if isinstance(val, str):
-                p = val.strip()
-                if p:
-                    if not p.startswith(("http://", "https://", "socks5://", "socks5h://")):
-                        p = f"http://{p}"
-                    self.proxy = p
-        except Exception:
-            pass
-
+        self.proxy = get_proxy_url()
         self.client = httpx.AsyncClient(
             headers={
                 "Origin": "https://steamcommunity.com",
                 "Referer": "https://steamcommunity.com/",
                 "Accept": "application/json",
-                "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Accept-Language": DEFAULT_ACCEPT_LANGUAGE,
                 "User-Agent": DEFAULT_USER_AGENT,
             },
             proxy=self.proxy,
             timeout=12,
         )
-        self.session = self.client  # 兼容旧属性调用
+        self.session = self.client
 
     async def close(self):
-        """关闭底层的 httpx 客户端"""
         await self.client.aclose()
 
     async def __aenter__(self):
@@ -114,14 +93,12 @@ class SteamWebAuth:
 
     async def _send_api_request(
         self,
-        interface: str,
-        method: str,
-        version: int = 1,
+        path: str,
         data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
         is_get: bool = False,
     ) -> dict:
-        url = f"https://api.steampowered.com/{interface}/{method}/v{version}"
+        url = f"{API_BASE_DEFAULT}{path}"
         try:
             if is_get:
                 resp = await self.client.get(url, params=params, timeout=12)
@@ -134,11 +111,8 @@ class SteamWebAuth:
             raise SteamAuthError(f"连接 Steam API 异常: {e}")
 
     async def _get_rsa_key(self) -> dict:
-        """从 Steam 获取当前用户的 RSA 公钥与加密时间戳"""
         res = await self._send_api_request(
-            interface="IAuthenticationService",
-            method="GetPasswordRSAPublicKey",
-            version=1,
+            path=AUTH_GET_RSA_KEY,
             params={"account_name": self.username},
             is_get=True,
         )
@@ -149,8 +123,8 @@ class SteamWebAuth:
 
     async def start_session(self, username: str = "", password: str = "") -> dict:
         """
-        发起初次认证会话
-        返回 dict:
+        发起初次认证会话。
+        返回:
             {"ok": True, "need_2fa": False, "done": True, "steamid64": "..."}
             或
             {"ok": True, "need_2fa": True, "can_app_confirm": True/False, "hint": "..."}
@@ -161,7 +135,6 @@ class SteamWebAuth:
         if not self.username or not self.password:
             raise LoginIncorrect("账号名或密码不能为空")
 
-        # 1. 获取公钥并加密密码
         rsa_info = await self._get_rsa_key()
         encrypted_pwd = rsa_encrypt_password(
             rsa_info["publickey_mod"],
@@ -170,25 +143,18 @@ class SteamWebAuth:
         )
         timestamp = rsa_info["timestamp"]
 
-        # 2. 调用 BeginAuthSessionViaCredentials 发起凭据会话
         data = {
             "device_friendly_name": DEFAULT_USER_AGENT,
             "account_name": self.username,
             "encrypted_password": encrypted_pwd,
             "encryption_timestamp": str(timestamp),
             "remember_login": "1",
-            "platform_type": "2",  # Web 浏览器平台
+            "platform_type": "2",
             "persistence": "1",
             "website_id": "Community",
         }
 
-        resp = await self._send_api_request(
-            interface="IAuthenticationService",
-            method="BeginAuthSessionViaCredentials",
-            version=1,
-            data=data,
-        )
-
+        resp = await self._send_api_request(path=AUTH_BEGIN_CREDENTIALS, data=data)
         response = resp.get("response", {})
         if not response.get("client_id") or not response.get("request_id"):
             raise LoginIncorrect("账号或密码错误，请重新输入")
@@ -197,15 +163,14 @@ class SteamWebAuth:
         self.request_id = str(response["request_id"])
         self.steam_id = str(response.get("steamid", ""))
 
-        # 提取支持的两步验证类型
-        # 1: EmailCode, 2: DeviceCode, 3: DeviceConfirmation (手机 App 确认)
         confirmations = response.get("allowed_confirmations", [])
-        self.allowed_confirmations = [c.get("confirmation_type") for c in confirmations if "confirmation_type" in c]
+        self.allowed_confirmations = [
+            c.get("confirmation_type") for c in confirmations if "confirmation_type" in c
+        ]
 
         can_app_confirm = 3 in self.allowed_confirmations
         using_email = 1 in self.allowed_confirmations
 
-        # 3. 尝试直接轮询（如果用户账号无 2FA 则直接完成）
         try:
             await self._poll_status()
             self._finalize_login()
@@ -216,7 +181,6 @@ class SteamWebAuth:
                 "steamid64": self.steam_id,
             }
         except TwoFactorAuthRequired:
-            # 需要 2FA
             if using_email:
                 hint = "请输入发送至您绑定邮箱的验证码"
             elif can_app_confirm:
@@ -233,7 +197,6 @@ class SteamWebAuth:
             }
 
     async def _poll_status(self):
-        """轮询验证会话状态"""
         if not self.client_id or not self.request_id:
             raise SteamAuthError("尚未初始化登录会话")
 
@@ -241,14 +204,7 @@ class SteamWebAuth:
             "client_id": self.client_id,
             "request_id": self.request_id,
         }
-
-        resp = await self._send_api_request(
-            interface="IAuthenticationService",
-            method="PollAuthSessionStatus",
-            version=1,
-            data=data,
-        )
-
+        resp = await self._send_api_request(path=AUTH_POLL_STATUS, data=data)
         response = resp.get("response", {})
         self.refresh_token = response.get("refresh_token")
         self.access_token = response.get("access_token")
@@ -257,7 +213,6 @@ class SteamWebAuth:
             raise TwoFactorAuthRequired("需要完成两步验证")
 
     async def submit_2fa_code(self, code: str) -> dict:
-        """提交 2FA 动态令牌或邮箱验证码"""
         if not self.client_id or not self.steam_id:
             raise SteamAuthError("登录会话已失效，请重新发起登录")
 
@@ -265,9 +220,11 @@ class SteamWebAuth:
         if not code:
             raise AuthCodeInvalid("验证码不能为空")
 
-        # 判断类型：如果包含 EmailCode 且不包含 DeviceCode，则 code_type = 1
-        code_type = 1 if (1 in self.allowed_confirmations and 2 not in self.allowed_confirmations) else 2
-
+        code_type = (
+            1
+            if (1 in self.allowed_confirmations and 2 not in self.allowed_confirmations)
+            else 2
+        )
         data = {
             "client_id": self.client_id,
             "steamid": self.steam_id,
@@ -276,17 +233,11 @@ class SteamWebAuth:
         }
 
         try:
-            await self._send_api_request(
-                interface="IAuthenticationService",
-                method="UpdateAuthSessionWithSteamGuardCode",
-                version=1,
-                data=data,
-            )
+            await self._send_api_request(path=AUTH_UPDATE_GUARD_CODE, data=data)
         except Exception as e:
             logger.warning(f"[SteamWebAuth] 提交令牌返回错误: {e}")
             raise AuthCodeInvalid("两步验证码错误或已失效，请重新输入")
 
-        # 提交后轮询状态
         try:
             await self._poll_status()
         except TwoFactorAuthRequired:
@@ -300,7 +251,6 @@ class SteamWebAuth:
         }
 
     async def check_app_confirmation(self) -> dict:
-        """检查用户是否已在手机 Steam App 上点击了允许/确认"""
         if getattr(self, "logged_on", False):
             return {
                 "ok": True,
@@ -327,7 +277,6 @@ class SteamWebAuth:
             }
 
     def _finalize_login(self):
-        """登录成功，组装并写入所有 Cookie 凭证"""
         self.session_id = generate_session_id()
         self.logged_on = True
 
@@ -340,7 +289,6 @@ class SteamWebAuth:
             )
 
     def get_credentials(self) -> dict:
-        """获取结构化的凭据字典，供写入数据库持久化"""
         cookies_dict = {}
         for cookie in self.client.cookies.jar:
             cookies_dict[cookie.name] = cookie.value

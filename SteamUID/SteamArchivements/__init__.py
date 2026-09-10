@@ -7,7 +7,7 @@ from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 
-from ..utils.api import (
+from ..utils.Api import (
     get_archivement_info,
     get_archivement_schema,
     get_game_info,

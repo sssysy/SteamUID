@@ -9,7 +9,7 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.utils.message import Message
 
-from ..utils.api import (
+from ..utils.Api import (
     get_user_Summaries,
     get_game_info,
     get_archivement_info,

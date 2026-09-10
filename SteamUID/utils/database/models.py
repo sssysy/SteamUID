@@ -868,7 +868,7 @@ class SteamPlayRecord(BaseIDModel, table=True):
 
 
 class SteamNextAccount(BaseIDModel, table=True):
-    """SteamNext WebAuth 登录授权凭据表"""
+    """Steam WebAuth 登录授权凭据表（表名保留 SteamNextAccount 以兼容历史数据）"""
     __table_args__: Dict[str, Any] = {"extend_existing": True}
 
     steamid64: str = Field(default=None, index=True, unique=True, title="SteamID64")

@@ -12,9 +12,9 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from .web_auth import SteamWebAuth
 from ..SteamBind.bind_service import do_bind
 from ..SteamConfig import SteamConfig
+from ..utils.Api import SteamWebAuth
 from ..utils.database.models import SteamNextAccount
 from ..utils.exceptions import SteamValidationError
 
@@ -68,7 +68,7 @@ async def save_account_credentials(creds: dict):
         cookies_json=json.dumps(creds.get("cookies", {}), ensure_ascii=False),
         updated_at=int(time.time()),
     )
-    logger.info(f"[SteamNextLogin] 账号 {steamid64} 授权凭据已成功写入数据库")
+    logger.info(f"[SteamLogin] 账号 {steamid64} 授权凭据已成功写入数据库")
 
 
 async def complete_login_binding(state: LoginSessionState, ev: Event) -> tuple[str, str]:
@@ -84,10 +84,10 @@ async def complete_login_binding(state: LoginSessionState, ev: Event) -> tuple[s
         err_str = str(e)
         if "你已在该群绑定该steamid" in err_str or "已绑定" in err_str:
             return "Steam 账号凭据更新成功！", ""
-        logger.warning(f"[SteamNextLogin] 联动绑定提示: {err_str}")
+        logger.warning(f"[SteamLogin] 联动绑定提示: {err_str}")
         return f"登录成功，绑定提示: {err_str}", ""
     except Exception as e:
-        logger.exception(f"[SteamNextLogin] 联动绑定发生异常: {e}")
+        logger.exception(f"[SteamLogin] 联动绑定发生异常: {e}")
         return "登录成功，自动联动绑定时遇到问题，请手动尝试绑定。", ""
 
 

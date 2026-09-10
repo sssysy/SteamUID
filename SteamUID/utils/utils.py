@@ -7,7 +7,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from .api import (
+from .Api import (
     get_miniprofile,
     get_profile_items_equipped,
     get_user_Summaries,

@@ -6,7 +6,7 @@ from gsuid_core.sv import SV
 from gsuid_core.subscribe import gs_subscribe
 
 from ..utils.database.models import SteamPriceInfo
-from ..utils.api import get_game_info, get_price_data
+from ..utils.Api import get_game_info, get_price_data
 from ..utils.exceptions import SteamError
 from ..utils.render import render_game_price_drop
 from ..utils.utils import resolve_target_appid

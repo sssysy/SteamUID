@@ -11,10 +11,9 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..utils.api import get_user_Summaries
+from ..utils.Api import get_user_Summaries, get_valid_session, register_cdkey
 from ..utils.database.models import SteamBind, SteamIDInfo, SteamNextAccount
 from ..utils.exceptions import SteamValidationError
-from ..utils.next.session import get_valid_session
 from ..utils.utils import auto2steamid64
 
 # Steam CDKey 格式校验正则：支持 15 位 (5-5-5)、25 位 (5-5-5-5-5) 等标准格式
@@ -200,30 +199,8 @@ async def handle_cdkey_activation(bot: Bot, ev: Event):
 
     try:
         for i, cdk in enumerate(cleaned_cdks):
-            sessionid = session.cookies.get("sessionid", domain="store.steampowered.com") or session.cookies.get("sessionid")
-            url = "https://store.steampowered.com/account/ajaxregisterkey/"
-            data = {
-                "product_key": cdk,
-                "sessionid": sessionid,
-            }
-            headers = {
-                "Referer": "https://store.steampowered.com/account/registerkey/",
-                "Origin": "https://store.steampowered.com",
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            }
-
             try:
-                resp_call = session.post(url, data=data, headers=headers, timeout=15)
-                if asyncio.iscoroutine(resp_call) or hasattr(resp_call, "__await__"):
-                    resp_obj = await resp_call
-                else:
-                    resp_obj = resp_call
-
-                if resp_obj.status_code != 200:
-                    fail_list.append(f"[{len(fail_list) + 1}] {cdk} | HTTP {resp_obj.status_code}")
-                    continue
-
-                res_json = resp_obj.json()
+                res_json = await register_cdkey(session, cdk)
                 result_code = res_json.get("purchase_result_details")
 
                 if result_code == 0:

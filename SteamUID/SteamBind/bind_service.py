@@ -4,7 +4,7 @@ import asyncio
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..utils.api import (
+from ..utils.Api import (
     get_user_Summaries,
     get_miniprofile,
     get_profile_items_equipped,
