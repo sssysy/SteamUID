@@ -1,21 +1,21 @@
-/* Steam 官方字体 Motiva Sans */
+/* Steam 官方字体 Motiva Sans (本地加载) */
 @font-face {
   font-family: 'Motiva Sans';
   font-style: normal;
   font-weight: 400;
-  src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff') format('woff');
+  src: url('/steam/login/fonts/steam-Regular.ttf') format('truetype');
 }
 @font-face {
   font-family: 'Motiva Sans';
   font-style: normal;
   font-weight: 500;
-  src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff') format('woff');
+  src: url('/steam/login/fonts/steam-Medium.ttf') format('truetype');
 }
 @font-face {
   font-family: 'Motiva Sans';
   font-style: normal;
   font-weight: 700;
-  src: url('https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff') format('woff');
+  src: url('/steam/login/fonts/steam-Bold.ttf') format('truetype');
 }
 
 :root {

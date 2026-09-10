@@ -1,0 +1,78 @@
+/* ============================================================
+   SteamUID 通用样式库 - 基础与设计变量 (common.css)
+   ============================================================ */
+
+/* Motiva Sans 本地字体引入 */
+@font-face {
+    font-family: 'Motiva Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: url('/fonts/steam-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Motiva Sans';
+    font-style: normal;
+    font-weight: 500;
+    src: url('/fonts/steam-Medium.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Motiva Sans';
+    font-style: normal;
+    font-weight: 700;
+    src: url('/fonts/steam-Bold.ttf') format('truetype');
+}
+
+/* Steam 经典设计变量 (CSS Variables) */
+:root {
+    --steam-font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+    
+    /* 背景色 */
+    --steam-bg-darkest: #10141b;
+    --steam-bg-dark: #171d25;
+    --steam-bg-navy: #1b2838;
+    --steam-bg-card: #202b36;
+    --steam-bg-card-alt: #1e2630;
+    
+    /* 渐变背景 */
+    --steam-gradient-card: linear-gradient(135deg, #2a475e 0%, #1e364a 50%, #1b2838 100%);
+    --steam-gradient-header: linear-gradient(90deg, #1e2c3d 0%, #171d25 100%);
+    
+    /* 文本色 */
+    --steam-text-white: #ffffff;
+    --steam-text-main: #f3f4f6;
+    --steam-text-blue: #66c0f4;
+    --steam-text-dim: #8f98a0;
+    --steam-text-gray: #c7d5e0;
+    --steam-text-muted: #626366;
+    
+    /* 强调与状态色 */
+    --steam-btn-blue: #67c1f5;
+    --steam-accent-blue: #1999ff;
+    --steam-discount-green: #a4d007;
+    --steam-discount-bg: #4c6b22;
+    --steam-status-in-game: #90ba3c;
+    --steam-status-online: #57cbde;
+    --steam-status-offline: #898989;
+    
+    /* 排行金银铜奖牌色 */
+    --steam-rank-gold: linear-gradient(135deg, #ffd700 0%, #e6a100 100%);
+    --steam-rank-silver: linear-gradient(135deg, #e0e8ef 0%, #9ba6b2 100%);
+    --steam-rank-bronze: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+}
+
+/* 全局 Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    background: transparent;
+    display: inline-block;
+    font-family: var(--steam-font-family);
+    color: var(--steam-text-white);
+}

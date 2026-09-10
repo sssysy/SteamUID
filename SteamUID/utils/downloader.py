@@ -24,6 +24,9 @@ _VALID_EXTENSIONS = {
     ".mp3",
     ".wav",
     ".svg",
+    ".ttf",
+    ".woff",
+    ".woff2",
 }
 
 
@@ -232,6 +235,84 @@ def _file_to_data_uri(file_path: Path) -> str | None:
         return None
 
 
+def _replace_local_fonts(html_content: str) -> str:
+    """优先替换 Motiva Sans 字体为 utils/fonts/ 本地字体 Base64 Data URI，完全规避网络请求与 404。"""
+    try:
+        from .fonts import get_font_data_uri
+
+        font_mappings = {
+            # 本地重命名后的路径
+            "/fonts/steam-Regular.ttf": "steam-Regular.ttf",
+            "/fonts/steam-Medium.ttf": "steam-Medium.ttf",
+            "/fonts/steam-Bold.ttf": "steam-Bold.ttf",
+            "fonts/steam-Regular.ttf": "steam-Regular.ttf",
+            "fonts/steam-Medium.ttf": "steam-Medium.ttf",
+            "fonts/steam-Bold.ttf": "steam-Bold.ttf",
+            # 兼容历史 MotivaSans 引用
+            "/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
+            "/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
+            "/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
+            "fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
+            "fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
+            "fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
+            # 旧版已下架的 404 woff 链接
+            "https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff": "steam-Regular.ttf",
+            "https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff": "steam-Medium.ttf",
+            "https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff": "steam-Bold.ttf",
+            # 官方新版 ttf CDN 链接
+            "https://community.steamstatic.com/public/shared/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
+            "https://community.steamstatic.com/public/shared/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
+            "https://community.steamstatic.com/public/shared/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
+            "https://community.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
+            "https://community.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
+            "https://community.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
+            "https://store.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
+            "https://store.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
+            "https://store.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
+        }
+
+        for target_str, font_file in font_mappings.items():
+            if target_str in html_content:
+                data_uri = get_font_data_uri(font_file)
+                if data_uri:
+                    html_content = html_content.replace(target_str, data_uri)
+    except Exception as e:
+        logger.debug(f"[SteamUID] 替换本地字体异常: {e}")
+    return html_content
+
+
+_RENDER_CSS_DIR: Path = Path(__file__).parent / "render" / "css"
+_CSS_CACHE: dict[str, str] = {}
+_CSS_LINK_PATTERN = re.compile(
+    r'<link\b(?=[^>]*\brel=["\']stylesheet["\'])(?=[^>]*\bhref=["\']([^"\']+\.css)["\'])[^>]*>',
+    re.IGNORECASE,
+)
+
+
+def _inline_local_css(html_content: str) -> str:
+    """自动扫描 HTML 中的本地 CSS 链接并内联为 <style> 标签，支持内存缓存。"""
+    if "<link" not in html_content:
+        return html_content
+
+    def _replace_link(match: re.Match) -> str:
+        css_href = match.group(1)
+        filename = Path(css_href).name
+        if filename not in _CSS_CACHE:
+            css_file = _RENDER_CSS_DIR / filename
+            if css_file.is_file():
+                _CSS_CACHE[filename] = css_file.read_text(encoding="utf-8")
+            else:
+                return match.group(0)  # 文件不存在保持原样
+        css_content = _CSS_CACHE[filename]
+        return f"<style>\n/* Inlined: {filename} */\n{css_content}\n</style>"
+
+    try:
+        return _CSS_LINK_PATTERN.sub(_replace_link, html_content)
+    except Exception as e:
+        logger.debug(f"[SteamUID] 内联本地 CSS 异常: {e}")
+        return html_content
+
+
 async def replace_html_urls_with_local(
     html_content: str,
     *,
@@ -246,6 +327,12 @@ async def replace_html_urls_with_local(
     """
     if not html_content:
         return html_content
+
+    # 0. 优先内联本地 CSS 样式文件
+    html_content = _inline_local_css(html_content)
+
+    # 0.5 优先替换 Motiva Sans 本地字体（避免网络请求或 404）
+    html_content = _replace_local_fonts(html_content)
 
     # 1. 匹配所有 http(s) 链接
     matches = _HTML_RES_URL_PATTERN.findall(html_content)

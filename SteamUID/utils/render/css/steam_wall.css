@@ -1,0 +1,93 @@
+/* ============================================================
+   SteamUID 页面样式 - steam_wall
+   ============================================================ */
+
+.steam-wall-card {
+            width: {{canvas_width}}px;
+            background: linear-gradient(180deg, #1e2430 0%, #171a21 100%);
+            padding: 0;
+            font-family: "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        /* 顶部栏：左侧标题 + 右侧账号卡片 */
+        .wall-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 24px 28px 20px 28px;
+        }
+
+        .wall-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.2px;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 下方游戏墙网格容器：铺满卡片左右和下方（0间距），空余方格透明展示大卡片渐变背景 */
+        .game-wall-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-auto-rows: calc({{canvas_width}}px / 8 * 215 / 460);
+            grid-gap: 0;
+            grid-auto-flow: dense;
+            background-color: transparent;
+            overflow: hidden;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .game {
+            position: relative;
+            overflow: hidden;
+            background-color: transparent;
+        }
+
+        .game-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            margin: 0 28px 28px 28px;
+            padding: 40px 0;
+            text-align: center;
+            color: #8f98a0;
+            font-size: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            padding: 16px 28px 20px 28px;
+            box-sizing: border-box;
+            background: transparent;
+            font-size: 11px;
+            color: #8f98a0;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            user-select: none;
+        }
+
+        .card-footer .footer-highlight {
+            color: #ffffff;
+            font-weight: 600;
+        }

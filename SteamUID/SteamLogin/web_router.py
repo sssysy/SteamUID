@@ -26,6 +26,7 @@ _CUR_DIR = Path(__file__).parent
 _TEMPLATES_DIR = _CUR_DIR / "templates"
 _TEXTURE2D_DIR = _CUR_DIR / "texture2d"
 _ICON_PATH = _CUR_DIR.parent.parent / "ICON.png"
+_FONTS_DIR = _CUR_DIR.parent / "utils" / "fonts"
 
 
 def _get_icon_base64() -> str:
@@ -65,6 +66,17 @@ async def steam_login_style():
     css_path = _TEMPLATES_DIR / "style.css"
     if css_path.exists():
         return Response(content=css_path.read_bytes(), media_type="text/css")
+    return Response(status_code=404)
+
+
+@app.get("/steam/login/fonts/{filename}")
+async def steam_login_font(filename: str):
+    """提供本地字体文件"""
+    file_path = _FONTS_DIR / filename
+    if file_path.exists() and file_path.is_file():
+        ext = file_path.suffix.lower()
+        media_type = "font/ttf" if ext == ".ttf" else ("font/woff2" if ext == ".woff2" else "font/woff")
+        return Response(content=file_path.read_bytes(), media_type=media_type)
     return Response(status_code=404)
 
 
