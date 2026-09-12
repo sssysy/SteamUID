@@ -5,7 +5,9 @@ from .account import (
     get_account_session,
     get_proxy_dict,
     get_proxy_url,
+    get_valid_access_token,
     get_valid_session,
+    is_private_data_allowed,
     refresh_account_tokens,
 )
 from .auth import (
@@ -61,6 +63,8 @@ __all__ = [
     "get_account_session",
     "refresh_account_tokens",
     "get_valid_session",
+    "get_valid_access_token",
+    "is_private_data_allowed",
     # client
     "make_async_client",
     "DEFAULT_USER_AGENT",

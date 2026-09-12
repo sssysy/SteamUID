@@ -13,13 +13,14 @@ from ..utils.Api import (
     get_profile_items_equipped,
     get_miniprofile,
     get_steamlibrary_by_steamid64,
+    is_private_data_allowed,
 )
 from .user_service import (
     get_player_bio,
     calculate_account_value,
     refresh_user_cache,
 )
-from ..utils.database.models import SteamBind
+from ..utils.database.models import SteamBind, SteamNextAccount
 from ..utils.utils import (
     country_code_to_flag,
     calc_account_age,
@@ -61,7 +62,11 @@ async def steamstatus(bot: Bot, ev: Event):
 
         # 2. 私有资料检查
         if player.get("communityvisibilitystate", 3) == 1:
-            raise SteamValidationError("该用户资料为私有，无法查看详细信息")
+            has_auth = is_private_data_allowed() and bool(
+                await SteamNextAccount.get_account(steamid64)
+            )
+            if not has_auth:
+                raise SteamValidationError("该用户资料为私有，无法查看详细信息")
 
         # 3. 并发获取 miniprofile JSON + 装备项
         miniprofile_data, items_data = await asyncio.gather(
@@ -191,7 +196,11 @@ async def steam_info(bot: Bot, ev: Event):
 
         # 2. 私有资料检查
         if player.get("communityvisibilitystate", 3) == 1:
-            raise SteamValidationError("该用户资料为私有，无法查看详细信息")
+            has_auth = is_private_data_allowed() and bool(
+                await SteamNextAccount.get_account(steamid64)
+            )
+            if not has_auth:
+                raise SteamValidationError("该用户资料为私有，无法查看详细信息")
 
         # 3. 并发获取 miniprofile JSON + 装备项 + 游戏库 + 个人简介
         miniprofile_data, items_data, library_data, bio_text = await asyncio.gather(

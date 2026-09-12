@@ -10,6 +10,12 @@ from gsuid_core.logger import logger
 from ...SteamConfig import SteamConfig, get_current_cc, get_current_lang
 from ..database.models_cache import SteamApiCache, SteamArchivementCache
 from ..exceptions import TIMEOUT_ERR_MSG, SteamTimeoutError
+from .account import (
+    get_valid_access_token,
+    is_private_data_allowed,
+    refresh_account_tokens,
+)
+from .client import make_async_client
 from .endpoints import SteamAPI
 
 # 内存 TTL 缓存字典及锁
@@ -206,9 +212,51 @@ async def get_game_icon_url(appid: str, steamid64: str | None = None) -> str:
 
 
 async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
-    """取玩家游戏库"""
+    """取玩家游戏库（支持优先使用登录凭据获取私密库存，失效自动降级）"""
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetOwnedGames}"
+
+    # 1. 若开启允许私密数据，优先尝试使用用户的 access_token
+    if is_private_data_allowed():
+        token = await get_valid_access_token(steamid64)
+        if token:
+            private_params = {
+                "access_token": token,
+                "steamid": steamid64,
+                "include_appinfo": True,
+                "include_played_free_games": True,
+                "include_extended_appinfo": True,
+            }
+            try:
+                async with make_async_client(timeout=12) as client:
+                    resp = await client.get(url, params=private_params)
+                    if resp.status_code in (401, 403):
+                        logger.info(
+                            f"[SteamUID] 账号 {steamid64} access_token 过期，尝试自动刷新..."
+                        )
+                        if await refresh_account_tokens(steamid64):
+                            new_token = await get_valid_access_token(
+                                steamid64, auto_refresh=False
+                            )
+                            if new_token:
+                                private_params["access_token"] = new_token
+                                resp = await client.get(url, params=private_params)
+
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        games = data.get("response", {}).get("games")
+                        if games is not None:
+                            return data.get("response", {})
+            except (httpx.TimeoutException, asyncio.TimeoutError):
+                logger.warning(
+                    f"[SteamUID] 凭据获取玩家游戏库超时 steamid={steamid64}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[SteamUID] 凭据获取玩家游戏库异常 steamid={steamid64}: {e}"
+                )
+
+    # 2. 降级使用公共 api_key 查询公开库
     params = {
         "key": api_key,
         "steamid": steamid64,
@@ -216,7 +264,7 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
         "include_played_free_games": True,
     }
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with make_async_client(timeout=10) as client:
             response = await client.get(url, params=params)
             data = response.json()
             return data.get("response", {})
@@ -229,18 +277,60 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
 
 
 async def get_archivement_info(appid: str, steamid64: str):
-    """获取玩家指定游戏的成就信息"""
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    """获取玩家指定游戏的成就信息（优先使用用户凭证获取私密成就）"""
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetPlayerAchievements}"
+    current_lang = get_current_lang()
+
+    # 1. 若开启允许私密数据，优先尝试使用用户的 access_token
+    if is_private_data_allowed():
+        token = await get_valid_access_token(steamid64)
+        if token:
+            private_params = {
+                "access_token": token,
+                "appid": appid,
+                "steamid": steamid64,
+                "l": current_lang,
+            }
+            try:
+                async with make_async_client(timeout=12) as client:
+                    resp = await client.get(url, params=private_params)
+                    if resp.status_code in (401, 403):
+                        logger.info(
+                            f"[SteamUID] 账号 {steamid64} access_token 过期，尝试自动刷新..."
+                        )
+                        if await refresh_account_tokens(steamid64):
+                            new_token = await get_valid_access_token(
+                                steamid64, auto_refresh=False
+                            )
+                            if new_token:
+                                private_params["access_token"] = new_token
+                                resp = await client.get(url, params=private_params)
+
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        playerstats = data.get("playerstats", {})
+                        if playerstats.get("achievements") is not None:
+                            return playerstats
+            except (httpx.TimeoutException, asyncio.TimeoutError):
+                logger.warning(
+                    f"[SteamUID] 凭据获取玩家成就超时 appid={appid} steamid={steamid64}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[SteamUID] 凭据获取玩家成就异常 appid={appid} steamid={steamid64}: {e}"
+                )
+
+    # 2. 降级使用公共 key 查询
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
     params = {
         "key": api_key,
         "appid": appid,
         "steamid": steamid64,
-        "l": get_current_lang(),
+        "l": current_lang,
     }
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with make_async_client(timeout=10) as client:
             response = await client.get(url, params=params)
             data = response.json()
             return data.get("playerstats", {})
@@ -533,16 +623,58 @@ async def get_game_announcements(
 
 
 async def get_user_wishlist(steamid64: str) -> list[dict]:
-    """获取玩家的 Steam 愿望单列表（按 priority 升序）。"""
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    """获取玩家的 Steam 愿望单列表（优先使用用户凭证获取私密愿望单，按 priority 升序）。"""
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetWishlist}"
+
+    # 1. 若开启允许私密数据，优先尝试使用用户的 access_token
+    if is_private_data_allowed():
+        token = await get_valid_access_token(steamid64)
+        if token:
+            private_params = {
+                "access_token": token,
+                "steamid": steamid64,
+            }
+            try:
+                async with make_async_client(timeout=12) as client:
+                    resp = await client.get(url, params=private_params)
+                    if resp.status_code in (401, 403):
+                        logger.info(
+                            f"[SteamUID] 账号 {steamid64} access_token 过期，尝试自动刷新..."
+                        )
+                        if await refresh_account_tokens(steamid64):
+                            new_token = await get_valid_access_token(
+                                steamid64, auto_refresh=False
+                            )
+                            if new_token:
+                                private_params["access_token"] = new_token
+                                resp = await client.get(url, params=private_params)
+
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        items = data.get("response", {}).get("items", [])
+                        if isinstance(items, list) and items:
+                            items.sort(
+                                key=lambda x: (x.get("priority", 0), -x.get("date_added", 0))
+                            )
+                            return items
+            except (httpx.TimeoutException, asyncio.TimeoutError):
+                logger.warning(
+                    f"[SteamUID] 凭据获取愿望单超时 steamid={steamid64}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[SteamUID] 凭据获取愿望单异常 steamid={steamid64}: {e}"
+                )
+
+    # 2. 降级使用公共 API Key 查询
+    api_key = SteamConfig.get_config("SteamWebAPIKey").data
     params = {
         "key": api_key,
         "steamid": steamid64,
     }
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with make_async_client(timeout=10) as client:
             response = await client.get(url, params=params)
             if response.status_code != 200:
                 logger.warning(

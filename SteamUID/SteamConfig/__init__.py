@@ -124,6 +124,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后将会在可能出现 steamid / 好友码的地方隐藏相关数字的中间部分",
         False,
     ),
+    "AllowPrivateDataWithAuth": GsBoolConfig(
+        "登录后允许展示私密数据",
+        "比如用户设置游戏库存为隐私后，通过web api key无法获取，开启且用户登录后将使用用户凭证获取",
+        True,
+    ),
     "HttpProxy": GsStrConfig(
         "Steam HTTP代理URL",
         "用于 Steam 登录及 Web 请求的代理（如 http://127.0.0.1:7890，留空则直连）",

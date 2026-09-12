@@ -95,10 +95,9 @@ async def get_wishlist_card(bot: Bot, ev: Event):
             raise SteamAPIError("未找到该 Steam 用户")
         player = players_res[0]
 
-        if player.get("communityvisibilitystate", 3) == 1:
-            raise SteamValidationError("该用户资料为私有，无法查看愿望单")
-
         if isinstance(wishlist_items, Exception) or not wishlist_items:
+            if player.get("communityvisibilitystate", 3) == 1:
+                raise SteamValidationError("该用户资料为私有，无法查看愿望单")
             raise SteamValidationError("该账号愿望单为空或已设置为私有")
 
         # 5. 构建用户账号药丸信息 (user_data)

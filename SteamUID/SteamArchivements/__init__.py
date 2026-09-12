@@ -59,7 +59,7 @@ async def build_achievement_data(
     )
     if not achievements:
         raise SteamValidationError(
-            "未获取到成就数据，可能该游戏无成就或 steam 资料未公开"
+            "未获取到成就数据，可能该游戏无成就、steam 资料未公开或登录授权已失效"
         )
 
     # 1. 解析游戏信息

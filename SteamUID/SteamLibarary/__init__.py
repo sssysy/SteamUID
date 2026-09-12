@@ -64,14 +64,13 @@ async def build_library_wall(steamid64: str) -> bytes:
         raise SteamAPIError("未找到该 Steam 用户")
     player = players_res[0]
 
-    if player.get("communityvisibilitystate", 3) == 1:
-        raise SteamValidationError("该用户资料为私有，无法获取游戏墙")
-
     if isinstance(library_res, Exception) or not isinstance(library_res, dict):
         raise SteamValidationError("获取 steam 游戏库列表失败")
 
     games = library_res.get("games")
     if games is None:
+        if player.get("communityvisibilitystate", 3) == 1:
+            raise SteamValidationError("该用户资料为私有，无法获取游戏墙")
         raise SteamValidationError("获取 steam 游戏库列表失败")
     if not games:
         raise SteamValidationError("该 steam 账号暂无游戏库存")

@@ -8,6 +8,7 @@ import httpx
 from gsuid_core.logger import logger
 
 from ..database.models import SteamNextAccount
+from ...SteamConfig import SteamConfig
 from .client import (
     STEAM_DOMAINS,
     get_proxy_dict,
@@ -27,7 +28,39 @@ __all__ = [
     "get_account_session",
     "refresh_account_tokens",
     "get_valid_session",
+    "get_valid_access_token",
+    "is_private_data_allowed",
 ]
+
+
+def is_private_data_allowed() -> bool:
+    """检查是否开启「登录后允许展示私密数据」配置"""
+    try:
+        conf = SteamConfig.get_config("AllowPrivateDataWithAuth")
+        if conf is not None and isinstance(conf.data, bool):
+            return conf.data
+    except Exception:
+        pass
+    return True
+
+
+async def get_valid_access_token(
+    steamid64: str, auto_refresh: bool = True
+) -> Optional[str]:
+    """获取有效 access_token，若无则尝试通过 refresh_token 刷新。"""
+    acc = await SteamNextAccount.get_account(steamid64)
+    if not acc:
+        return None
+
+    if acc.access_token:
+        return acc.access_token
+
+    if auto_refresh and acc.refresh_token:
+        if await refresh_account_tokens(steamid64):
+            acc = await SteamNextAccount.get_account(steamid64)
+            if acc and acc.access_token:
+                return acc.access_token
+    return None
 
 
 async def get_account_session(steamid64: str) -> Optional[httpx.AsyncClient]:
