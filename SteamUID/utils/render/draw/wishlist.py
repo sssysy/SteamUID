@@ -9,6 +9,7 @@ from ..render import (
     render_html,
 )
 from .account_pill import render_account_pill_html
+from ...Api.cover import get_official_cover_url
 
 _WISHLIST_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "wishlist.html"
 
@@ -72,7 +73,7 @@ def render_wishlist_html(
             game_name = item.get("game_name", "") or appid
             cover_url = (
                 item.get("cover_url")
-                or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+                or get_official_cover_url(appid, "header")
             )
             raw_date = item.get("date_added")
             date_str = format_date_added(raw_date)

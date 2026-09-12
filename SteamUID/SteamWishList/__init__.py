@@ -8,6 +8,7 @@ from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig
 from ..utils.Api import (
+    get_game_cover_url,
     get_game_info,
     get_miniprofile,
     get_price_data,
@@ -170,17 +171,17 @@ async def get_wishlist_card(bot: Bot, ev: Event):
         wishlist_data = []
         for idx, (it, aid) in enumerate(zip(top_items, appids)):
             game_name = aid
-            cover_url = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{aid}/header.jpg"
-
             game_info = game_info_list[idx] if idx < len(game_info_list) else None
             g_data = {}
+            header_img = None
             if isinstance(game_info, dict) and game_info.get("success"):
                 g_data = game_info.get("data", {})
                 if isinstance(g_data, dict):
                     if g_data.get("name"):
                         game_name = g_data["name"]
-                    if g_data.get("header_image"):
-                        cover_url = g_data["header_image"]
+                    header_img = g_data.get("header_image")
+
+            cover_url = await get_game_cover_url(aid, header_image=header_img)
 
             # 价格与状态安全解析
             is_free = False

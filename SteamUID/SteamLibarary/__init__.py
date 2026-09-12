@@ -11,11 +11,13 @@ from gsuid_core.sv import SV
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
 from ..utils.Api import (
+    get_game_cover_url,
     get_game_info,
     get_steamlibrary_by_steamid64,
     get_user_Summaries,
     get_miniprofile,
     get_profile_items_equipped,
+    resolve_games_covers,
 )
 from ..utils.exceptions import (
     SteamConfigError,
@@ -125,6 +127,10 @@ async def build_library_wall(steamid64: str) -> bytes:
             "playtime_forever": playtime,
         })
 
+    # 若开启 GridDB 备选，则批量解析/补全封面
+    if SteamConfig.get_config("AllowGridDBCover").data:
+        await resolve_games_covers(games_data)
+
     # 5. 调用 Playwright 渲染
     return await render_steam_wall(user_data, games_data, canvas_width=1200)
 
@@ -233,7 +239,7 @@ async def build_random_pick(steamid64: str) -> bytes:
                 continue
 
             name = data.get("name") or game_entry.get("name") or "未知游戏"
-            header_img = data.get("header_image") or SteamAPI.GetGameCoverImageURL(aid, variant="header")
+            header_img = await get_game_cover_url(aid, header_image=data.get("header_image"))
 
             valid_games.append({
                 "appid": aid,

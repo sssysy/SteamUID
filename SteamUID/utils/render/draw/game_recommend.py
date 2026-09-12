@@ -8,6 +8,7 @@ from ..render import (
     render_html,
 )
 from .account_pill import render_account_pill_html
+from ...Api.cover import get_official_cover_url
 
 _GAME_RECOMMEND_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "game_recommend.html"
 
@@ -46,7 +47,7 @@ def render_game_recommend_html(
         description = item.get("description", "") or "暂无游戏简介"
         cover_url = (
             item.get("cover_url")
-            or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+            or get_official_cover_url(appid, "header")
         )
 
         escaped_name = html_lib.escape(name)

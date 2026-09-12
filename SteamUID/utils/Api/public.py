@@ -17,6 +17,7 @@ from .account import (
 )
 from .client import make_async_client
 from .endpoints import SteamAPI
+from .cover import get_game_cover_url, get_official_cover_url
 
 # 内存 TTL 缓存字典及锁
 # key -> (data, expire_at)
@@ -167,12 +168,13 @@ async def get_game_info(appid: str) -> dict:
                     game_data = schema_res.json().get("game", {})
                     game_name = game_data.get("gameName")
                     if game_name:
+                        cover_url = await get_game_cover_url(appid, is_official_failed=True)
                         fallback_result = {
                             "success": True,
                             "data": {
                                 "steam_appid": int(appid) if appid.isdigit() else appid,
                                 "name": game_name,
-                                "header_image": f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg",
+                                "header_image": cover_url,
                                 "is_free": False,
                             },
                         }
@@ -208,7 +210,7 @@ async def get_game_icon_url(appid: str, steamid64: str | None = None) -> str:
                         return f"https://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{icon_hash}.jpg"
         except Exception:
             pass
-    return f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/capsule_sm_120.jpg"
+    return get_official_cover_url(appid, "capsule_sm_120")
 
 
 async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:

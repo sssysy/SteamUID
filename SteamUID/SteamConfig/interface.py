@@ -51,5 +51,5 @@ class SteamAPI:
         capsule_231x87	小胶囊图
         capsule_184x69	搜索缩略图
         """
-        url = f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/{variant}.jpg"
+        url = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/{variant}.jpg"
         return url

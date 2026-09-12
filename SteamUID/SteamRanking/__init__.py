@@ -9,6 +9,7 @@ from gsuid_core.utils.database.models import CoreUser
 
 from ..SteamConfig import SteamConfig
 from ..utils.Api import (
+    get_game_cover_url,
     get_game_icon_url,
     get_game_info,
     get_miniprofile,
@@ -35,7 +36,7 @@ ranking_sv = SV("steam排名服务")
 
 async def _fetch_game_detail(appid: str, total_duration: int) -> dict:
     game_name = appid
-    cover_url = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+    header_img = None
     try:
         info = await get_game_info(appid)
         if info and info.get("success"):
@@ -44,10 +45,9 @@ async def _fetch_game_detail(appid: str, total_duration: int) -> dict:
             if name:
                 game_name = name
             header_img = data.get("header_image")
-            if header_img:
-                cover_url = header_img
     except Exception:
         pass
+    cover_url = await get_game_cover_url(appid, header_image=header_img)
     return {
         "appid": appid,
         "game_name": game_name,
@@ -514,7 +514,7 @@ async def _enrich_member_item(candidate: dict, group_id: str) -> dict:
                 pass
         status_text = f"游戏中：{game_name or '未知游戏'}"
         if game_id:
-            bg_url = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{game_id}/header.jpg"
+            bg_url = await get_game_cover_url(game_id)
     else:
         status_text = "在线"
         bg_url = await _fetch_member_online_bg(steamid64)

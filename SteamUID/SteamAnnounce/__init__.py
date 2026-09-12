@@ -5,7 +5,7 @@ from gsuid_core.segment import MessageSegment
 from gsuid_core.sv import SV
 from gsuid_core.subscribe import gs_subscribe
 
-from ..utils.Api import get_game_announcements, get_game_info
+from ..utils.Api import get_game_announcements, get_game_cover_url, get_game_info
 from ..utils.database.models import SteamAnnounceInfo
 from ..utils.database.models_cache import SteamApiCache
 from ..utils.exceptions import SteamError
@@ -147,15 +147,17 @@ async def test_announce_push(bot: Bot, ev: Event):
 
         # 获取游戏信息
         game_name = appid
-        game_logo_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+        header_img = None
         try:
             game_data = await get_game_info(appid)
             if game_data and game_data.get("success"):
                 d = game_data.get("data", {})
                 game_name = d.get("name", appid)
-                game_logo_url = d.get("header_image") or game_logo_url
+                header_img = d.get("header_image")
         except Exception as e:
             logger.warning(f"[SteamAnnounce] 测试命令拉取游戏详情异常 appid={appid}: {e}")
+
+        game_logo_url = await get_game_cover_url(appid, header_image=header_img)
 
         # 拉取最新公告
         announcements = await get_game_announcements(appid, count=1)

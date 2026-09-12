@@ -134,6 +134,17 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "用于 Steam 登录及 Web 请求的代理（如 http://127.0.0.1:7890，留空则直连）",
         "",
     ),
+    "AllowGridDBCover": GsBoolConfig(
+        "允许备选 Grid DB 封面",
+        "在官方接口获取游戏封面异常（如游戏锁区等）时通过 GridDB 获取社区封面图代替显示",
+        False,
+    ),
+    "GridDBApiKey": GsStrConfig(
+        "Grid DB API Key",
+        "前往 https://www.steamgriddb.com/profile/preferences 申请获取 API Key",
+        "",
+        secret=True,
+    ),
     "AutoQueueCount": GsIntConfig(
         "每次探索队列次数",
         "每次执行探索队列时的轮数，默认为 3 次",

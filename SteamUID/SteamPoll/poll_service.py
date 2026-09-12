@@ -11,6 +11,7 @@ from gsuid_core.utils.message import Message
 
 from ..utils.Api import (
     get_user_Summaries,
+    get_game_cover_url,
     get_game_info,
     get_archivement_info,
     get_archivement_img,
@@ -653,16 +654,18 @@ async def process_game_sale_push(drops: list) -> None:
         # 获取游戏名称、简介与封面图
         game_name = appid
         game_desc = ""
-        cover_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+        header_img = None
         try:
             game_data = await get_game_info(appid)
             if game_data and game_data.get("success"):
                 d = game_data.get("data", {})
                 game_name = d.get("name", appid)
                 game_desc = d.get("short_description", "")
-                cover_url = d.get("header_image") or cover_url
+                header_img = d.get("header_image")
         except Exception as e:
             logger.warning(f"[SteamPoll] 降价推送获取游戏详情异常 appid={appid}: {e}")
+
+        cover_url = await get_game_cover_url(appid, header_image=header_img)
 
         discount_percent = new_overview.get("discount_percent", 0)
         original_price = new_overview.get("initial_formatted") or old_overview.get("final_formatted", "")
@@ -787,15 +790,17 @@ async def poll_and_push_game_announce() -> None:
 
             # 获取游戏名称与封面
             game_name = appid
-            game_logo_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+            header_img = None
             try:
                 game_data = await get_game_info(appid)
                 if game_data and game_data.get("success"):
                     d = game_data.get("data", {})
                     game_name = d.get("name", appid)
-                    game_logo_url = d.get("header_image") or game_logo_url
+                    header_img = d.get("header_image")
             except Exception as e:
                 logger.warning(f"[SteamPoll] 拉取游戏信息异常 appid={appid}: {e}")
+
+            game_logo_url = await get_game_cover_url(appid, header_image=header_img)
 
             # 渲染公告卡片
             try:

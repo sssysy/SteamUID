@@ -46,6 +46,12 @@ from .store import (
     generate_discovery_queue,
     register_cdkey,
 )
+from .cover import (
+    fetch_griddb_cover,
+    get_game_cover_url,
+    get_official_cover_url,
+    resolve_games_covers,
+)
 from .wishlist import add_to_wishlist, remove_from_wishlist
 
 __all__ = [
@@ -84,6 +90,11 @@ __all__ = [
     "get_game_announcements",
     "get_user_wishlist",
     "clear_user_mem_cache",
+    # cover
+    "get_game_cover_url",
+    "get_official_cover_url",
+    "fetch_griddb_cover",
+    "resolve_games_covers",
     # wishlist
     "add_to_wishlist",
     "remove_from_wishlist",

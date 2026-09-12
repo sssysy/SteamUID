@@ -10,11 +10,13 @@ from gsuid_core.sv import SV
 from ..utils.Api import (
     get_archivement_info,
     get_archivement_schema,
-    get_game_info,
+    get_game_cover_url,
     get_game_icon_url,
-    get_user_Summaries,
+    get_game_info,
     get_miniprofile,
+    get_official_cover_url,
     get_profile_items_equipped,
+    get_user_Summaries,
 )
 from ..utils.exceptions import (
     SteamError,
@@ -71,12 +73,9 @@ async def build_achievement_data(
     game_name = game_data_obj.get("name") or playerstats.get("gameName") or appid
     game_icon = (
         game_icon_res
-        or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/capsule_sm_120.jpg"
+        or get_official_cover_url(appid, "capsule_sm_120")
     )
-    cover_url = (
-        game_data_obj.get("header_image")
-        or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
-    )
+    cover_url = await get_game_cover_url(appid, header_image=game_data_obj.get("header_image"))
     game_data = {
         "name": game_name,
         "icon_url": game_icon,

@@ -6,7 +6,7 @@ from gsuid_core.sv import SV
 from gsuid_core.subscribe import gs_subscribe
 
 from ..utils.database.models import SteamPriceInfo
-from ..utils.Api import get_game_info, get_price_data
+from ..utils.Api import get_game_cover_url, get_game_info, get_price_data
 from ..utils.exceptions import SteamError
 from ..utils.render import render_game_price_drop
 from ..utils.utils import resolve_target_appid
@@ -106,7 +106,7 @@ async def test_price_drop(bot: Bot, ev: Event):
         # 获取游戏基本信息与价格数据
         game_name = appid
         game_desc = ""
-        cover_url = SteamAPI.GetGameCoverImageURL(appid, "header")
+        header_img = None
         discount_percent = 0
         original_price = ""
         final_price = ""
@@ -117,7 +117,7 @@ async def test_price_drop(bot: Bot, ev: Event):
                 d = game_data.get("data", {})
                 game_name = d.get("name", appid)
                 game_desc = d.get("short_description", "")
-                cover_url = d.get("header_image") or cover_url
+                header_img = d.get("header_image")
 
                 price_overview = d.get("price_overview", {})
                 if price_overview:
@@ -128,6 +128,8 @@ async def test_price_drop(bot: Bot, ev: Event):
                     final_price = "免费开玩"
         except Exception as e:
             logger.warning(f"[SteamPrice] 测试降价订阅获取游戏信息异常 appid={appid}: {e}")
+
+        cover_url = await get_game_cover_url(appid, header_image=header_img)
 
         if not final_price:
             try:
