@@ -54,6 +54,17 @@ async def check_official_cover_accessible(appid: str | int, timeout: float = 1.5
         return False
 
 
+def _sanitize_cover_url(url: str) -> str:
+    """清洗与规范化封面 URL，将带防盗链限制的 Akamai / Cloudflare CDN 域名转为 Fastly CDN。"""
+    if not url:
+        return url
+    if "shared.akamai.steamstatic.com" in url:
+        url = url.replace("shared.akamai.steamstatic.com", "shared.fastly.steamstatic.com")
+    elif "cdn.cloudflare.steamstatic.com" in url:
+        url = url.replace("cdn.cloudflare.steamstatic.com", "shared.fastly.steamstatic.com")
+    return url
+
+
 async def fetch_griddb_cover(appid: str | int) -> str | None:
     """通过 SteamGridDB 获取社区封面图（静态最高票数，锁定官方横板尺寸 460x215,920x430）。"""
     allow_griddb = SteamConfig.get_config("AllowGridDBCover").data
@@ -123,19 +134,21 @@ async def get_game_cover_url(
 
     # 1. 如果已由官方详情接口获取到了有效的 header_image
     if header_image and header_image.startswith("http"):
-        _COVER_MEMORY_CACHE[aid] = header_image
-        return header_image
+        sanitized = _sanitize_cover_url(header_image)
+        _COVER_MEMORY_CACHE[aid] = sanitized
+        return sanitized
 
     # 2. 内存缓存优先
     if aid in _COVER_MEMORY_CACHE:
-        return _COVER_MEMORY_CACHE[aid]
+        return _sanitize_cover_url(_COVER_MEMORY_CACHE[aid])
 
     # 3. 数据库持久缓存
     try:
         cached_url = await SteamApiCache.get_cache(f"cover_{aid}")
         if cached_url:
-            _COVER_MEMORY_CACHE[aid] = cached_url
-            return cached_url
+            sanitized = _sanitize_cover_url(cached_url)
+            _COVER_MEMORY_CACHE[aid] = sanitized
+            return sanitized
     except Exception:
         pass
 

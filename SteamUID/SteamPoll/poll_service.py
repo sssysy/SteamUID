@@ -115,9 +115,16 @@ async def prefetch_game_info(push_list) -> dict[str, dict]:
             info = await get_game_info(aid)
         except Exception as error:
             logger.warning(f"[SteamPoll] 拉取游戏信息失败 appid={aid}: {error!r}")
-            continue
+            info = None
         if info and info.get("success"):
             game_info_map[aid] = info.get("data", {})
+        else:
+            # 详情接口无果时，通过统一入口预解析封面保底
+            cover = await get_game_cover_url(aid)
+            game_info_map[aid] = {
+                "steam_appid": int(aid) if str(aid).isdigit() else aid,
+                "header_image": cover,
+            }
     return game_info_map
 
 
@@ -152,7 +159,9 @@ async def process_game_status_push(
         is_playing = bool(info.get("gameid", ""))
         appid = info.get("gameid") if is_playing else old_info.get("gameid", "")
         game_data = game_info_map.get(appid, {})
-        game_avatar = game_data.get("header_image")
+        # 统一接入封面获取入口，避免漏查与空缺
+        raw_header = game_data.get("header_image")
+        game_avatar = await get_game_cover_url(appid, header_image=raw_header)
         avatar_frame_url = (
             avatar_frame_map.get(steamid64) if avatar_frame_map else None
         )

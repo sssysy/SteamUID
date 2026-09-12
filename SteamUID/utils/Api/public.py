@@ -152,10 +152,37 @@ async def get_game_info(appid: str) -> dict:
     except Exception as e:
         logger.warning(f"[SteamUID] 获取游戏详情异常 appid={appid}: {e}")
 
+    # 1. 锁区探测：若指定地区返回失败且设置了国家/地区，尝试无区域限制重新探测一次
+    if not (isinstance(result, dict) and result.get("success")):
+        current_cc = get_current_cc()
+        if current_cc:
+            try:
+                global_params = {
+                    "appids": appid,
+                    "l": get_current_lang(),
+                }
+                async with httpx.AsyncClient(timeout=8, cookies=STEAM_STORE_COOKIES) as client:
+                    resp_global = await client.get(url, params=global_params)
+                    if resp_global.status_code == 200:
+                        data_global = resp_global.json()
+                        result_global = data_global.get(appid, {}) if isinstance(data_global, dict) else {}
+                        if isinstance(result_global, dict) and result_global.get("success"):
+                            result = result_global
+            except Exception:
+                pass
+
     if isinstance(result, dict) and result.get("success"):
+        # 统一规范化与解析封面
+        data_obj = result.get("data", {})
+        if isinstance(data_obj, dict):
+            raw_header = data_obj.get("header_image")
+            cover_url = await get_game_cover_url(appid, header_image=raw_header)
+            data_obj["header_image"] = cover_url
         await SteamApiCache.upsert_cache(appid, json.dumps(result, ensure_ascii=False))
         return result
 
+    # 2. 二级兜底：尝试从 GetSchemaForGame 或统一封面回退获取数据
+    game_name = None
     try:
         api_key = SteamConfig.get_config("SteamWebAPIKey").data
         if api_key:
@@ -167,23 +194,25 @@ async def get_game_info(appid: str) -> dict:
                 if schema_res.status_code == 200:
                     game_data = schema_res.json().get("game", {})
                     game_name = game_data.get("gameName")
-                    if game_name:
-                        cover_url = await get_game_cover_url(appid, is_official_failed=True)
-                        fallback_result = {
-                            "success": True,
-                            "data": {
-                                "steam_appid": int(appid) if appid.isdigit() else appid,
-                                "name": game_name,
-                                "header_image": cover_url,
-                                "is_free": False,
-                            },
-                        }
-                        await SteamApiCache.upsert_cache(
-                            appid, json.dumps(fallback_result, ensure_ascii=False)
-                        )
-                        return fallback_result
     except Exception:
         pass
+
+    allow_griddb = SteamConfig.get_config("AllowGridDBCover").data
+    cover_url = await get_game_cover_url(appid, is_official_failed=True)
+    if (allow_griddb and cover_url and "steamgriddb.com" in cover_url) or game_name:
+        fallback_result = {
+            "success": True,
+            "data": {
+                "steam_appid": int(appid) if appid.isdigit() else appid,
+                "name": game_name or f"Steam App {appid}",
+                "header_image": cover_url,
+                "is_free": False,
+            },
+        }
+        await SteamApiCache.upsert_cache(
+            appid, json.dumps(fallback_result, ensure_ascii=False)
+        )
+        return fallback_result
 
     return result
 
