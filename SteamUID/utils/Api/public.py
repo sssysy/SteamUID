@@ -402,18 +402,31 @@ async def search_game_store(keyword: str) -> list[dict]:
 
     base_url = SteamConfig.get_config("storeBaseURL").data
     url = f"{base_url}{SteamAPI.store_Search}"
+    current_cc = get_current_cc()
     params = {
         "term": term,
         "l": get_current_lang(),
-        "cc": get_current_cc(),
+        "cc": current_cc,
     }
+    items = []
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(url, params=params)
-            if response.status_code != 200:
-                return []
-            data = response.json()
-            items = data.get("items", []) if isinstance(data, dict) else []
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get("items", []) if isinstance(data, dict) else []
+
+            # 某个地区如果没结果再回退全球区 (US)
+            if not items and current_cc != "US":
+                params_global = {
+                    "term": term,
+                    "l": get_current_lang(),
+                    "cc": "US",
+                }
+                resp_global = await client.get(url, params=params_global)
+                if resp_global.status_code == 200:
+                    data_global = resp_global.json()
+                    items = data_global.get("items", []) if isinstance(data_global, dict) else []
     except (httpx.TimeoutException, asyncio.TimeoutError):
         logger.warning(f"[SteamUID] 搜索游戏超时 keyword={keyword}")
         raise SteamTimeoutError(TIMEOUT_ERR_MSG)

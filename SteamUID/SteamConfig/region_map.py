@@ -129,8 +129,8 @@ def get_current_region() -> SteamRegion:
 
 
 def get_current_cc() -> str:
-    """获取当前配置的 Steam 地区代码（如 cn, hk, us, jp 等）。"""
-    return get_current_region().cc
+    """获取当前配置的 Steam 地区代码（如 CN, HK, US, JP 等）。"""
+    return get_current_region().cc.upper()
 
 
 def get_current_lang() -> str:
