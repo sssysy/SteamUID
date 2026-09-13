@@ -256,8 +256,8 @@ async def group_ranking(bot: Bot, ev: Event):
         if users and users[0]:
             if users[0].user_name and users[0].user_name != "1":
                 user_name = str(users[0].user_name)
-            if users[0].avatar_url:
-                avatar_url = users[0].avatar_url
+            if users[0].user_icon and users[0].user_icon != "1":
+                avatar_url = str(users[0].user_icon)
 
         display_list.append({
             "user_id": uid,
@@ -400,8 +400,8 @@ async def game_user_ranking(bot: Bot, ev: Event):
         if users and users[0]:
             if users[0].user_name and users[0].user_name != "1":
                 user_name = str(users[0].user_name)
-            if users[0].avatar_url:
-                avatar_url = users[0].avatar_url
+            if users[0].user_icon and users[0].user_icon != "1":
+                avatar_url = str(users[0].user_icon)
 
         display_list.append({
             "user_id": uid,
@@ -444,8 +444,8 @@ async def _enrich_member_item(candidate: dict, group_id: str) -> dict:
         if users and users[0]:
             if users[0].user_name and users[0].user_name != "1":
                 user_name = str(users[0].user_name)
-            if users[0].avatar_url:
-                avatar_url = users[0].avatar_url
+            if users[0].user_icon and users[0].user_icon != "1":
+                avatar_url = str(users[0].user_icon)
     except Exception:
         pass
 
