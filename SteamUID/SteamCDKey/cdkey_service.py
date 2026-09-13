@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 from typing import List, Optional, Tuple
 
@@ -11,10 +9,10 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..utils.Api import get_user_Summaries, get_valid_session, register_cdkey
-from ..utils.database.models import SteamBind, SteamIDInfo, SteamNextAccount
+from ..utils.Api import get_valid_session, register_cdkey
+from ..utils.database.models import SteamBind, SteamNextAccount
 from ..utils.exceptions import SteamValidationError
-from ..utils.utils import auto2steamid64
+from ..utils.utils import auto2steamid64, get_account_display_name
 
 # Steam CDKey 格式校验正则：支持 15 位 (5-5-5)、25 位 (5-5-5-5-5) 等标准格式
 CDK_PATTERN = re.compile(r"^[A-Z0-9]{4,5}(-[A-Z0-9]{4,5}){2,4}$")
@@ -52,42 +50,10 @@ def normalize_and_validate_cdk(raw_k: str) -> Optional[str]:
     return None
 
 
-async def get_account_display_name(steamid64: str) -> str:
-    """获取账号的展示昵称（依次尝试 SteamIDInfo、SteamNextAccount、get_user_Summaries）"""
-    try:
-        user_info_raw = await SteamIDInfo.get_steamuserinfo(steamid64)
-        if user_info_raw:
-            info = json.loads(user_info_raw)
-            if isinstance(info, dict) and info.get("personaname"):
-                return str(info["personaname"])
-    except Exception:
-        pass
-
-    try:
-        acc = await SteamNextAccount.get_account(steamid64)
-        if acc and acc.account_name:
-            return str(acc.account_name)
-    except Exception:
-        pass
-
-    try:
-        summaries = await get_user_Summaries(steamid64)
-        if summaries and isinstance(summaries, list) and summaries[0].get("personaname"):
-            return str(summaries[0]["personaname"])
-    except Exception:
-        pass
-
-    return "Steam用户"
-
-
 async def parse_input_arguments(bot_id: str, user_id: str, raw_text: str) -> Tuple[str, List[str]]:
     """
     解析用户输入的参数，返回 (target_steamid, cleaned_cdks)。
     若格式或前置校验失败，抛出 SteamValidationError。
-    规则：
-      - 命令 参数1 参数2：参数1为指定 steamid/好友代码，参数2为 CDK 列表
-      - 命令 参数1：参数1为 CDK 列表，目标账号回退至当前用户绑定的主账号
-      - 有任何传错就报错
     """
     if not raw_text or not raw_text.strip():
         raise SteamValidationError(
@@ -126,11 +92,15 @@ async def parse_input_arguments(bot_id: str, user_id: str, raw_text: str) -> Tup
         binds = await SteamBind.get_binds_by_user_id(bot_id, user_id)
         if not binds:
             raise SteamValidationError("未找到绑定的 Steam 账号，请先使用【steam绑定 <SteamID/好友代码>】进行绑定！")
-        main_bind = next((b for b in binds if b.is_main_id), binds[0])
+        main_bind = next((b for b in binds if b.is_main_id), None)
+        if main_bind is None:
+            raise SteamValidationError(
+                "未找到主 Steam 账号，请先使用【steam切换】设置主账号！"
+            )
         target_steamid = main_bind.steamid64
 
-    # 提取并严格校验 CDK 列表
-    cdk_tokens = [k.strip() for k in re.split(r"[,，\n]+", raw_cdk_list) if k.strip()]
+    # 提取并严格校验 CDK 列表（多参数统一按空格 / 中英文逗号 / 换行切分）
+    cdk_tokens = [k.strip() for k in re.split(r"[,，\s]+", raw_cdk_list) if k.strip()]
     if not cdk_tokens:
         raise SteamValidationError("未检测到要激活的 CDKey，请检查输入的 CDKey 列表！")
 
@@ -233,10 +203,7 @@ async def handle_cdkey_activation(bot: Bot, ev: Event):
             if i < len(cleaned_cdks) - 1:
                 await asyncio.sleep(1.5)
     finally:
-        if hasattr(session, "aclose"):
-            close_call = session.aclose()
-            if asyncio.iscoroutine(close_call) or hasattr(close_call, "__await__"):
-                await close_call
+        await session.aclose()
 
     # 4. 组装最终任务汇报文本
     report_blocks = [

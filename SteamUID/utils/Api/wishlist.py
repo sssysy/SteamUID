@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """IWishlistService：access_token 鉴权的愿写操作。"""
 import asyncio
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-"""愿望单增删指令：业务编排，协议调用走 utils/Api/wishlist。"""
 import asyncio
 
 import httpx
@@ -10,7 +8,7 @@ from gsuid_core.models import Event
 from ..utils.Api import add_to_wishlist, remove_from_wishlist
 from ..utils.database.models import SteamBind, SteamNextAccount
 from ..utils.exceptions import SteamValidationError
-from ..utils.utils import resolve_game_input
+from ..utils.utils import _send_match_tip, resolve_game_input
 
 
 async def _resolve_account_and_game(bot: Bot, ev: Event, tip_example: str):
@@ -32,11 +30,8 @@ async def _resolve_account_and_game(bot: Bot, ev: Event, tip_example: str):
             "未检测到该账号的登录授权，请先发送【steam登录】完成网页授权！"
         )
 
-    appid, game_name, is_from_search = await resolve_game_input(raw_text)
-    if is_from_search:
-        await bot.send(
-            f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏"
-        )
+    appid, game_name, match_quality = await resolve_game_input(raw_text)
+    await _send_match_tip(bot, game_name, appid, match_quality)
     return acc.access_token, appid, game_name
 
 

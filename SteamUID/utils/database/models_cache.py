@@ -98,7 +98,7 @@ class SteamApiCache(BaseIDModel, table=True):
 
 
 class SteamArchivementCache(BaseIDModel, table=True):
-    """Steam成就Schema缓存表（内部表，不注册到控制台）。
+    """Steam成就Schema缓存表
     缓存 GetSchemaForGame 返回的成就定义列表（icon/icongray/displayName/description），
     供 get_archivement_schema 和 get_archivement_img 共享使用。
     """

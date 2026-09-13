@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""Store 页面接口：CDKey 激活、探索队列（需已登录 cookie session）。"""
+"""Store 页面接口 CDKey 激活、探索队列"""
 import asyncio
 
 import httpx

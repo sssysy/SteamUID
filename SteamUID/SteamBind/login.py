@@ -43,8 +43,7 @@ def _auth_token(user_id: str) -> str:
 
 def _login_base_url() -> str:
     """回调URL"""
-    base = SteamConfig.get_config("gscoreBaseURL").data.strip()
-    return base or "http://127.0.0.1:8765"
+    return SteamConfig.get_config("gscoreBaseURL").data.strip()
 
 
 def build_login_url(return_to: str, realm: str) -> str:

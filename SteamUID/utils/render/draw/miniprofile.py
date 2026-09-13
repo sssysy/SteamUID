@@ -1,7 +1,7 @@
 import pathlib
 from typing import Any
 
-from ..render import _fill_template
+from ..render import _fill_template, _get_default_icon_b64
 
 _TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "steam_miniprofile.html"
 
@@ -92,9 +92,12 @@ def render_miniprofile(data: Any) -> str:
         fields["badge_icon_url"], fields["badge_name"], fields["badge_xp"]
     )
 
+    default_avatar = _get_default_icon_b64()
+
     # 4. 组装替换字典
     replacements: dict[str, str] = {
         "avatar_url": fields["avatar_url"],
+        "default_avatar": default_avatar,
         "persona_name": fields["persona_name"],
         "persona_class": fields["persona_class"],
         "status_class": fields["status_class"],

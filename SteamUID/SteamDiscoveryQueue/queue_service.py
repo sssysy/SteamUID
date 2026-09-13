@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import asyncio
@@ -17,18 +16,19 @@ from ..utils.Api import (
     SteamStoreAuthExpiredError,
     clear_discovery_queue_app,
     generate_discovery_queue,
-    get_user_Summaries,
     make_async_client,
 )
-from ..utils.database.models import SteamBind, SteamIDInfo, SteamNextAccount
+from ..utils.database.models import SteamBind, SteamNextAccount
+from ..utils.helpers.credentials import apply_cookies
+from ..utils.utils import get_account_display_name
 
 SUBSCRIBE_TASK_NAME = "订阅Steam自动探索队列"
 
+# Store 会话 Cookie 只写在商店域名上
+STORE_DOMAIN = "store.steampowered.com"
+
 # 正在执行探索队列的 steamid 集合（用于并发重入保护）
 _running_queue_steamids: set[str] = set()
-
-# 兼容旧引用：协议实现在 utils/Api/store
-SteamAuthExpiredError = SteamStoreAuthExpiredError
 
 
 def _build_store_client(acc: SteamNextAccount) -> httpx.AsyncClient:
@@ -40,63 +40,31 @@ def _build_store_client(acc: SteamNextAccount) -> httpx.AsyncClient:
         timeout=15,
     )
 
+    cookies: dict[str, str] = {}
     if acc.cookies_json:
         try:
             cookies_dict = json.loads(acc.cookies_json)
             if isinstance(cookies_dict, dict):
-                for k, v in cookies_dict.items():
-                    client.cookies.set(str(k), str(v), domain="store.steampowered.com")
+                cookies.update({str(k): str(v) for k, v in cookies_dict.items()})
         except Exception as e:
             logger.warning(f"[SteamDiscoveryQueue] 账号 {acc.steamid64} 解析 Cookies 异常: {e}")
 
     if acc.session_id:
-        client.cookies.set("sessionid", str(acc.session_id), domain="store.steampowered.com")
+        cookies["sessionid"] = str(acc.session_id)
     if acc.steamid64 and acc.access_token:
-        client.cookies.set(
-            "steamLoginSecure",
-            f"{acc.steamid64}||{acc.access_token}",
-            domain="store.steampowered.com",
-        )
+        cookies["steamLoginSecure"] = f"{acc.steamid64}||{acc.access_token}"
+
+    apply_cookies(client, cookies, (STORE_DOMAIN,))
 
     return client
-
-
-_build_store_session = _build_store_client
 
 
 async def _fetch_queue(client: httpx.AsyncClient, store_base_url: str, session_id: str) -> list[int]:
     return await generate_discovery_queue(client, store_base_url, session_id)
 
 
-_fetch_queue_sync = _fetch_queue
-
-
 async def _clear_app(client: httpx.AsyncClient, store_base_url: str, session_id: str, appid: int):
     await clear_discovery_queue_app(client, store_base_url, session_id, appid)
-
-
-_clear_app_sync = _clear_app
-
-
-async def get_steam_nickname(steamid64: str) -> str:
-    """获取 Steam 用户昵称"""
-    try:
-        user_info_raw = await SteamIDInfo.get_steamuserinfo(steamid64)
-        if user_info_raw:
-            info = json.loads(user_info_raw)
-            if isinstance(info, dict) and info.get("personaname"):
-                return info["personaname"]
-    except Exception:
-        pass
-
-    try:
-        sid_info = await get_user_Summaries(steamid64)
-        if sid_info and isinstance(sid_info, list) and sid_info[0].get("personaname"):
-            return sid_info[0]["personaname"]
-    except Exception:
-        pass
-
-    return "未知用户"
 
 
 def format_queue_result(
@@ -126,29 +94,15 @@ async def execute_queue_for_steamids(
     对一组 Steam 账号执行探索队列
     返回结果字典: steamid64 -> (is_success, steam_name, fail_reason)
     """
-    try:
-        rounds_config = SteamConfig.get_config("AutoQueueCount").data
-        rounds_per_account = int(rounds_config) if rounds_config else 3
-    except Exception:
-        rounds_per_account = 3
-
-    try:
-        interval_config = SteamConfig.get_config("AutoQueueInterval").data
-        interval_seconds = float(interval_config) if interval_config else 15.0
-    except Exception:
-        interval_seconds = 15.0
-
-    try:
-        store_base = SteamConfig.get_config("storeBaseURL").data.strip()
-    except Exception:
-        store_base = ""
-    store_base_url = store_base or "https://store.steampowered.com"
+    rounds_per_account = int(SteamConfig.get_config("AutoQueueCount").data)
+    interval_seconds = float(SteamConfig.get_config("AutoQueueInterval").data)
+    store_base_url = SteamConfig.get_config("storeBaseURL").data.strip()
 
     results: dict[str, tuple[bool, str, str]] = {}
     accounts_to_run: list[tuple[str, str, SteamNextAccount]] = []
 
     for sid in steamids:
-        steam_name = await get_steam_nickname(sid)
+        steam_name = await get_account_display_name(sid)
         acc = await SteamNextAccount.get_account(sid)
         if not acc or not acc.access_token or not acc.session_id:
             results[sid] = (False, steam_name, "仅绑定未登录")
@@ -167,19 +121,16 @@ async def execute_queue_for_steamids(
                     f"第 {r + 1}/{rounds_per_account} 轮探索队列..."
                 )
                 try:
-                    res = _fetch_queue_sync(client, store_base_url, acc.session_id)
-                    queue = await res if asyncio.iscoroutine(res) or hasattr(res, "__await__") else res
+                    queue = await _fetch_queue(client, store_base_url, acc.session_id)
                     if queue:
                         for appid in queue:
-                            clear_res = _clear_app_sync(client, store_base_url, acc.session_id, appid)
-                            if asyncio.iscoroutine(clear_res) or hasattr(clear_res, "__await__"):
-                                await clear_res
+                            await _clear_app(client, store_base_url, acc.session_id, appid)
                             await asyncio.sleep(0.3)
                     logger.info(
                         f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) "
                         f"第 {r + 1} 轮探索完成（已清空 {len(queue)} 个游戏）"
                     )
-                except SteamAuthExpiredError as e:
+                except SteamStoreAuthExpiredError as e:
                     account_failed = True
                     fail_reason = str(e)
                     logger.warning(f"[SteamDiscoveryQueue] 账号 {steam_name}({sid}) 凭证已失效: {e}")
@@ -197,10 +148,7 @@ async def execute_queue_for_steamids(
                     logger.info(f"[SteamDiscoveryQueue] 等待探索间隔 {interval_seconds} 秒...")
                     await asyncio.sleep(interval_seconds)
         finally:
-            if hasattr(client, "aclose"):
-                close_res = client.aclose()
-                if asyncio.iscoroutine(close_res) or hasattr(close_res, "__await__"):
-                    await close_res
+            await client.aclose()
 
         if account_failed:
             results[sid] = (False, steam_name, fail_reason)
@@ -289,15 +237,8 @@ async def run_auto_discovery_queue_job():
         logger.info("[SteamDiscoveryQueue] 当前无任何自动探索队列订阅，跳过执行。")
         return
 
-    try:
-        push_group = SteamConfig.get_config("QueuePushGroup").data
-    except Exception:
-        push_group = True
-
-    try:
-        push_private = SteamConfig.get_config("QueuePushPrivate").data
-    except Exception:
-        push_private = False
+    push_group = SteamConfig.get_config("QueuePushGroup").data
+    push_private = SteamConfig.get_config("QueuePushPrivate").data
 
     user_accounts: dict[tuple[str, str], list[str]] = {}
     user_subs: dict[tuple[str, str], Any] = {}
@@ -374,7 +315,7 @@ async def run_auto_discovery_queue_job():
             try:
                 await sub.send(msg)
             except Exception as e:
-                logger.warning(
+                logger.debug(
                     f"[SteamDiscoveryQueue] 向群 {sub.group_id} 推送探索结果失败: {e}"
                 )
 
@@ -400,6 +341,6 @@ async def run_auto_discovery_queue_job():
             try:
                 await sub.send(msg, force_direct=True)
             except Exception as e:
-                logger.warning(
+                logger.debug(
                     f"[SteamDiscoveryQueue] 向用户 {sub.user_id} 私聊推送探索结果失败: {e}"
                 )

@@ -34,6 +34,7 @@ from ..utils.render import (
 )
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
+from ..utils.exceptions import unwrap
 from ..utils.utils import (
     PUSH_EVENTS,
     get_enabled_push_events,
@@ -57,10 +58,7 @@ def check_status_change_cd(steamid64: str, group_id: str | None) -> bool:
     if not group_id:
         return True
 
-    try:
-        cd_minutes = SteamConfig.get_config("StatusChangeCD").data
-    except Exception:
-        cd_minutes = 0
+    cd_minutes = SteamConfig.get_config("StatusChangeCD").data
 
     if not cd_minutes or cd_minutes <= 0:
         return True
@@ -91,7 +89,7 @@ async def detect_status_changes(resp) -> tuple[list, list]:
         if not steamid64:
             continue
 
-        old_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
+        old_info = await SteamIDInfo.get_steamuserinfo_dict(steamid64)
 
         if info != old_info:
             update_list.append((steamid64, info))
@@ -120,6 +118,7 @@ async def prefetch_game_info(push_list) -> dict[str, dict]:
             game_info_map[aid] = info.get("data", {})
         else:
             # 详情接口无果时，通过统一入口预解析封面保底
+            # （统一链路：DB 缓存 → GridDB → 官方直链）
             cover = await get_game_cover_url(aid)
             game_info_map[aid] = {
                 "steam_appid": int(aid) if str(aid).isdigit() else aid,
@@ -139,7 +138,7 @@ async def prefetch_avatar_frames(push_list) -> dict[str, str | None]:
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
     frame_map = {}
     for sid, res in zip(tasks.keys(), results):
-        frame_map[sid] = res if isinstance(res, str) else None
+        frame_map[sid] = unwrap(res, None, expect=str)
     return frame_map
 
 
@@ -311,17 +310,6 @@ async def _update_achievement_tracking(
         await SteamArchivementInfo.delete_archivement_data(steamid64)
 
 
-async def _dispatch_to_subs(subs, send_msg, push_column, steamid64) -> None:
-    """将推送消息发送给开启了相应推送开关的订阅用户"""
-    for sub in subs:
-        if not getattr(sub, push_column):
-            continue
-        try:
-            await sub.send(send_msg)
-        except Exception as error:
-            logger.warning(f"[SteamPoll] 推送 steamid={steamid64} 失败: {error!r}")
-
-
 async def flush_status_updates(update_list) -> None:
     """将有变化的状态数据写回状态轮询数据库"""
     for steamid64, info in update_list:
@@ -383,13 +371,13 @@ async def poll_and_push_achievements() -> None:
     try:
         is_enabled = is_push_event_enabled(PUSH_EVENTS["push_archivement"])
         if not is_enabled:
-            # 总开关关闭时，清空成就追踪基线，防止后续开启后用旧基线对比产生刷屏
+            # 总开关关闭时，清空成就追踪基线，防止重新开启后对比旧基线刷屏
             if _last_achievement_switch_enabled is not False:
                 await SteamArchivementInfo.delete_all_archivement_data()
                 _last_achievement_switch_enabled = False
             return
 
-        # 若此前总开关为关闭状态（或刚启动首次运行），清空可能残留的历史旧基线，重新拉取最新成就作为初始基线
+        # 基线代表「上次已推送到的位置」；切换/重启后重置为最新成就，停机期间的成就不补推
         if _last_achievement_switch_enabled is not True:
             await SteamArchivementInfo.delete_all_archivement_data()
             _last_achievement_switch_enabled = True
@@ -403,9 +391,7 @@ async def poll_and_push_achievements() -> None:
             if bind.steamid64 in tracked_steamids:
                 continue
             try:
-                user_info = json.loads(
-                    await SteamIDInfo.get_steamuserinfo(bind.steamid64) or "{}"
-                )
+                user_info = await SteamIDInfo.get_steamuserinfo_dict(bind.steamid64)
                 gameid = user_info.get("gameid", "")
                 if not gameid:
                     continue
@@ -439,9 +425,7 @@ async def poll_and_push_achievements() -> None:
 
             # 校验用户当前是否仍在游玩对应游戏
             try:
-                user_info = json.loads(
-                    await SteamIDInfo.get_steamuserinfo(steamid64) or "{}"
-                )
+                user_info = await SteamIDInfo.get_steamuserinfo_dict(steamid64)
                 current_gameid = user_info.get("gameid", "")
                 if current_gameid != appid:
                     # 游戏已结束或已切换，删除该基线
@@ -531,7 +515,7 @@ async def poll_and_push_achievements() -> None:
                     game_name = ""
                 game_name = game_name or new_archivement_info.get('gameName', '未知游戏')
 
-                gamer_info = json.loads(await SteamIDInfo.get_steamuserinfo(steamid64) or "{}")
+                gamer_info = await SteamIDInfo.get_steamuserinfo_dict(steamid64)
                 gamer_name = gamer_info.get("personaname", steamid64)
                 gamer_img_url = gamer_info.get("avatarfull", "")
                 avatar_frame_url = await get_user_static_avatar_frame(steamid64)

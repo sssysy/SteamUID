@@ -40,7 +40,7 @@ async def get_steam_help(user_pm: int):
         plugin_info={f'v{SteamUID_version}': ''},
         # 插件的logo
         plugin_icon=Image.open(ICON),
-        # 之前准备的help.json文件
+        # help.json 帮助数据
         plugin_help=await get_help_data(),
         # 插件的前缀, 哪怕存在用户自定义, 也可以让帮助图可以给出正确的命令
         plugin_prefix=PREFIX,

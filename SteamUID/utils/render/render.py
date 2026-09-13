@@ -32,7 +32,7 @@ def _get_default_icon_b64() -> str:
 
 
 def _fill_template(template: str, replacements: dict[str, str]) -> str:
-    """用 str.replace 替换所有 {{key}} 占位符。先内联本地 CSS 确保样式中的动态变量也能被替换。"""
+    """用 str.replace 替换所有占位符"""
     if "<link" in template:
         from ..downloader import _inline_local_css
         template = _inline_local_css(template)
@@ -42,11 +42,7 @@ def _fill_template(template: str, replacements: dict[str, str]) -> str:
 
 
 def format_ranking_duration(seconds: int | float) -> str:
-    """按要求格式化游玩时长：
-    - 不足1h的按分钟显示，如 59.8min、0.0min
-    - 超过或等于1h的按小时显示，如 112.3h、1.0h
-    - 最大到h，不需要统计到天
-    """
+    """按要求格式化游玩时长"""
     if seconds < 0:
         seconds = 0
     if seconds < 3600:
@@ -55,11 +51,6 @@ def format_ranking_duration(seconds: int | float) -> str:
     else:
         hours = seconds / 3600.0
         return f"{hours:.1f}h"
-
-
-# ============================================================
-# 通用渲染：HTML → JPEG 截图
-# ============================================================
 
 async def render_html(
     html_content: str,
@@ -71,22 +62,7 @@ async def render_html(
     quality: int = 85,
     timeout: float = 25.0,
 ) -> bytes:
-    """通用 HTML 渲染：将 HTML 字符串注入浏览器并截图指定元素。
-
-    自动检测 <video> 元素并等待其就绪。所有图片统一渲染为 JPEG 格式以降低带宽消耗。
-
-    参数:
-        html_content: 完整的 HTML 字符串
-        selector: 要截图的 CSS 选择器（如 ".miniprofile_container"）
-        viewport_width: 浏览器视口宽度
-        viewport_height: 浏览器视口高度
-        device_scale_factor: 缩放倍率（默认 2.0 渲染高清图）
-        quality: JPEG 压缩质量（默认 85）
-        timeout: 渲染超时时间（秒，默认 25.0）
-
-    返回:
-        JPEG 格式的图片字节数据
-    """
+    """通用 HTML 渲染"""
     try:
         from playwright.async_api import TimeoutError as PlaywrightTimeoutError, async_playwright
     except ImportError:
@@ -111,37 +87,28 @@ async def render_html(
             # 注入 HTML，等待网络资源加载完成
             await page.set_content(html_content, wait_until="networkidle", timeout=int(timeout * 1000))
 
-            # 自动检测并等待视频就绪
+            # 自动检测并等待视频就绪（超时即视为渲染失败，不做半路截图）
             has_video = await page.evaluate("!!document.querySelector('video')")
             if has_video:
-                try:
-                    await page.wait_for_function(
-                        "document.querySelector('video')?.readyState >= 2",
-                        timeout=5000,
-                    )
-                    # seek 到 1 秒处获取更具代表性的帧
-                    await page.evaluate("""
-                        const v = document.querySelector('video');
-                        if (v && v.duration > 1) { v.currentTime = 1; }
-                    """)
-                    await page.wait_for_timeout(500)
-                except Exception:
-                    pass  # 视频加载超时降级
+                await page.wait_for_function(
+                    "document.querySelector('video')?.readyState >= 2",
+                    timeout=5000,
+                )
+                # seek 到 1 秒处获取更具代表性的帧
+                await page.evaluate("""
+                    const v = document.querySelector('video');
+                    if (v && v.duration > 1) { v.currentTime = 1; }
+                """)
+                await page.wait_for_timeout(500)
 
             # 等待所有图片加载完成，确保元素高度计算准确、避免长图被截断
-            try:
-                await page.wait_for_function(
-                    "() => Array.from(document.querySelectorAll('img')).every(img => img.complete)",
-                    timeout=15000,
-                )
-                await page.wait_for_timeout(200)
-            except Exception:
-                pass  # 图片加载超时降级
+            await page.wait_for_function(
+                "() => Array.from(document.querySelectorAll('img')).every(img => img.complete)",
+                timeout=15000,
+            )
+            await page.wait_for_timeout(200)
 
             # 截图指定元素
-            # 使用 page.screenshot(clip=精确浮点 bbox) 替代 element.screenshot()，
-            # 避免 element.screenshot() 在 sub-pixel 高度时向上取整到下一个整数，
-            # 导致底部多出 1px 透明区域露出 body 的白色背景。
             element = page.locator(selector)
             await element.wait_for(state="visible")
             bbox = await element.bounding_box()
@@ -185,12 +152,6 @@ async def render_html(
         logger.exception(f"[SteamUID - 渲染] Playwright 渲染 HTML 失败: {e!r}")
         raise SteamRenderError("Playwright 渲染 HTML 发生错误，详情请查看后台。")
 
-
-
-# ============================================================
-# 通用渲染：HTML → GIF 动画（Playwright 录制 + ffmpeg 转换）
-# ============================================================
-
 async def render_html_gif(
     html_content: str,
     selector: str,
@@ -199,21 +160,7 @@ async def render_html_gif(
     viewport_height: int = 600,
     timeout: float = 30.0,
 ) -> bytes:
-    """录制页面视频并转换为 GIF。
-
-    当页面包含动态内容（背景视频、GIF 头像、动态头像框）时使用。
-    通过 Playwright 录制页面视频，再用 ffmpeg 裁剪并转换为 GIF。
-
-    参数:
-        html_content: 完整的 HTML 字符串
-        selector: 要录制的 CSS 选择器（如 ".miniprofile_container"）
-        viewport_width: 浏览器视口宽度
-        viewport_height: 浏览器视口高度
-        timeout: 渲染超时时间（秒，默认 30.0）
-
-    返回:
-        GIF 格式的图片字节数据
-    """
+    """录制页面视频并转换为 GIF"""
     try:
         from playwright.async_api import TimeoutError as PlaywrightTimeoutError, async_playwright
     except ImportError:
@@ -253,26 +200,20 @@ async def render_html_gif(
             # 注入 HTML，等待网络资源加载完成
             await page.set_content(html_content, wait_until="networkidle", timeout=int(timeout * 1000))
 
-            # 等待所有图片加载完成（GIF 头像/头像框/徽章图标等）
-            try:
-                await page.wait_for_function(
-                    "Array.from(document.querySelectorAll('img'))"
-                    ".every(img => img.complete && img.naturalHeight > 0)",
-                    timeout=10000,
-                )
-            except Exception:
-                pass  # 超时降级，部分图片可能加载失败但不阻塞录制
+            # 等待所有图片加载完成（GIF 头像/头像框/徽章图标等；超时即视为渲染失败）
+            await page.wait_for_function(
+                "Array.from(document.querySelectorAll('img'))"
+                ".every(img => img.complete && img.naturalHeight > 0)",
+                timeout=10000,
+            )
 
             # 检测 <video> 元素并获取时长
             has_video = await page.evaluate("!!document.querySelector('video')")
             if has_video:
-                try:
-                    await page.wait_for_function(
-                        "document.querySelector('video')?.readyState >= 2",
-                        timeout=5000,
-                    )
-                except Exception:
-                    pass  # 超时降级，使用默认时长
+                await page.wait_for_function(
+                    "document.querySelector('video')?.readyState >= 2",
+                    timeout=5000,
+                )
                 duration = await page.evaluate(
                     "(() => {"
                     "  const v = document.querySelector('video');"

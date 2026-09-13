@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-"""Steam 协议层：指令包只调用此处函数，不直接拼 URL / new httpx。"""
-
 from .account import (
     get_account_session,
-    get_proxy_dict,
     get_proxy_url,
     get_valid_access_token,
     get_valid_session,
@@ -25,7 +21,6 @@ from .client import (
     make_async_client,
 )
 from .public import (
-    clear_user_mem_cache,
     get_archivement_img,
     get_archivement_info,
     get_archivement_schema,
@@ -48,6 +43,7 @@ from .store import (
 )
 from .cover import (
     fetch_griddb_cover,
+    fetch_griddb_covers_batch,
     get_game_cover_url,
     get_official_cover_url,
     resolve_games_covers,
@@ -65,7 +61,6 @@ __all__ = [
     "generate_session_id",
     # account
     "get_proxy_url",
-    "get_proxy_dict",
     "get_account_session",
     "refresh_account_tokens",
     "get_valid_session",
@@ -89,11 +84,11 @@ __all__ = [
     "search_game_store",
     "get_game_announcements",
     "get_user_wishlist",
-    "clear_user_mem_cache",
     # cover
     "get_game_cover_url",
     "get_official_cover_url",
     "fetch_griddb_cover",
+    "fetch_griddb_covers_batch",
     "resolve_games_covers",
     # wishlist
     "add_to_wishlist",

@@ -33,10 +33,7 @@ def render_user_ranking_html(
     for idx, item in enumerate(ranking_data, 1):
         uid = str(item.get("user_id", ""))
         user_name = item.get("user_name", "") or uid
-        avatar_url = (
-            item.get("avatar_url")
-            or (f"https://q1.qlogo.cn/g?b=qq&nk={uid}&s=640" if uid.isdigit() else default_avatar)
-        )
+        avatar_url = item.get("avatar_url") or default_avatar
         duration_sec = item.get("total_duration", 0)
         duration_str = format_ranking_duration(duration_sec)
         rank_str = f"#{idx}"

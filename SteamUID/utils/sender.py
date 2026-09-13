@@ -25,13 +25,12 @@ async def send_to_bind(
     command_start_text: str = "",
     force_direct: bool = False,
 ):
-    """优先 WS_BOT_ID，失效时按 bot_id 兜底"""
     user_type = "direct" if force_direct else bind.user_type
     ev = Event(
         bot_id=bind.bot_id,
         user_id=bind.user_id,
         bot_self_id=bind.bot_self_id,
-        user_type=user_type,  # type: ignore
+        user_type=user_type,
         group_id=bind.group_id,
         real_bot_id=bind.bot_id,
         msg_id="",
@@ -51,22 +50,8 @@ async def send_to_bind(
             bot = Bot(BOT, ev)
             await bot.send_option(**params)
         else:
-            # WS_BOT_ID 失效，按 bot_id 兜底查找活跃 Bot
-            found = False
-            for ws_bot_id, _bot in gss.active_bot.items():
-                if _bot.bot_id == bind.bot_id:
-                    logger.info(
-                        f"[SteamBind] WS_BOT_ID {bind.WS_BOT_ID} 已失效，临时切换到 {ws_bot_id}"
-                    )
-                    bot = Bot(_bot, ev)
-                    await bot.send_option(**params)
-                    found = True
-                    break
-            if not found:
-                logger.error(
-                    f"[SteamBind] 机器人{bind.WS_BOT_ID}不存在, 该消息无法发送!"
-                )
-                return -1
+            logger.error(f"[SteamBind] 机器人{bind.WS_BOT_ID}不存在, 该消息无法发送!")
+            return -1
     else:
         for bot_id in gss.active_bot:
             BOT = gss.active_bot[bot_id]

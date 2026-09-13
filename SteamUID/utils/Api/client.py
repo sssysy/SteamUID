@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from typing import Optional
 
 import httpx
@@ -21,28 +20,16 @@ STEAM_DOMAINS = [
 
 
 def get_proxy_url() -> Optional[str]:
-    """从 SteamConfig 获取配置的代理 URL"""
-    try:
-        val = SteamConfig.get_config("HttpProxy").data
-        if isinstance(val, str):
-            proxy = val.strip()
-            if proxy:
-                if not proxy.startswith(
-                    ("http://", "https://", "socks5://", "socks5h://")
-                ):
-                    proxy = f"http://{proxy}"
-                return proxy
-    except Exception:
-        pass
-    return None
+    """从 SteamConfig 获取配置的代理 URL；未配置时返回 None。
 
-
-def get_proxy_dict() -> Optional[dict]:
-    """从 SteamConfig 获取配置的代理字典（保留兼容性）"""
-    proxy = get_proxy_url()
-    if proxy:
-        return {"http": proxy, "https": proxy}
-    return None
+    若用户只填了 host:port（如 127.0.0.1:7890），自动补齐 http:// 前缀。
+    """
+    proxy = str(SteamConfig.get_config("HttpProxy").data or "").strip()
+    if not proxy:
+        return None
+    if not proxy.startswith(("http://", "https://", "socks5://", "socks5h://")):
+        proxy = f"http://{proxy}"
+    return proxy
 
 
 def make_async_client(

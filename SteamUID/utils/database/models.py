@@ -1,3 +1,4 @@
+import json
 from typing import Any, ClassVar, Dict, Optional, Set, Type, TypeVar
 
 from sqlmodel import Field, select
@@ -56,6 +57,25 @@ class SteamIDInfo(BaseIDModel, table=True):
         stmt = select(cls.steamuserinfo).where(cls.steamid64 == steamid64)
         result = await session.execute(stmt)
         return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def get_steamuserinfo_dict(
+        cls: Type[T_SteamIDInfo],
+        session: AsyncSession,
+        steamid64: str,
+    ) -> dict:
+        """读取玩家摘要 JSON 并反序列化为 dict（无记录 / 坏 JSON 一律返回空 dict）。"""
+        stmt = select(cls.steamuserinfo).where(cls.steamid64 == steamid64)
+        result = await session.execute(stmt)
+        raw = result.scalars().first()
+        if not raw:
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except Exception:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
 
     @classmethod
     @with_session
@@ -868,7 +888,7 @@ class SteamPlayRecord(BaseIDModel, table=True):
 
 
 class SteamNextAccount(BaseIDModel, table=True):
-    """Steam WebAuth 登录授权凭据表（表名保留 SteamNextAccount 以兼容历史数据）"""
+    """Steam WebAuth 登录授权凭据表"""
     __table_args__: Dict[str, Any] = {"extend_existing": True}
 
     steamid64: str = Field(default=None, index=True, unique=True, title="SteamID64")
