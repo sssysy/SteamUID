@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from ...Api import get_miniprofile, get_profile_items_equipped
+from ..Api import get_miniprofile, get_profile_items_equipped
 
 # Steam 社区静态资源统一前缀
 FASTLY_COMMUNITY_IMAGE_PREFIX = "https://shared.fastly.steamstatic.com/community_assets/images/"
