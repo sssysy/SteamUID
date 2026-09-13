@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event

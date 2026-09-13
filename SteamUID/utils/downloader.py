@@ -12,7 +12,6 @@ from gsuid_core.logger import logger
 CACHE_DIR: Path = get_res_path("SteamUID") / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-_URL_HASH_PATTERN = re.compile(r"[0-9a-fA-F]{40}")
 _VALID_EXTENSIONS = {
     ".jpg",
     ".jpeg",
@@ -30,34 +29,21 @@ _VALID_EXTENSIONS = {
 }
 
 
-def get_cache_path(
-    url: str,
-    save_dir: Path | str | None = None,
-    fallback: str | None = None,
-) -> Path:
-    """根据 URL 提取或计算本地缓存文件路径。
+def get_cache_path(url: str, save_dir: Path | str | None = None) -> Path:
+    """根据 URL 计算本地缓存文件路径：md5(url) + 原始后缀。
 
-    - 优先匹配 URL 中的 40 位 hex hash（如 Steam 头像、背景等静态资源命名格式）；
-    - 若未匹配到，则使用 fallback 或对完整 URL 进行 md5 运算；
-    - 自动保留原始后缀名（默认 .jpg）。
+    同一 URL 恒定映射到同一路径，可据此判断缓存是否命中；
+    后缀非法（无后缀 / 带 query 的未知后缀）时统一按 .jpg 处理。
     """
     target_dir = Path(save_dir) if save_dir is not None else CACHE_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # 提取后缀名
     clean_url = url.split("?")[0].split("#")[0]
     ext = Path(clean_url).suffix.lower()
     if ext not in _VALID_EXTENSIONS:
         ext = ".jpg"
 
-    m = _URL_HASH_PATTERN.search(url)
-    if m:
-        stem = m.group(0)
-    elif fallback:
-        stem = fallback
-    else:
-        stem = hashlib.md5(url.encode("utf-8")).hexdigest()
-
+    stem = hashlib.md5(url.encode("utf-8")).hexdigest()
     return target_dir / f"{stem}{ext}"
 
 
@@ -135,19 +121,7 @@ async def download(
     timeout: float = 30.0,
     force: bool = False,
 ) -> Union[Path, None, List[Union[Path, None]]]:
-    """统一资源下载函数，支持单文件 / 多文件并发限制下载，自动判定本地缓存。
-
-    参数:
-        target: 单个 URL 字符串，或 URL 字符串列表/元组
-        save_dir: 缓存/保存目录（默认为 SteamUID/cache 目录）
-        save_path: 单文件下载时指定的完整保存路径（覆盖 save_dir 计算逻辑）
-        max_concurrency: 批量下载时的最大并发数（默认 5）
-        timeout: 请求超时时间（秒，默认 30.0）
-        force: 是否强制重新下载（忽略已有本地缓存）
-
-    返回:
-        传入单个 URL 时返回 Path | None；传入 URL 序列时返回 List[Path | None]
-    """
+    """统一资源下载函数，支持单文件 / 多文件并发限制下载，自动判定本地缓存"""
     if isinstance(target, str):
         url = target.strip()
         if not url:
@@ -235,50 +209,23 @@ def _file_to_data_uri(file_path: Path) -> str | None:
         return None
 
 
+_FONT_REF_PATTERN = re.compile(
+    r"/fonts/([A-Za-z0-9_.\-]+\.(?:ttf|woff2?|otf))", re.IGNORECASE
+)
+
+
 def _replace_local_fonts(html_content: str) -> str:
-    """优先替换 Motiva Sans 字体为 utils/fonts/ 本地字体 Base64 Data URI，完全规避网络请求与 404。"""
-    try:
-        from .fonts import get_font_data_uri
+    """将模板/CSS 中的 /fonts/<文件名> 引用替换为本地字体的 Base64 Data URI"""
+    if "/fonts/" not in html_content:
+        return html_content
 
-        font_mappings = {
-            # 本地重命名后的路径
-            "/fonts/steam-Regular.ttf": "steam-Regular.ttf",
-            "/fonts/steam-Medium.ttf": "steam-Medium.ttf",
-            "/fonts/steam-Bold.ttf": "steam-Bold.ttf",
-            "fonts/steam-Regular.ttf": "steam-Regular.ttf",
-            "fonts/steam-Medium.ttf": "steam-Medium.ttf",
-            "fonts/steam-Bold.ttf": "steam-Bold.ttf",
-            # 兼容历史 MotivaSans 引用
-            "/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
-            "/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
-            "/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
-            "fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
-            "fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
-            "fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
-            # 旧版已下架的 404 woff 链接
-            "https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-regular.woff": "steam-Regular.ttf",
-            "https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-medium.woff": "steam-Medium.ttf",
-            "https://community.cloudflare.steamstatic.com/public/shared/fonts/motiva-sans-bold.woff": "steam-Bold.ttf",
-            # 官方新版 ttf CDN 链接
-            "https://community.steamstatic.com/public/shared/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
-            "https://community.steamstatic.com/public/shared/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
-            "https://community.steamstatic.com/public/shared/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
-            "https://community.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
-            "https://community.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
-            "https://community.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
-            "https://store.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Regular.ttf": "steam-Regular.ttf",
-            "https://store.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Medium.ttf": "steam-Medium.ttf",
-            "https://store.akamai.steamstatic.com/public/shared/fonts/MotivaSans-Bold.ttf": "steam-Bold.ttf",
-        }
+    from .fonts import get_font_data_uri
 
-        for target_str, font_file in font_mappings.items():
-            if target_str in html_content:
-                data_uri = get_font_data_uri(font_file)
-                if data_uri:
-                    html_content = html_content.replace(target_str, data_uri)
-    except Exception as e:
-        logger.debug(f"[SteamUID] 替换本地字体异常: {e}")
-    return html_content
+    def _to_data_uri(match: re.Match) -> str:
+        data_uri = get_font_data_uri(match.group(1))
+        return data_uri if data_uri else match.group(0)
+
+    return _FONT_REF_PATTERN.sub(_to_data_uri, html_content)
 
 
 _RENDER_CSS_DIR: Path = Path(__file__).parent / "render" / "css"
@@ -320,11 +267,7 @@ async def replace_html_urls_with_local(
     max_concurrency: int = 8,
     timeout: float = 15.0,
 ) -> str:
-    """自动扫描 HTML/CSS 中的网络静态资源 URL，使用 downloader 下载到本地并替换为 Base64 Data URI。
-
-    若下载失败或未命中，则保持原网络 URL，保证最大限度兼容和容错。
-    通过 Base64 Data URI 替代 file:// 协议，避免 Chromium 在 set_content 环境下因同源策略拦截 file:/// 资源的加载。
-    """
+    """自动扫描 HTML/CSS 中的网络静态资源 URL，使用 downloader 下载到本地并替换为 Base64 Data URI"""
     if not html_content:
         return html_content
 

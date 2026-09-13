@@ -7,6 +7,7 @@ from ..render import (
     format_ranking_duration,
     render_html,
 )
+from ...Api.cover import get_official_cover_url
 
 _GAME_RANKING_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "game_ranking.html"
 
@@ -36,7 +37,7 @@ def render_game_ranking_html(
         game_name = item.get("game_name", "") or appid
         cover_url = (
             item.get("cover_url")
-            or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+            or get_official_cover_url(appid, "header")
         )
         duration_sec = item.get("total_duration", 0)
         duration_str = format_ranking_duration(duration_sec)

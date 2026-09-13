@@ -10,6 +10,7 @@ from ..utils.Api import get_user_Summaries
 from .review_service import get_user_year_in_review_share_images
 from ..utils.utils import resolve_target_steamid64
 from ..utils.exceptions import SteamError
+from ..utils.helpers.command import steam_command
 
 
 year_review_sv = SV("steam年度回顾相关")
@@ -45,42 +46,37 @@ def _parse_args(text: str) -> tuple[str | None, int]:
         raise SteamError(_get_usage_msg())
 
 
+@steam_command("SteamYearReview")
 @year_review_sv.on_command(("年度回顾", "年度报告"))
 async def get_year_review(bot: Bot, ev: Event):
-    try:
-        usage_msg = _get_usage_msg()
-        raw_id, year = _parse_args(ev.text.strip())
+    usage_msg = _get_usage_msg()
+    raw_id, year = _parse_args(ev.text.strip())
 
-        if year < 2022:
-            raise SteamError(usage_msg)
+    if year < 2022:
+        raise SteamError(usage_msg)
 
-        # 解析目标 steamid64（支持 @他人、好友码/SteamID 输入与默认已绑定账号）
-        steamid64 = await resolve_target_steamid64(ev, raw_id or "")
-        if not steamid64:
-            raise SteamError("请先绑定 steam 账号，或输入 好友码/SteamID")
+    # 解析目标 steamid64（支持 @他人、好友码/SteamID 输入与默认已绑定账号）
+    steamid64 = await resolve_target_steamid64(ev, raw_id or "")
+    if not steamid64:
+        raise SteamError("请先绑定 steam 账号，或输入 好友码/SteamID")
 
-        # 调用 API 获取年度回顾分享图片直链列表
-        image_urls = await get_user_year_in_review_share_images(steamid64, year)
-        if not image_urls:
-            steamuser = steamid64
-            try:
-                players = await get_user_Summaries(steamid64)
-                if players and players[0].get("personaname"):
-                    steamuser = players[0]["personaname"]
-            except Exception:
-                pass
-            await bot.send(f"[SteamUID] {steamuser} 的 {year} 年年度回顾未公开")
-            return
+    # 调用 API 获取年度回顾分享图片直链列表
+    image_urls = await get_user_year_in_review_share_images(steamid64, year)
+    if not image_urls:
+        steamuser = steamid64
+        try:
+            players = await get_user_Summaries(steamid64)
+            if players and players[0].get("personaname"):
+                steamuser = players[0]["personaname"]
+        except Exception:
+            pass
+        await bot.send(f"[SteamUID] {steamuser} 的 {year} 年年度回顾未公开")
+        return
 
-        # 分别发送获取到的所有年度回顾图片直链
-        send_img = []
-        for url in image_urls:
-            send_img.append(MessageSegment.image(url))
-        await bot.send(send_img)
+    # 分别发送获取到的所有年度回顾图片直链
+    send_img = []
+    for url in image_urls:
+        send_img.append(MessageSegment.image(url))
+    await bot.send(send_img)
 
-    except SteamError as e:
-        await bot.send(str(e))
-    except Exception as e:
-        logger.exception(f"[SteamYearReview] 年度回顾命令异常: {e!r}")
-        await bot.send("发生未知错误，详情请查看后台。")
 

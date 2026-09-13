@@ -2,8 +2,7 @@
 <html lang="zh-cn">
 <head>
     <meta charset="UTF-8">
-        <link rel="stylesheet" href="../css/common.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/steam_miniprofile.css">
 </head>
 <body>
@@ -18,7 +17,7 @@
         <div class="miniprofile_playersection text_shadow">
             {{avatar_frame_html}}
             <div class="playersection_avatar {{border_color_class}}">
-                <img src="{{avatar_url}}">
+                <img src="{{avatar_url}}" onerror="this.onerror=null;this.src='{{default_avatar}}'">
             </div>
             <div class="player_content">
                 <span class="persona {{persona_class}}">{{persona_name}}</span>

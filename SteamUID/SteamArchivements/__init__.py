@@ -10,19 +10,24 @@ from gsuid_core.sv import SV
 from ..utils.Api import (
     get_archivement_info,
     get_archivement_schema,
-    get_game_info,
+    get_game_cover_url,
     get_game_icon_url,
-    get_user_Summaries,
+    get_game_info,
     get_miniprofile,
+    get_official_cover_url,
     get_profile_items_equipped,
+    get_user_Summaries,
 )
 from ..utils.exceptions import (
     SteamError,
     SteamRenderError,
     SteamValidationError,
+    unwrap,
 )
+from ..utils.helpers.profile import resolve_profile_assets
 from ..utils.render import render_steam_achievement
 from ..utils.utils import resolve_target_appid, resolve_target_steamid64, steamid64_to_friend_code
+from ..utils.helpers.command import steam_command
 
 SV = SV("steam成就服务")
 
@@ -46,20 +51,25 @@ async def build_achievement_data(
         if isinstance(r, SteamError):
             raise r
 
-    playerstats = results[0] if not isinstance(results[0], Exception) else {}
-    schema_list = results[1] if not isinstance(results[1], Exception) else []
-    game_info = results[2] if not isinstance(results[2], Exception) else {}
-    players_res = results[3] if not isinstance(results[3], Exception) else []
-    miniprofile_data = results[4] if not isinstance(results[4], Exception) else {}
-    items_data = results[5] if not isinstance(results[5], Exception) else {}
-    game_icon_res = results[6] if not isinstance(results[6], Exception) else ""
+    (
+        playerstats,
+        schema_list,
+        game_info,
+        players_res,
+        miniprofile_data,
+        items_data,
+        game_icon_res,
+    ) = (
+        unwrap(r, d)
+        for r, d in zip(results, ({}, [], {}, [], {}, {}, ""))
+    )
 
     achievements = (
         playerstats.get("achievements") if isinstance(playerstats, dict) else None
     )
     if not achievements:
         raise SteamValidationError(
-            "未获取到成就数据，可能该游戏无成就或 steam 资料未公开"
+            "未获取到成就数据，可能该游戏无成就、steam 资料未公开或登录授权已失效"
         )
 
     # 1. 解析游戏信息
@@ -71,50 +81,29 @@ async def build_achievement_data(
     game_name = game_data_obj.get("name") or playerstats.get("gameName") or appid
     game_icon = (
         game_icon_res
-        or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/capsule_sm_120.jpg"
+        or get_official_cover_url(appid, "capsule_sm_120")
     )
-    cover_url = (
-        game_data_obj.get("header_image")
-        or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
-    )
+    cover_url = await get_game_cover_url(appid, header_image=game_data_obj.get("header_image"))
     game_data = {
         "name": game_name,
         "icon_url": game_icon,
         "cover_url": cover_url,
     }
 
-    # 2. 解析用户信息
+    # 2. 解析用户信息（头像 / 头像框 / 背景三源统一解析）
     player = players_res[0] if isinstance(players_res, list) and players_res else {}
-    user_name = player.get("personaname", "未知用户")
-    friend_code = steamid64_to_friend_code(steamid64)
-
-    avatar_url = player.get("avatarfull", "")
-    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
-        avatar_url = miniprofile_data["avatar_url"]
-
-    avatar_frame_url = None
-    if isinstance(items_data, dict):
-        frame = items_data.get("avatar_frame", {})
-        if frame.get("image_small"):
-            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
-    if not avatar_frame_url and isinstance(miniprofile_data, dict):
-        avatar_frame_url = miniprofile_data.get("avatar_frame")
-
-    bg_url = None
-    if isinstance(items_data, dict):
-        mini_bg = items_data.get("mini_profile_background", {})
-        if mini_bg.get("image_large"):
-            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
-    if not bg_url and isinstance(miniprofile_data, dict):
-        bg = miniprofile_data.get("profile_background", {})
-        bg_url = bg.get("image")
-
+    assets = await resolve_profile_assets(
+        steamid64,
+        player=player,
+        miniprofile_data=miniprofile_data,
+        items_data=items_data,
+    )
     user_data = {
-        "name": user_name,
-        "friend_code": friend_code,
-        "avatar_url": avatar_url,
-        "avatar_frame_url": avatar_frame_url,
-        "bg_url": bg_url,
+        "name": player.get("personaname", "未知用户"),
+        "friend_code": steamid64_to_friend_code(steamid64),
+        "avatar_url": assets.avatar_url,
+        "avatar_frame_url": assets.avatar_frame_url,
+        "bg_url": assets.bg_url,
     }
 
     # 3. 解析成就列表并排序
@@ -177,26 +166,21 @@ async def build_achievement_data(
     return game_data, user_data, all_achievements
 
 
+@steam_command("steamUID - 游戏成就")
 @SV.on_command("游戏成就")
 async def game_archivements(bot: Bot, ev: Event):
     appid = ""
-    try:
-        appid = await resolve_target_appid(bot, ev.text.strip())
-        steamid64 = await resolve_target_steamid64(ev)
-        if not steamid64:
-            raise SteamValidationError("请先绑定 steam 账号")
+    appid = await resolve_target_appid(bot, ev.text.strip())
+    steamid64 = await resolve_target_steamid64(ev)
+    if not steamid64:
+        raise SteamValidationError("请先绑定 steam 账号")
 
-        game_data, user_data, all_achievements = await build_achievement_data(
-            appid, steamid64
-        )
-        img_bytes = await render_steam_achievement(
-            game_data, user_data, all_achievements
-        )
-        await bot.send(MessageSegment.image(img_bytes))
+    game_data, user_data, all_achievements = await build_achievement_data(
+        appid, steamid64
+    )
+    img_bytes = await render_steam_achievement(
+        game_data, user_data, all_achievements
+    )
+    await bot.send(MessageSegment.image(img_bytes))
 
-    except SteamError as e:
-        await bot.send(str(e))
-    except Exception as e:
-        logger.exception(f"[steamUID - 游戏成就] 未知错误 appid={appid}: {e!r}")
-        await bot.send("发生未知错误，详情请查看后台。")
 

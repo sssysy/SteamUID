@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """账号 token 生命周期：刷新 access_token、构建/校验商店会话。"""
 import json
 import time
@@ -8,9 +7,10 @@ import httpx
 from gsuid_core.logger import logger
 
 from ..database.models import SteamNextAccount
+from ...SteamConfig import SteamConfig
+from ..helpers.credentials import apply_cookies
 from .client import (
     STEAM_DOMAINS,
-    get_proxy_dict,
     get_proxy_url,
     make_async_client,
 )
@@ -23,11 +23,37 @@ from .endpoints import (
 
 __all__ = [
     "get_proxy_url",
-    "get_proxy_dict",
     "get_account_session",
     "refresh_account_tokens",
     "get_valid_session",
+    "get_valid_access_token",
+    "is_private_data_allowed",
 ]
+
+
+def is_private_data_allowed() -> bool:
+    """检查是否开启「登录后允许展示私密数据」配置。"""
+    conf = SteamConfig.get_config("AllowPrivateDataWithAuth")
+    return conf is not None and conf.data is True
+
+
+async def get_valid_access_token(
+    steamid64: str, auto_refresh: bool = True
+) -> Optional[str]:
+    """获取有效 access_token，若无则尝试通过 refresh_token 刷新。"""
+    acc = await SteamNextAccount.get_account(steamid64)
+    if not acc:
+        return None
+
+    if acc.access_token:
+        return acc.access_token
+
+    if auto_refresh and acc.refresh_token:
+        if await refresh_account_tokens(steamid64):
+            acc = await SteamNextAccount.get_account(steamid64)
+            if acc and acc.access_token:
+                return acc.access_token
+    return None
 
 
 async def get_account_session(steamid64: str) -> Optional[httpx.AsyncClient]:
@@ -53,9 +79,7 @@ async def get_account_session(steamid64: str) -> Optional[httpx.AsyncClient]:
     if acc.access_token:
         cookies["steamLoginSecure"] = f"{steamid64}||{acc.access_token}"
 
-    for domain in STEAM_DOMAINS:
-        for name, value in cookies.items():
-            client.cookies.set(name, str(value), domain=domain)
+    apply_cookies(client, cookies, STEAM_DOMAINS)
 
     return client
 
@@ -127,7 +151,13 @@ async def get_valid_session(
             else:
                 await session.aclose()
             return None
+    except (httpx.TimeoutException, httpx.ConnectError) as e:
+        # 纯网络类异常视为瞬时抖动：保留放行，避免把好 session 误判失效
+        logger.warning(f"[SteamApi] 检验 session 有效性网络异常（放行）: {e}")
     except Exception as e:
-        logger.warning(f"[SteamApi] 检验 session 有效性异常: {e}")
+        # 解析 / 逻辑类异常说明校验没走通，保守判定失效
+        logger.warning(f"[SteamApi] 检验 session 有效性异常（判定失效）: {e}")
+        await session.aclose()
+        return None
 
     return session

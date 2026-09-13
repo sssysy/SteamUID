@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Sequence, overload
+from typing import Sequence
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
@@ -13,14 +13,20 @@ from .Api import (
     get_user_Summaries,
     search_game_store,
 )
-from .database.models import SteamBind
+from .database.models import SteamBind, SteamIDInfo, SteamNextAccount
 from .database.models_cache import SteamApiCache
 from .downloader import download
 from .exceptions import SteamValidationError
+from .helpers.profile import resolve_profile_assets
 from ..SteamConfig import SteamConfig
 
 
 _BASE_STEAM_ID64 = 76561197960265728
+
+# resolve_game_input 第三个返回值的取值：本次解析的匹配质量
+MATCH_NONE = ""  # 输入为纯数字 AppID，未经搜索
+MATCH_EXACT = "exact"  # 搜索命中 type == 'app' 的本体游戏
+MATCH_FALLBACK = "fallback"  # 搜索结果中无本体游戏，退而使用首项
 
 
 def steamid64_to_friend_code(steamid64: str) -> str:
@@ -38,14 +44,8 @@ def auto2steamid64(count: str | None) -> str | None:
     return count
 
 
-async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
-    """解析用户输入的游戏标识（纯数字 AppID 或 游戏名称）。
-
-    返回: (appid, game_name, is_from_search)
-    - 若输入为纯数字 AppID: 返回 (appid, appid 或 从详情/缓存获取的游戏名, False)
-    - 若输入为游戏名且搜索成功: 返回 (appid, 匹配到的游戏名, True)
-    - 若未找到匹配游戏: 抛出 SteamValidationError
-    """
+async def resolve_game_input(input_text: str) -> tuple[str, str, str]:
+    """解析用户输入的游戏标识（纯数字 AppID 或 游戏名称）"""
     raw_input = input_text.strip()
     if not raw_input:
         raise SteamValidationError("请输入游戏名或 AppID！")
@@ -64,7 +64,7 @@ async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
                     game_name = name
             except Exception:
                 pass
-        return appid, game_name, False
+        return appid, game_name, MATCH_NONE
 
     # 2. 如果是非纯数字，调用官方商店搜索接口
     items = await search_game_store(raw_input)
@@ -77,30 +77,28 @@ async def resolve_game_input(input_text: str) -> tuple[str, str, bool]:
         if item.get("type") == "app" and item.get("id") and item.get("name"):
             target_item = item
             break
+
+    match_quality = MATCH_EXACT
     if target_item is None:
         target_item = items[0]
+        match_quality = MATCH_FALLBACK
 
     matched_appid = str(target_item.get("id"))
     matched_name = str(target_item.get("name") or raw_input)
-    return matched_appid, matched_name, True
+    return matched_appid, matched_name, match_quality
 
 
-@overload
-async def resolve_target_appid(
-    bot: Bot,
-    text: str,
-    parse_limit: bool = False,
-    default_limit: int = 10,
-) -> str: ...
-
-
-@overload
-async def resolve_target_appid(
-    bot: Bot,
-    text: str,
-    parse_limit: bool = True,
-    default_limit: int = 10,
-) -> tuple[str, int]: ...
+async def _send_match_tip(
+    bot: Bot, game_name: str, appid: str, match_quality: str
+) -> None:
+    """搜索匹配到游戏时提示用户确认；退而使用首项时明确说明未精确匹配。"""
+    if match_quality == MATCH_EXACT:
+        await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
+    elif match_quality == MATCH_FALLBACK:
+        await bot.send(
+            f"未精确匹配到本体游戏，已使用最接近的结果 {game_name}({appid})，"
+            f"如有错误请使用 appid 精确匹配游戏"
+        )
 
 
 async def resolve_target_appid(
@@ -109,56 +107,25 @@ async def resolve_target_appid(
     parse_limit: bool = False,
     default_limit: int = 10,
 ) -> str | tuple[str, int]:
-    """从用户输入文本中解析出目标 AppID（支持纯数字 AppID 或游戏名称自动搜索）。
-
-    如果通过游戏名称搜索匹配成功，会自动调用 `bot.send` 发送：
-    '猜你想找 <游戏名>(appid)，如有错误请使用 appid 精确匹配游戏'
-
-    Args:
-        bot: Bot 实例，用于在搜索匹配成功时发送提示
-        text: 用户输入的原始文本
-        parse_limit: 是否解析末尾的条数 limit（用于排行榜等命令）
-        default_limit: 默认条数（当 parse_limit=True 时生效）
-
-    Returns:
-        若 parse_limit=False: 返回 appid 字符串
-        若 parse_limit=True: 返回 (appid, limit) 元组
-    """
+    """从用户输入文本中解析出目标 AppID（支持纯数字 AppID 或游戏名称自动搜索）"""
     raw_text = text.strip()
     if not raw_text:
         raise SteamValidationError("请输入游戏名或 AppID！例如：730 或 艾尔登法环")
 
-    if not parse_limit:
-        appid, game_name, is_from_search = await resolve_game_input(raw_text)
-        if is_from_search:
-            await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
-        return appid
-
-    words = raw_text.split()
     limit = default_limit
     game_query = raw_text
+    if parse_limit:
+        words = raw_text.split()
+        if len(words) >= 2 and words[-1].isdigit():
+            limit = int(words[-1])
+            game_query = " ".join(words[:-1])
 
-    # 处理带条数参数的情况（例如：730 5 或 艾尔登法环 5 或 Cyberpunk 2077 5）
-    if len(words) >= 2 and words[-1].isdigit():
-        possible_limit = int(words[-1])
-        if words[0].isdigit() and len(words) == 2:
-            game_query = words[0]
-            if possible_limit > 0:
-                limit = possible_limit
-        elif 1 <= possible_limit <= 100:
-            candidate_query = " ".join(words[:-1])
-            try:
-                appid, game_name, is_from_search = await resolve_game_input(candidate_query)
-                if is_from_search:
-                    await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
-                return appid, possible_limit
-            except Exception:
-                game_query = raw_text
+    appid, game_name, match_quality = await resolve_game_input(game_query)
+    await _send_match_tip(bot, game_name, appid, match_quality)
 
-    appid, game_name, is_from_search = await resolve_game_input(game_query)
-    if is_from_search:
-        await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
-    return appid, limit
+    if parse_limit:
+        return appid, limit
+    return appid
 
 
 async def batch_download_images(
@@ -166,19 +133,18 @@ async def batch_download_images(
     save_dir: str,
     max_concurrency: int = 5,
 ) -> list[str | None]:
-    """批量下载图片（向下兼容封装，底层使用 downloader.download）"""
+    """批量下载图片"""
     paths = await download(urls, save_dir=save_dir, max_concurrency=max_concurrency)
     return [str(p) if p is not None else None for p in paths]
 
 
 async def resolve_target_steamid64(ev: Event, text: str = "") -> str | None:
-    """三级回退：auto2steamid64(text) → @他人的主ID → 当前用户的主ID。
-    注意：会修改 ev.user_id 以支持 @他人。
-    """
+    """解析查询目标"""
+    owner_user_id = ev.user_id
     if ev.at:
         if not SteamConfig.get_config("AllowAt").data:
             raise SteamValidationError("未开启 @ 他人获取他人信息功能")
-        ev.user_id = ev.at
+        owner_user_id = ev.at
 
     if text:
         steamid64 = auto2steamid64(text.strip())
@@ -186,19 +152,19 @@ async def resolve_target_steamid64(ev: Event, text: str = "") -> str | None:
             return steamid64
 
     return await SteamBind.get_main_id(
-        ev.bot_id, ev.user_id, ev.user_type, ev.group_id
+        ev.bot_id, owner_user_id, ev.user_type, ev.group_id
     )
 
 
 def HideStr(text: str) -> str:
-    """12345678 -> 1*****78"""
+    """打码id"""
     if len(text) < 4:
         return "*" * len(text)
     return text[0] + "*" * (len(text) - 3) + text[-2:]
 
 
 def time_convert_s(seconds: int) -> str:
-    """将秒数转换为人类可读的时长，如 1天2小时30分45秒"""
+    """将秒数转换为人类可读的时长"""
     if seconds < 0:
         seconds = 0
     days = seconds // 86400
@@ -228,36 +194,56 @@ def maybe_hide_steamid(text: str) -> str:
 async def get_user_group_nickname(
     bot_id: str, user_id: str, group_id: str | None
 ) -> str | None:
-    """按 bot_id + user_id + group_id 从 CoreUser 表查询用户在该群的群昵称。
-
-    group_id 为 None 或查询不到有效昵称时返回 None。
-    """
+    """查询用户在该群的群昵称"""
     if not group_id:
         return None
-    try:
-        from gsuid_core.utils.database.models import CoreUser
-        user = await CoreUser.base_select_data(
-            bot_id=bot_id, user_id=user_id, group_id=group_id
-        )
-        if user is not None and user.user_name and user.user_name != "1":
-            return str(user.user_name)
-    except Exception as e:
-        logger.warning(
-            f"[SteamUID] 获取群昵称失败 "
-            f"bot_id={bot_id} user_id={user_id} group_id={group_id}: {e!r}"
-        )
+    from gsuid_core.utils.database.models import CoreUser
+
+    user = await CoreUser.base_select_data(
+        bot_id=bot_id, user_id=user_id, group_id=group_id
+    )
+    if user is not None and user.user_name and user.user_name != "1":
+        return str(user.user_name)
     return None
 
 
+async def get_account_display_name(steamid64: str) -> str:
+    """获取账号展示昵称：本地缓存 → 登录账号名 → 在线摘要"""
+    user_info_raw = await SteamIDInfo.get_steamuserinfo(steamid64)
+    if user_info_raw:
+        try:
+            info = json.loads(user_info_raw)
+            if isinstance(info, dict) and info.get("personaname"):
+                return str(info["personaname"])
+        except Exception:
+            pass
+
+    try:
+        acc = await SteamNextAccount.get_account(steamid64)
+        if acc and acc.account_name:
+            return str(acc.account_name)
+    except Exception:
+        pass
+
+    try:
+        summaries = await get_user_Summaries(steamid64)
+        if summaries and isinstance(summaries, list) and summaries[0].get("personaname"):
+            return str(summaries[0]["personaname"])
+    except Exception:
+        pass
+
+    return "Steam用户"
+
+
 def country_code_to_flag(code: str | None) -> str:
-    """将两字母 ISO 国家代码转换为国旗 Emoji，若无效则返回未知"""
+    """将两字母 ISO 国家代码转换为国旗"""
     if not code or len(code) != 2 or not code.isalpha():
         return "未知"
     return "".join(chr(127397 + ord(c.upper())) for c in code)
 
 
 def calc_account_age(timecreated: int | None) -> str:
-    """计算账号年限（如 8.2年），若无数据则返回 --"""
+    """计算账号年限"""
     if not timecreated or not isinstance(timecreated, (int, float)) or timecreated <= 0:
         return "--"
     diff_sec = time.time() - float(timecreated)
@@ -282,76 +268,33 @@ def is_push_event_enabled(event_name: str) -> bool:
     return event_name in get_enabled_push_events()
 
 
-def resolve_player_status(player: dict) -> tuple[str, str | None]:
-    """返回 (status, game_name): ingame/offline/online"""
-    if player.get("gameid"):
-        return ("ingame", player.get("gameextrainfo", ""))
-    if player.get("personastate", 0) == 0:
-        return ("offline", None)
-    return ("online", None)
-
-
 async def get_user_static_avatar_frame(steamid64: str) -> str | None:
-    """获取用户的静态 Steam 头像框 URL（优先 GetProfileItemsEquipped 静态小图，回退 miniprofile）"""
-    try:
-        items_data = await get_profile_items_equipped(steamid64)
-        if isinstance(items_data, dict):
-            frame = items_data.get("avatar_frame", {})
-            if frame.get("image_small"):
-                return f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
-    except Exception as e:
-        logger.debug(f"[SteamUID] 获取装备头像框异常 steamid={steamid64}: {e}")
-
-    try:
-        miniprofile_data = await get_miniprofile(steamid64)
-        if isinstance(miniprofile_data, dict):
-            frame_url = miniprofile_data.get("avatar_frame")
-            if frame_url:
-                return frame_url
-    except Exception as e:
-        logger.debug(f"[SteamUID] 获取miniprofile头像框异常 steamid={steamid64}: {e}")
-
-    return None
+    """获取用户的静态 Steam 头像框 URL"""
+    assets = await resolve_profile_assets(steamid64)
+    return assets.avatar_frame_url
 
 
 async def get_user_pill_data(steamid64: str) -> dict:
-    """并发查询并聚合构建「药丸型卡片」所需的用户数据字典"""
+    """构建药丸型卡片所需的用户数据字典"""
     players_res, miniprofile_data, items_data = await asyncio.gather(
         get_user_Summaries(steamid64),
         get_miniprofile(steamid64),
         get_profile_items_equipped(steamid64),
         return_exceptions=True,
     )
-
     player = players_res[0] if (isinstance(players_res, list) and players_res) else {}
-    user_name = player.get("personaname", "未知用户")
-    friend_code = steamid64_to_friend_code(steamid64)
 
-    avatar_url = player.get("avatarfull", "")
-    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
-        avatar_url = miniprofile_data["avatar_url"]
-
-    avatar_frame_url = None
-    if isinstance(items_data, dict):
-        frame = items_data.get("avatar_frame", {})
-        if frame.get("image_small"):
-            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
-    if not avatar_frame_url and isinstance(miniprofile_data, dict):
-        avatar_frame_url = miniprofile_data.get("avatar_frame")
-
-    bg_url = None
-    if isinstance(items_data, dict):
-        mini_bg = items_data.get("mini_profile_background", {})
-        if mini_bg.get("image_large"):
-            bg_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
-    if not bg_url and isinstance(miniprofile_data, dict):
-        bg = miniprofile_data.get("profile_background", {})
-        bg_url = bg.get("image")
+    assets = await resolve_profile_assets(
+        steamid64,
+        player=player,
+        miniprofile_data=miniprofile_data,
+        items_data=items_data,
+    )
 
     return {
-        "name": user_name,
-        "friend_code": friend_code,
-        "avatar_url": avatar_url,
-        "avatar_frame_url": avatar_frame_url,
-        "bg_url": bg_url,
+        "name": player.get("personaname", "未知用户"),
+        "friend_code": steamid64_to_friend_code(steamid64),
+        "avatar_url": assets.avatar_url,
+        "avatar_frame_url": assets.avatar_frame_url,
+        "bg_url": assets.bg_url,
     }

@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""Steam WebAuth：IAuthenticationService 凭据登录协议（不依赖 steam-next 包）。"""
+"""Steam WebAuth IAuthenticationService 凭据登录协议"""
 import os
 from base64 import b64encode
 from binascii import hexlify
@@ -10,6 +9,7 @@ from Cryptodome.Cipher import PKCS1_v1_5
 from Cryptodome.PublicKey.RSA import construct as rsa_construct
 from gsuid_core.logger import logger
 
+from ..helpers.credentials import apply_cookies
 from .client import (
     DEFAULT_ACCEPT_LANGUAGE,
     DEFAULT_USER_AGENT,
@@ -251,7 +251,7 @@ class SteamWebAuth:
         }
 
     async def check_app_confirmation(self) -> dict:
-        if getattr(self, "logged_on", False):
+        if self.logged_on:
             return {
                 "ok": True,
                 "done": True,
@@ -280,13 +280,14 @@ class SteamWebAuth:
         self.session_id = generate_session_id()
         self.logged_on = True
 
-        for domain in STEAM_DOMAINS:
-            self.client.cookies.set("sessionid", self.session_id, domain=domain)
-            self.client.cookies.set(
-                "steamLoginSecure",
-                f"{self.steam_id}||{self.access_token}",
-                domain=domain,
-            )
+        apply_cookies(
+            self.client,
+            {
+                "sessionid": self.session_id,
+                "steamLoginSecure": f"{self.steam_id}||{self.access_token}",
+            },
+            STEAM_DOMAINS,
+        )
 
     def get_credentials(self) -> dict:
         cookies_dict = {}

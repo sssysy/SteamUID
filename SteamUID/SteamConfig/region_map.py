@@ -120,30 +120,17 @@ def get_current_region() -> SteamRegion:
     """从 SteamConfig 中读取当前配置的地区并解析为 SteamRegion。"""
     try:
         from . import SteamConfig
-        # 优先读取新配置 country，兼容老配置 pricecc
-        country_cfg = None
-        try:
-            country_cfg = SteamConfig.get_config("country").data
-        except Exception:
-            pass
-
-        if not country_cfg:
-            try:
-                country_cfg = SteamConfig.get_config("pricecc").data
-            except Exception:
-                pass
-
+        country_cfg = SteamConfig.get_config("country").data
         if isinstance(country_cfg, list) and country_cfg:
             country_cfg = country_cfg[0]
-
         return get_region(country_cfg)
     except Exception:
         return DEFAULT_REGION
 
 
 def get_current_cc() -> str:
-    """获取当前配置的 Steam 地区代码（如 cn, hk, us, jp 等）。"""
-    return get_current_region().cc
+    """获取当前配置的 Steam 地区代码（如 CN, HK, US, JP 等）。"""
+    return get_current_region().cc.upper()
 
 
 def get_current_lang() -> str:

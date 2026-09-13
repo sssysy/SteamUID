@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import base64
@@ -35,6 +34,19 @@ def _get_icon_base64() -> str:
         data = base64.b64encode(_ICON_PATH.read_bytes()).decode("ascii")
         return f"data:image/png;base64,{data}"
     return "/steam/login/logo"
+
+
+def _inject_template(html_content: str, values: dict[str, str]) -> str:
+    """极简模板注入：``{{ key }}`` 占位符逐一替换，值统一做 HTML 转义。"""
+    import html as html_lib
+
+    for key, value in values.items():
+        placeholder = "{{ " + key + " }}"
+        if placeholder not in html_content:
+            logger.warning(f"[SteamLogin] 登录模板缺少占位符 {placeholder}，注入被跳过")
+            continue
+        html_content = html_content.replace(placeholder, html_lib.escape(str(value)))
+    return html_content
 
 
 class _LoginPayload(BaseModel):
@@ -123,12 +135,14 @@ async def steam_login_entry(request: Request):
         return HTMLResponse("<h3>登录模板丢失，请检查后台文件完整性。</h3>", status_code=500)
 
     html_content = index_html.read_text(encoding="utf-8")
-    # 注入 auth token
-    html_content = html_content.replace("value=\"{{ auth | default('') }}\"", f'value="{token}"')
-    # 注入 Logo
-    html_content = html_content.replace("{{ logo_src }}", _get_icon_base64())
-    # 注入登录校验码
-    html_content = html_content.replace("{{ verify_code }}", str(state.user_id or ""))
+    html_content = _inject_template(
+        html_content,
+        {
+            "auth": token,
+            "logo_src": _get_icon_base64(),
+            "verify_code": str(state.user_id or ""),
+        },
+    )
 
     return HTMLResponse(html_content, status_code=200)
 

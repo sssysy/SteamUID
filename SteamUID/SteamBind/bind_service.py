@@ -4,13 +4,20 @@ import asyncio
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..utils.Api import (
-    get_user_Summaries,
-    get_miniprofile,
-    get_profile_items_equipped,
-)
+from ..utils.Api import get_user_Summaries
 from ..utils.database.models import SteamIDInfo, SteamBind, SteamNextAccount
-from ..utils.exceptions import SteamValidationError
+from ..utils.exceptions import (
+    SteamAlreadyBoundBySelf,
+    SteamBoundByOthers,
+    SteamValidationError,
+    unwrap,
+)
+from ..utils.helpers.profile import resolve_profile_assets
+from ..utils.helpers.steam_state import (
+    VISIBILITY_FRIENDS_ONLY,
+    VISIBILITY_PRIVATE,
+    VISIBILITY_PUBLIC,
+)
 from ..utils.utils import steamid64_to_friend_code, maybe_hide_steamid
 from ..SteamConfig import SteamConfig
 
@@ -27,13 +34,14 @@ async def update_steam_info(steamid64: str, steamid_info: list) -> bool:
 
 
 def check_steamid_visible(player: dict) -> str:
-    visible = player.get("communityvisibilitystate", 4)
-    if visible == 1:
+    visible = player.get("communityvisibilitystate", VISIBILITY_PUBLIC)
+    if visible == VISIBILITY_PRIVATE:
         return "注意：当前绑定steamid状态未公开，无法获取状态变更信息！"
-    elif visible == 2:
+    if visible == VISIBILITY_FRIENDS_ONLY:
         return "注意：当前绑定steamid状态仅限好友查看，可能无法获取状态变更信息！"
-    else:
+    if visible == VISIBILITY_PUBLIC:
         return ""
+    return "注意：当前绑定steamid状态未知，可能无法获取状态变更信息！"
 
 def get_push_default(name: str) -> bool:
     """获取默认开启推送事件"""
@@ -62,9 +70,9 @@ async def do_bind(
                 for sub in existing if sub.user_id == ev.user_id and sub.bot_id == ev.bot_id
             )
             if is_binding_here:
-                raise SteamValidationError("你已在该群绑定该steamid！")
+                raise SteamAlreadyBoundBySelf("你已在该群绑定该steamid！")
         else:
-            raise SteamValidationError("该steamid已被他人绑定！")
+            raise SteamBoundByOthers("该steamid已被他人绑定！")
 
     steamid_info = await get_user_Summaries(steamid64)
     if not await update_steam_info(steamid64, steamid_info):
@@ -178,37 +186,8 @@ async def switch_main_id(ev: Event, steamid64: str) -> str:
 
 async def _fetch_extra_profile(sid: str) -> tuple[str | None, str | None, str | None]:
     """并发获取 Steam 迷你资料与装备项，解析 (avatar_url, avatar_frame_url, bg_url)"""
-    try:
-        miniprofile_data, items_data = await asyncio.gather(
-            get_miniprofile(sid),
-            get_profile_items_equipped(sid),
-            return_exceptions=True,
-        )
-    except Exception:
-        miniprofile_data, items_data = {}, {}
-
-    avatar_url = None
-    if isinstance(miniprofile_data, dict) and miniprofile_data.get("avatar_url"):
-        avatar_url = miniprofile_data["avatar_url"]
-
-    avatar_frame_url = None
-    if isinstance(items_data, dict):
-        frame = items_data.get("avatar_frame", {})
-        if frame.get("image_small"):
-            avatar_frame_url = f"https://shared.fastly.steamstatic.com/community_assets/images/{frame['image_small']}"
-    if not avatar_frame_url and isinstance(miniprofile_data, dict):
-        avatar_frame_url = miniprofile_data.get("avatar_frame")
-
-    bg_img = None
-    if isinstance(items_data, dict):
-        mini_bg = items_data.get("mini_profile_background", {})
-        if mini_bg.get("image_large"):
-            bg_img = f"https://shared.fastly.steamstatic.com/community_assets/images/{mini_bg['image_large']}"
-    if not bg_img and isinstance(miniprofile_data, dict):
-        bg = miniprofile_data.get("profile_background", {})
-        bg_img = bg.get("image")
-
-    return avatar_url, avatar_frame_url, bg_img
+    assets = await resolve_profile_assets(sid)
+    return assets.avatar_url or None, assets.avatar_frame_url, assets.bg_url
 
 
 async def get_bind_card_data(
@@ -237,10 +216,7 @@ async def get_bind_card_data(
     extra_results = await asyncio.gather(*extra_tasks, return_exceptions=True)
     extra_map: dict[str, tuple[str | None, str | None, str | None]] = {}
     for sid, res in zip(unique_sids, extra_results):
-        if isinstance(res, tuple):
-            extra_map[sid] = res
-        else:
-            extra_map[sid] = (None, None, None)
+        extra_map[sid] = unwrap(res, (None, None, None), expect=tuple)
 
     # 查询 WebAuth 登录授权状态
     try:

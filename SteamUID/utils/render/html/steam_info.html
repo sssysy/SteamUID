@@ -2,8 +2,7 @@
 <html lang="zh-cn">
 <head>
     <meta charset="UTF-8">
-        <link rel="stylesheet" href="../css/common.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/steam_info.css">
 </head>
 <body>
@@ -18,7 +17,7 @@
         <div class="profile_header">
             <div class="avatar_wrapper">
                 {{avatar_frame_html}}
-                <img class="avatar_img" src="{{avatar_url}}" alt="">
+                <img class="avatar_img" src="{{avatar_url}}" onerror="this.onerror=null;this.src='{{default_avatar}}'" alt="">
             </div>
             <div class="profile_info">
                 <div class="persona_name">{{persona_name}}</div>

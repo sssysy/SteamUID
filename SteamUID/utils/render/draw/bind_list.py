@@ -32,13 +32,8 @@ def render_bind_list_html(
     template = _BIND_LIST_TEMPLATE_PATH.read_text(encoding="utf-8")
     default_avatar = _get_default_icon_b64()
 
-    # QQ 头像
-    if not qq_avatar_url:
-        uid = str(user_id)
-        if uid.isdigit():
-            qq_avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={uid}&s=640"
-        else:
-            qq_avatar_url = default_avatar
+    # QQ 头像缺失时统一使用插件默认头像
+    qq_avatar_url = qq_avatar_url or default_avatar
 
     display_user_name = html_lib.escape(user_name or user_id or "用户")
 

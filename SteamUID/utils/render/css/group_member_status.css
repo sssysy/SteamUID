@@ -36,6 +36,7 @@
         /* 药丸型账号卡片 */
         .pill-item {
             position: relative;
+            width: 100%;
             height: 74px;
             border-radius: 9999px;
             overflow: hidden;

@@ -1,7 +1,7 @@
 import pathlib
 from typing import Any
 
-from ..render import _fill_template, render_html
+from ..render import _fill_template, _get_default_icon_b64, render_html
 
 _STEAM_INFO_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "steam_info.html"
 
@@ -52,6 +52,7 @@ def render_steam_info_html(data: Any) -> str:
 
     replacements = {
         "avatar_url": fields["avatar_url"],
+        "default_avatar": _get_default_icon_b64(),
         "avatar_frame_html": avatar_frame_html,
         "background_html": background_html,
         "persona_name": fields["persona_name"],

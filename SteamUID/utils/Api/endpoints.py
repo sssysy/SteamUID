@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""Steam 接口路径常量集中地。"""
+"""Steam 接口路径常量"""
 
 from ...SteamConfig.interface import SteamAPI
 
@@ -23,10 +22,6 @@ STORE_REGISTER_KEY = "/account/ajaxregisterkey/"
 STORE_GENERATE_DISCOVERY_QUEUE = "/explore/generatenewdiscoveryqueue"
 STORE_ACCOUNT_HOME = "/account/"
 
-# IFamilyGroupsService（预留：需 access_token）
-FAMILY_GET_FOR_USER = "/IFamilyGroupsService/GetFamilyGroupForUser/v1"
-FAMILY_GET_SHARED_APPS = "/IFamilyGroupsService/GetSharedLibraryApps/v1"
-
 __all__ = [
     "SteamAPI",
     "API_BASE_DEFAULT",
@@ -42,6 +37,4 @@ __all__ = [
     "STORE_REGISTER_KEY",
     "STORE_GENERATE_DISCOVERY_QUEUE",
     "STORE_ACCOUNT_HOME",
-    "FAMILY_GET_FOR_USER",
-    "FAMILY_GET_SHARED_APPS",
 ]

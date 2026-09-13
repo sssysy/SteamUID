@@ -8,26 +8,21 @@ from ..utils.Api import (
     get_miniprofile,
     get_profile_items_equipped,
     get_price_data,
-    clear_user_mem_cache,
 )
 from ..utils.database.models_cache import SteamApiCache
 
 
 async def refresh_user_cache(steamids: list[str]) -> int:
-    """清除并强制重新请求指定的 steamid64 用户信息缓存（支持批量）"""
+    """强制重新拉取指定 steamid64 的用户信息并写入持久缓存（支持批量）"""
     import asyncio
 
     if not steamids:
         return 0
 
-    # 1. 先清除指定用户的所有内存缓存
-    for sid in steamids:
-        await clear_user_mem_cache(sid)
-
-    # 2. 批量重新拉取玩家摘要并缓存
+    # 批量重新拉取玩家摘要并缓存
     await get_user_Summaries(steamids)
 
-    # 3. 并发拉取 miniprofile 与 profile_items_equipped
+    # 并发拉取 miniprofile 与 profile_items_equipped
     tasks = []
     for sid in steamids:
         tasks.append(get_miniprofile(sid))

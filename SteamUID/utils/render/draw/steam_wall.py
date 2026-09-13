@@ -6,6 +6,7 @@ from ..render import (
     render_html,
 )
 from .account_pill import render_account_pill_html
+from ...Api.cover import get_official_cover_url
 
 _STEAM_WALL_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "steam_wall.html"
 
@@ -67,7 +68,7 @@ def render_steam_wall_html(
 
             cover_url = (
                 g.get("cover_url")
-                or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
+                or get_official_cover_url(appid, "header")
             )
 
             item_html = (

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import asyncio
@@ -49,8 +48,7 @@ def generate_auth_token(user_id: str) -> str:
 
 def get_base_url() -> str:
     """获取外网/穿透访问基地址"""
-    base = SteamConfig.get_config("gscoreBaseURL").data.strip()
-    return base or "http://127.0.0.1:8765"
+    return SteamConfig.get_config("gscoreBaseURL").data.strip()
 
 
 async def save_account_credentials(creds: dict):

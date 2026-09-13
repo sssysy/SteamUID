@@ -59,11 +59,7 @@ if _file_cache_days and _file_cache_days > 0:
         await purge_file_cache(days=_file_cache_days)
 
 # steam 自动探索队列每日定时任务
-try:
-    _queue_time = SteamConfig.get_config("AutoQueueTime").data
-    _hour, _minute = _queue_time[0], _queue_time[1]
-except Exception:
-    _hour, _minute = 8, 0
+_hour, _minute = SteamConfig.get_config("AutoQueueTime").data
 
 
 @scheduler.scheduled_job("cron", hour=_hour, minute=_minute)

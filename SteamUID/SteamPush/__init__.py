@@ -79,7 +79,8 @@ async def switch_push(
 
     success_count = len(subs) - len(error_ids)
     if success_count == 0:
-        return "\n".join(messages)
+        # 失败原因已在 messages 里；万一为空也保证有回复，不静默
+        return "\n".join(messages) or "推送状态切换失败，详情请查看后台日志"
     elif success_count < len(subs):
         messages.append("其余绑定的steamid推送状态切换成功")
         return "\n".join(messages)
