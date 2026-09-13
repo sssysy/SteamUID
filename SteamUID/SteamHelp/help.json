@@ -245,14 +245,6 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      },
-      {
-        "name": "测试订阅公告",
-        "desc": "直接获取指定游戏最新公告并模拟一次推送",
-        "eg": "测试订阅公告cs2",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
       }
     ]
   },
