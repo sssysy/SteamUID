@@ -363,11 +363,7 @@ async def my_game_ranking(bot: Bot, ev: Event):
         )
         return
 
-    title_text = (
-        f"steam 我的游戏排行 Top{len(ranking_list)}: "
-        if is_self
-        else f"steam 个人游戏排行 Top{len(ranking_list)}: "
-    )
+    title_text = "steam统计"
 
     # 右上角账号胶囊：展示查询目标的 Steam 资料
     user_data = None
