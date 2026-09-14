@@ -4,9 +4,11 @@ import pathlib
 from ..render import (
     _DEFAULT_GAME_COVER_SVG,
     _fill_template,
+    _get_default_icon_b64,
     format_ranking_duration,
     render_html,
 )
+from .account_pill import render_account_pill_html
 from ...Api.cover import get_official_cover_url
 
 _GAME_RANKING_TEMPLATE_PATH = pathlib.Path(__file__).parent.parent / "html" / "game_ranking.html"
@@ -17,6 +19,7 @@ def render_game_ranking_html(
     top_count: int | None = None,
     canvas_width: int = 680,
     title_text: str | None = None,
+    user_data: dict | None = None,
 ) -> str:
     """构建 Steam 游戏排行榜卡片的 HTML 字符串。
 
@@ -25,11 +28,21 @@ def render_game_ranking_html(
         - game_name: str
         - total_duration: int (秒)
         - cover_url: str (可选)
+
+    user_data 字典格式 (可选，右上角账号胶囊):
+        - name: str (Steam 昵称)
+        - friend_code: str (Steam 好友码)
+        - avatar_url: str (Steam 头像 URL)
+        - avatar_frame_url: str | None (Steam 头像框 URL)
+        - bg_url: str | None (Steam 迷你资料背景 URL)
     """
     template = _GAME_RANKING_TEMPLATE_PATH.read_text(encoding="utf-8")
     actual_count = len(ranking_data)
     if title_text is None:
         title_text = f"steam 群游戏排行 Top{actual_count}: "
+
+    default_avatar = _get_default_icon_b64()
+    account_pill_html = render_account_pill_html(user_data, default_avatar) if user_data else ""
 
     items_html_parts = []
     for idx, item in enumerate(ranking_data, 1):
@@ -71,6 +84,7 @@ def render_game_ranking_html(
     replacements = {
         "canvas_width": str(canvas_width),
         "title_text": title_text,
+        "account_pill_html": account_pill_html,
         "items_html": items_html,
     }
 
@@ -81,6 +95,7 @@ async def render_game_ranking(
     ranking_data: list[dict],
     top_count: int | None = None,
     title_text: str | None = None,
+    user_data: dict | None = None,
 ) -> bytes:
     """渲染 Steam 游戏排行榜卡片为 PNG 字节。"""
     canvas_w = 680
@@ -89,9 +104,12 @@ async def render_game_ranking(
         top_count,
         canvas_width=canvas_w,
         title_text=title_text,
+        user_data=user_data,
     )
     item_count = len(ranking_data)
-    est_height = 80 + item_count * 58 + 50 + 35
+    # 有账号胶囊时表头更高（标题行 + 胶囊 + 列头行）
+    header_extra = 78 if user_data else 0
+    est_height = 80 + header_extra + item_count * 58 + 50 + 35
     return await render_html(
         html_content,
         ".ranking-container",

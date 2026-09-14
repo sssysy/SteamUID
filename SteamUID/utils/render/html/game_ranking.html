@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/components.css">
     <link rel="stylesheet" href="../css/game_ranking.css">
 </head>
 <body>
 <div class="ranking-container">
     <div class="ranking-header">
-        <div class="ranking-title">{{title_text}}</div>
-        <div class="header-cols">
+        <div class="ranking-header-top">
+            <div class="ranking-title">{{title_text}}</div>
+            {{account_pill_html}}
+        </div>
+        <div class="ranking-header-cols">
             <div class="header-col-rank">排名</div>
             <div class="header-col-duration">群累计时长</div>
         </div>

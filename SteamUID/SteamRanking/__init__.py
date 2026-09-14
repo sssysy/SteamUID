@@ -28,6 +28,7 @@ from ..utils.helpers.steam_state import resolve_player_status
 from ..utils.utils import (
     auto2steamid64,
     resolve_target_appid,
+    steamid64_to_friend_code,
     time_convert_s,
 )
 
@@ -291,6 +292,20 @@ async def game_ranking(bot: Bot, ev: Event):
 
 
 
+async def _build_ranking_account_pill(steamid64: str) -> dict:
+    """为排行卡片右上角账号胶囊组装 Steam 用户资料"""
+    players_res = await get_user_Summaries([steamid64])
+    player = players_res[0] if isinstance(players_res, list) and players_res else {}
+    assets = await resolve_profile_assets(steamid64, player=player)
+    return {
+        "name": player.get("personaname", "未知用户"),
+        "friend_code": steamid64_to_friend_code(steamid64),
+        "avatar_url": assets.avatar_url,
+        "avatar_frame_url": assets.avatar_frame_url,
+        "bg_url": assets.bg_url,
+    }
+
+
 @steam_command("SteamRanking - 我的统计")
 @ranking_sv.on_command(("统计", "排行", "排名"))
 async def my_game_ranking(bot: Bot, ev: Event):
@@ -323,6 +338,7 @@ async def my_game_ranking(bot: Bot, ev: Event):
     if target_steamid64:
         target_steamids = [target_steamid64]
         is_self = False
+        pill_steamid = target_steamid64
     else:
         is_self = (target_user_id == ev.user_id)
         binds = await SteamBind.get_binds_by_user(
@@ -334,7 +350,9 @@ async def my_game_ranking(bot: Bot, ev: Event):
                 if is_self
                 else "对方在当前群未绑定 Steam 账号"
             )
+        # 主绑定（列表首个）用于右上角账号胶囊展示
         target_steamids = list({b.steamid64 for b in binds})
+        pill_steamid = binds[0].steamid64
 
     ranking_list = await get_user_game_ranking_list(target_steamids, limit=limit)
     if not ranking_list:
@@ -351,7 +369,16 @@ async def my_game_ranking(bot: Bot, ev: Event):
         else f"steam 个人游戏排行 Top{len(ranking_list)}: "
     )
 
-    img_bytes = await render_game_ranking(ranking_list, title_text=title_text)
+    # 右上角账号胶囊：展示查询目标的 Steam 资料
+    user_data = None
+    try:
+        user_data = await _build_ranking_account_pill(pill_steamid)
+    except Exception as e:
+        logger.warning(f"[SteamUID - 统计] 获取账号胶囊资料失败，跳过胶囊: {e}")
+
+    img_bytes = await render_game_ranking(
+        ranking_list, title_text=title_text, user_data=user_data
+    )
     await bot.send(MessageSegment.image(img_bytes))
 
 

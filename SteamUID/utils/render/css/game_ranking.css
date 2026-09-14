@@ -10,13 +10,17 @@
             color: #ffffff;
         }
 
-        /* 顶部表头 */
+        /* 顶部表头与账号胶囊 */
         .ranking-header {
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+        }
+
+        .ranking-header-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-bottom: 16px;
-            margin-bottom: 8px;
+            gap: 16px;
         }
 
         .ranking-title {
@@ -24,12 +28,16 @@
             font-weight: 700;
             color: #ffffff;
             letter-spacing: -0.2px;
+            white-space: nowrap;
         }
 
-        .header-cols {
+        .ranking-header-cols {
             display: flex;
             align-items: center;
+            justify-content: flex-end;
             gap: 20px;
+            margin-top: 14px;
+            padding-right: 6px;
         }
 
         .header-col-rank {
