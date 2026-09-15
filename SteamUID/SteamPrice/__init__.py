@@ -8,7 +8,7 @@ from gsuid_core.subscribe import gs_subscribe
 from ..utils.database.models import SteamPriceInfo
 from ..utils.Api import get_game_cover_url, get_game_info, get_price_data
 from ..utils.render import render_game_price_drop
-from ..utils.utils import resolve_target_appid
+from ..utils.helpers.game import resolve_target_appid
 from ..SteamConfig import SteamConfig, get_current_region
 from ..SteamConfig.interface import SteamAPI
 import json

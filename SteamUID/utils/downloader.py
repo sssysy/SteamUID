@@ -176,6 +176,16 @@ async def download(
     return results
 
 
+async def batch_download_images(
+    urls: Sequence[str],
+    save_dir: str,
+    max_concurrency: int = 5,
+) -> List[str | None]:
+    """批量下载图片，返回本地路径字符串列表（失败项为 None）"""
+    paths = await download(urls, save_dir=save_dir, max_concurrency=max_concurrency)
+    return [str(p) if p is not None else None for p in paths]
+
+
 _HTML_RES_URL_PATTERN = re.compile(
     r"""(?i)(?:src|href|background|url)\s*=\s*['"](https?://[^'"]+)['"]|url\(\s*['"]?(https?://[^'")]+)['"]?\s*\)"""
 )

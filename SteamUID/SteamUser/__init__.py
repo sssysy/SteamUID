@@ -21,7 +21,7 @@ from .user_service import (
     refresh_user_cache,
 )
 from ..utils.database.models import SteamBind, SteamNextAccount
-from ..utils.helpers.profile import resolve_profile_assets
+from ..utils.helpers.profile import calc_account_age, resolve_profile_assets
 from ..utils.helpers.steam_state import (
     VISIBILITY_PRIVATE,
     VISIBILITY_PUBLIC,
@@ -30,7 +30,6 @@ from ..utils.helpers.steam_state import (
 )
 from ..utils.utils import (
     country_code_to_flag,
-    calc_account_age,
     steamid64_to_friend_code,
     maybe_hide_steamid,
     resolve_target_steamid64,

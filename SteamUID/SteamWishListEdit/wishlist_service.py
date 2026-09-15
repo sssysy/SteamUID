@@ -8,7 +8,7 @@ from gsuid_core.models import Event
 from ..utils.Api import add_to_wishlist, remove_from_wishlist
 from ..utils.database.models import SteamBind, SteamNextAccount
 from ..utils.exceptions import SteamValidationError
-from ..utils.utils import _send_match_tip, resolve_game_input
+from ..utils.helpers.game import resolve_game_input, send_match_tip
 
 
 async def _resolve_account_and_game(bot: Bot, ev: Event, tip_example: str):
@@ -31,7 +31,7 @@ async def _resolve_account_and_game(bot: Bot, ev: Event, tip_example: str):
         )
 
     appid, game_name, match_quality = await resolve_game_input(raw_text)
-    await _send_match_tip(bot, game_name, appid, match_quality)
+    await send_match_tip(bot, game_name, appid, match_quality)
     return acc.access_token, appid, game_name
 
 

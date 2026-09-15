@@ -1,12 +1,18 @@
-"""用户装扮资产（头像 / 头像框 / 背景 / 等级 / 徽章）统一解析 数据来自两个互补的接口"""
+"""用户装扮资产（头像 / 头像框 / 背景 / 等级 / 徽章）与账号展示信息统一解析。"""
 
 from __future__ import annotations
 
 import asyncio
+import json
+import time
 from dataclasses import dataclass
 from typing import Any
 
-from ..Api import get_miniprofile, get_profile_items_equipped
+from ..Api import (
+    get_miniprofile,
+    get_profile_items_equipped,
+    get_user_Summaries,
+)
 
 # Steam 社区静态资源统一前缀
 FASTLY_COMMUNITY_IMAGE_PREFIX = "https://shared.fastly.steamstatic.com/community_assets/images/"
@@ -120,3 +126,78 @@ async def resolve_profile_assets(
             assets.badge_xp = str(badge.get("xp", "")) if badge.get("xp") else None
 
     return assets
+
+
+def calc_account_age(timecreated: int | None) -> str:
+    """计算账号年限"""
+    if not timecreated or not isinstance(timecreated, (int, float)) or timecreated <= 0:
+        return "--"
+    diff_sec = time.time() - float(timecreated)
+    if diff_sec <= 0:
+        return "0.0年"
+    years = diff_sec / (365.25 * 86400)
+    return f"{years:.1f}年"
+
+
+async def get_account_display_name(steamid64: str) -> str:
+    """获取账号展示昵称：本地缓存 → 登录账号名 → 在线摘要"""
+    from ..database.models import SteamIDInfo, SteamNextAccount
+
+    user_info_raw = await SteamIDInfo.get_steamuserinfo(steamid64)
+    if user_info_raw:
+        try:
+            info = json.loads(user_info_raw)
+            if isinstance(info, dict) and info.get("personaname"):
+                return str(info["personaname"])
+        except Exception:
+            pass
+
+    try:
+        acc = await SteamNextAccount.get_account(steamid64)
+        if acc and acc.account_name:
+            return str(acc.account_name)
+    except Exception:
+        pass
+
+    try:
+        summaries = await get_user_Summaries(steamid64)
+        if summaries and isinstance(summaries, list) and summaries[0].get("personaname"):
+            return str(summaries[0]["personaname"])
+    except Exception:
+        pass
+
+    return "Steam用户"
+
+
+async def get_user_static_avatar_frame(steamid64: str) -> str | None:
+    """获取用户的静态 Steam 头像框 URL"""
+    assets = await resolve_profile_assets(steamid64)
+    return assets.avatar_frame_url
+
+
+async def get_user_pill_data(steamid64: str) -> dict:
+    """构建药丸型卡片所需的用户数据字典"""
+    from ..utils import steamid64_to_friend_code
+
+    players_res, miniprofile_data, items_data = await asyncio.gather(
+        get_user_Summaries(steamid64),
+        get_miniprofile(steamid64),
+        get_profile_items_equipped(steamid64),
+        return_exceptions=True,
+    )
+    player = players_res[0] if (isinstance(players_res, list) and players_res) else {}
+
+    assets = await resolve_profile_assets(
+        steamid64,
+        player=player,
+        miniprofile_data=miniprofile_data,
+        items_data=items_data,
+    )
+
+    return {
+        "name": player.get("personaname", "未知用户"),
+        "friend_code": steamid64_to_friend_code(steamid64),
+        "avatar_url": assets.avatar_url,
+        "avatar_frame_url": assets.avatar_frame_url,
+        "bg_url": assets.bg_url,
+    }

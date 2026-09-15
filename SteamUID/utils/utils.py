@@ -1,32 +1,17 @@
-import asyncio
-import json
-import time
-from typing import Sequence
+import re
+from typing import List, Optional, Union
 
 from gsuid_core.bot import Bot
+from gsuid_core.gss import gss
 from gsuid_core.logger import logger
-from gsuid_core.models import Event
+from gsuid_core.models import Event, Message
+from gsuid_core.message_models import ButtonType
 
-from .Api import (
-    get_miniprofile,
-    get_profile_items_equipped,
-    get_user_Summaries,
-    search_game_store,
-)
-from .database.models import SteamBind, SteamIDInfo, SteamNextAccount
-from .database.models_cache import SteamApiCache
-from .downloader import download
+from .database.models import SteamBind
 from .exceptions import SteamValidationError
-from .helpers.profile import resolve_profile_assets
 from ..SteamConfig import SteamConfig
 
-
 _BASE_STEAM_ID64 = 76561197960265728
-
-# resolve_game_input 第三个返回值的取值：本次解析的匹配质量
-MATCH_NONE = ""  # 输入为纯数字 AppID，未经搜索
-MATCH_EXACT = "exact"  # 搜索命中 type == 'app' 的本体游戏
-MATCH_FALLBACK = "fallback"  # 搜索结果中无本体游戏，退而使用首项
 
 
 def steamid64_to_friend_code(steamid64: str) -> str:
@@ -42,100 +27,6 @@ def auto2steamid64(count: str | None) -> str | None:
     if int(count) < _BASE_STEAM_ID64:
         count = str(_BASE_STEAM_ID64 + int(count))
     return count
-
-
-async def resolve_game_input(input_text: str) -> tuple[str, str, str]:
-    """解析用户输入的游戏标识（纯数字 AppID 或 游戏名称）"""
-    raw_input = input_text.strip()
-    if not raw_input:
-        raise SteamValidationError("请输入游戏名或 AppID！")
-
-    # 1. 如果是纯数字，直接作为 AppID 处理
-    if raw_input.isdigit():
-        appid = raw_input
-        # 尝试从缓存或详情中获取游戏名称以方便后续使用
-        game_name = appid
-        cached = await SteamApiCache.get_cache(appid)
-        if cached:
-            try:
-                c_data = json.loads(cached)
-                name = c_data.get("data", {}).get("name") if isinstance(c_data, dict) else None
-                if name:
-                    game_name = name
-            except Exception:
-                pass
-        return appid, game_name, MATCH_NONE
-
-    # 2. 如果是非纯数字，调用官方商店搜索接口
-    items = await search_game_store(raw_input)
-    if not items:
-        raise SteamValidationError(f"未找到与【{raw_input}】相关的游戏，请检查游戏名称或直接输入 AppID")
-
-    # 优先选取 type == 'app'（本体游戏），避免优先匹配到 package/sub/bundle
-    target_item = None
-    for item in items:
-        if item.get("type") == "app" and item.get("id") and item.get("name"):
-            target_item = item
-            break
-
-    match_quality = MATCH_EXACT
-    if target_item is None:
-        target_item = items[0]
-        match_quality = MATCH_FALLBACK
-
-    matched_appid = str(target_item.get("id"))
-    matched_name = str(target_item.get("name") or raw_input)
-    return matched_appid, matched_name, match_quality
-
-
-async def _send_match_tip(
-    bot: Bot, game_name: str, appid: str, match_quality: str
-) -> None:
-    """搜索匹配到游戏时提示用户确认；退而使用首项时明确说明未精确匹配。"""
-    if match_quality == MATCH_EXACT:
-        await bot.send(f"猜你想找 {game_name}({appid})，如有错误请使用 appid 精确匹配游戏")
-    elif match_quality == MATCH_FALLBACK:
-        await bot.send(
-            f"未精确匹配到本体游戏，已使用最接近的结果 {game_name}({appid})，"
-            f"如有错误请使用 appid 精确匹配游戏"
-        )
-
-
-async def resolve_target_appid(
-    bot: Bot,
-    text: str,
-    parse_limit: bool = False,
-    default_limit: int = 10,
-) -> str | tuple[str, int]:
-    """从用户输入文本中解析出目标 AppID（支持纯数字 AppID 或游戏名称自动搜索）"""
-    raw_text = text.strip()
-    if not raw_text:
-        raise SteamValidationError("请输入游戏名或 AppID！例如：730 或 艾尔登法环")
-
-    limit = default_limit
-    game_query = raw_text
-    if parse_limit:
-        words = raw_text.split()
-        if len(words) >= 2 and words[-1].isdigit():
-            limit = int(words[-1])
-            game_query = " ".join(words[:-1])
-
-    appid, game_name, match_quality = await resolve_game_input(game_query)
-    await _send_match_tip(bot, game_name, appid, match_quality)
-
-    if parse_limit:
-        return appid, limit
-    return appid
-
-
-async def batch_download_images(
-    urls: Sequence[str],
-    save_dir: str,
-    max_concurrency: int = 5,
-) -> list[str | None]:
-    """批量下载图片"""
-    paths = await download(urls, save_dir=save_dir, max_concurrency=max_concurrency)
-    return [str(p) if p is not None else None for p in paths]
 
 
 async def resolve_target_steamid64(ev: Event, text: str = "") -> str | None:
@@ -207,34 +98,6 @@ async def get_user_group_nickname(
     return None
 
 
-async def get_account_display_name(steamid64: str) -> str:
-    """获取账号展示昵称：本地缓存 → 登录账号名 → 在线摘要"""
-    user_info_raw = await SteamIDInfo.get_steamuserinfo(steamid64)
-    if user_info_raw:
-        try:
-            info = json.loads(user_info_raw)
-            if isinstance(info, dict) and info.get("personaname"):
-                return str(info["personaname"])
-        except Exception:
-            pass
-
-    try:
-        acc = await SteamNextAccount.get_account(steamid64)
-        if acc and acc.account_name:
-            return str(acc.account_name)
-    except Exception:
-        pass
-
-    try:
-        summaries = await get_user_Summaries(steamid64)
-        if summaries and isinstance(summaries, list) and summaries[0].get("personaname"):
-            return str(summaries[0]["personaname"])
-    except Exception:
-        pass
-
-    return "Steam用户"
-
-
 def country_code_to_flag(code: str | None) -> str:
     """将两字母 ISO 国家代码转换为国旗"""
     if not code or len(code) != 2 or not code.isalpha():
@@ -242,59 +105,204 @@ def country_code_to_flag(code: str | None) -> str:
     return "".join(chr(127397 + ord(c.upper())) for c in code)
 
 
-def calc_account_age(timecreated: int | None) -> str:
-    """计算账号年限"""
-    if not timecreated or not isinstance(timecreated, (int, float)) or timecreated <= 0:
-        return "--"
-    diff_sec = time.time() - float(timecreated)
-    if diff_sec <= 0:
-        return "0.0年"
-    years = diff_sec / (365.25 * 86400)
-    return f"{years:.1f}年"
+# ======================== Steam BBCode ========================
+
+STEAM_CLAN_IMAGE_CDN = "https://clan.akamai.steamstatic.com/images"
 
 
-PUSH_EVENTS: dict[str, str] = {
-    "push_start_game": "开始游戏",
-    "push_end_game": "结束游戏",
-    "push_archivement": "获得成就",
-}
+def steam_bbcode_to_html(bbcode_text: str) -> str:
+    """将 Steam 官方公告的所有 BBCode 富文本元素精准转换为美观规范的 HTML。"""
+    if not bbcode_text:
+        return ""
 
+    text = bbcode_text
 
-def get_enabled_push_events() -> set[str]:
-    return set(SteamConfig.get_config("PushSwitch").data)
+    # 1. 替换 Steam 内部图片宏
+    text = text.replace("{STEAM_CLAN_IMAGE}", STEAM_CLAN_IMAGE_CDN)
+    text = text.replace("{STEAM_CLAN_LOC_IMAGE}", STEAM_CLAN_IMAGE_CDN)
 
+    # 2. 处理图片（同时支持 [img src="..."]、[img src=...]、[img]...[/img]、[img=...] 等各种变体）
+    # 2.1 带属性的 [img ... src="url" ...] 或 [img="url"]
+    def _parse_img_tag(match):
+        full_tag = match.group(0)
+        src_match = re.search(r'(?:src=|=)\s*["\']?([^"\'\]\s>]+)', full_tag, re.IGNORECASE)
+        if src_match:
+            url = src_match.group(1).strip()
+            return f'<div class="content-media-wrapper"><img class="content-img" src="{url}" alt=""></div>'
+        return ""
 
-def is_push_event_enabled(event_name: str) -> bool:
-    return event_name in get_enabled_push_events()
-
-
-async def get_user_static_avatar_frame(steamid64: str) -> str | None:
-    """获取用户的静态 Steam 头像框 URL"""
-    assets = await resolve_profile_assets(steamid64)
-    return assets.avatar_frame_url
-
-
-async def get_user_pill_data(steamid64: str) -> dict:
-    """构建药丸型卡片所需的用户数据字典"""
-    players_res, miniprofile_data, items_data = await asyncio.gather(
-        get_user_Summaries(steamid64),
-        get_miniprofile(steamid64),
-        get_profile_items_equipped(steamid64),
-        return_exceptions=True,
-    )
-    player = players_res[0] if (isinstance(players_res, list) and players_res) else {}
-
-    assets = await resolve_profile_assets(
-        steamid64,
-        player=player,
-        miniprofile_data=miniprofile_data,
-        items_data=items_data,
+    text = re.sub(
+        r'\[img\s+[^\]]*?\](?:\[/img\])?|\[img=[^\]]+\](?:\[/img\])?',
+        _parse_img_tag,
+        text,
+        flags=re.IGNORECASE,
     )
 
-    return {
-        "name": player.get("personaname", "未知用户"),
-        "friend_code": steamid64_to_friend_code(steamid64),
-        "avatar_url": assets.avatar_url,
-        "avatar_frame_url": assets.avatar_frame_url,
-        "bg_url": assets.bg_url,
+    # 2.2 常规 [img]URL[/img]
+    def _parse_img_body(match):
+        url = match.group(1).strip()
+        if url:
+            return f'<div class="content-media-wrapper"><img class="content-img" src="{url}" alt=""></div>'
+        return ""
+
+    text = re.sub(
+        r'\[img\](.*?)\[/img\]',
+        _parse_img_body,
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    # 3. 处理 YouTube 视频 [previewyoutube="ID;full"][/previewyoutube] / [youtube]ID[/youtube]
+    def _parse_youtube(match):
+        raw_val = match.group(1).strip().strip('"\'')
+        vid_info = raw_val.split(";")
+        vid_id = vid_info[0].strip().strip('"\'')
+        if vid_id:
+            thumb_url = f"https://img.youtube.com/vi/{vid_id}/hqdefault.jpg"
+            return (
+                f'<div class="content-media-wrapper">'
+                f'<div class="youtube-preview">'
+                f'<img class="content-img" src="{thumb_url}" alt="YouTube Video">'
+                f'<div class="video-play-badge">▶ 视频预览</div>'
+                f'</div></div>'
+            )
+        return ""
+
+    text = re.sub(
+        r'\[previewyoutube=(?:["\'])?([^"\'\]]+)(?:["\'])?\](?:\[/previewyoutube\])?',
+        _parse_youtube,
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r'\[youtube\](.*?)\[/youtube\]',
+        _parse_youtube,
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # 4. 处理标题 [h1], [h2], [h3]
+    text = re.sub(r'\[h1\](.*?)\[/h1\]', r'<h1 class="announce-h1">\1</h1>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[h2\](.*?)\[/h2\]', r'<h2 class="announce-h2">\1</h2>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[h3\](.*?)\[/h3\]', r'<h3 class="announce-h3">\1</h3>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 5. 处理段落 [p ...](.*?)[/p] 及单独残留的 [p ...] / [/p]
+    text = re.sub(r'\[p(?:\s+[^\]]*)?\](.*?)\[/p\]', r'<div class="announce-p">\1</div>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[/?p(?:\s+[^\]]*)?\]', '', text, flags=re.IGNORECASE)
+
+    # 6. 处理分割线 [hr] / [hr][/hr]
+    text = re.sub(r'\[hr\](?:\[/hr\])?', r'<hr class="announce-hr">', text, flags=re.IGNORECASE)
+
+    # 7. 处理链接 [url="..."]...[/url] / [url=...]...[/url] / [dynamiclink href="..."]...[/dynamiclink] / [dynamiclink]
+    def _parse_url(match):
+        raw_url = match.group(1).strip().strip('"\'')
+        label = match.group(2).strip() or raw_url
+        return f'<span class="announce-link">{label}</span>'
+
+    text = re.sub(r'\[url=(?:["\'])?([^"\'\]]+)(?:["\'])?\](.*?)\[/url\]', _parse_url, text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[url\](.*?)\[/url\]', r'<span class="announce-link">\1</span>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[dynamiclink(?:\s+href=(?:["\'])?([^"\'\]]*)(?:["\'])?)?\](.*?)\[/dynamiclink\]', r'<span class="announce-link">\2</span>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 8. 处理样式标签 [b], [i], [u], [strike], [spoiler]
+    text = re.sub(r'\[b\](.*?)\[/b\]', r'<strong>\1</strong>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[i\](.*?)\[/i\]', r'<em>\1</em>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[u\](.*?)\[/u\]', r'<span class="text-underline">\1</span>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[strike\](.*?)\[/strike\]', r'<del>\1</del>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[spoiler\](.*?)\[/spoiler\]', r'<span class="spoiler-text">\1</span>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 9. 处理引用与代码块 [quote], [code]
+    text = re.sub(r'\[quote(?:=[^\]]*)?\](.*?)\[/quote\]', r'<blockquote class="announce-quote">\1</blockquote>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[code\](.*?)\[/code\]', r'<pre class="announce-code"><code>\1</code></pre>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 10. 处理列表 [list] / [olist] / [*] / [/*]
+    def _parse_list(match):
+        content = match.group(1)
+        content = re.sub(r'\[/\*\]', '', content, flags=re.IGNORECASE)
+        items = re.split(r'\[\*\]', content)
+        li_parts = []
+        for it in items:
+            it_clean = it.strip()
+            if it_clean:
+                li_parts.append(f'<li>{it_clean}</li>')
+        return f'<ul class="announce-list">{"".join(li_parts)}</ul>'
+
+    text = re.sub(r'\[list\](.*?)\[/list\]', _parse_list, text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[olist\](.*?)\[/olist\]', _parse_list, text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 11. 处理表格 [table] / [tr] / [th] / [td]
+    text = re.sub(r'\[table\](.*?)\[/table\]', r'<table class="announce-table">\1</table>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[tr\](.*?)\[/tr\]', r'<tr>\1</tr>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[th\](.*?)\[/th\]', r'<th>\1</th>', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\[td\](.*?)\[/td\]', r'<td>\1</td>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 12. 处理折叠/展开 [expand=...]...[/expand] / [expand]...[/expand]
+    text = re.sub(r'\[expand(?:=[^\]]*)?\](.*?)\[/expand\]', r'<div class="announce-expand">\1</div>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # 13. 兜底清理所有形如 [xxx] 或 [/xxx] 的残留 BBCode 标签
+    text = re.sub(r'\[/?[a-zA-Z0-9_\-=:\";/ .#?&%]+\]', '', text)
+
+    # 14. 处理换行：清理多余重复换行并转换 \n 为 <br>
+    text = re.sub(r'\r\n', '\n', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = text.replace('\n', '<br>')
+
+    # 15. 清除块级标签周围多余的 <br>
+    text = re.sub(r'(</(?:h1|h2|h3|blockquote|pre|ul|ol|div|table|tr|th|td|hr)>)<br>', r'\1', text)
+    text = re.sub(r'<br>(<(?:h1|h2|h3|blockquote|pre|ul|ol|div|table|tr|th|td|hr))', r'\1', text)
+
+    return text
+
+
+# ======================== 消息发送 ========================
+
+
+async def send_to_bind(
+    bind,
+    reply: Optional[
+        Union[
+            Message,
+            List[Message],
+            List[str],
+            str,
+            bytes,
+        ]
+    ] = None,
+    option_list: Optional[ButtonType] = None,
+    unsuported_platform: bool = False,
+    sep: str = "\n",
+    command_tips: str = "请输入以下命令之一:",
+    command_start_text: str = "",
+    force_direct: bool = False,
+):
+    user_type = "direct" if force_direct else bind.user_type
+    ev = Event(
+        bot_id=bind.bot_id,
+        user_id=bind.user_id,
+        bot_self_id=bind.bot_self_id,
+        user_type=user_type,
+        group_id=bind.group_id,
+        real_bot_id=bind.bot_id,
+        msg_id="",
+    )
+    params = {
+        "reply": reply,
+        "option_list": option_list,
+        "unsuported_platform": unsuported_platform,
+        "sep": sep,
+        "command_tips": command_tips,
+        "command_start_text": command_start_text,
     }
+
+    if bind.WS_BOT_ID:
+        if bind.WS_BOT_ID in gss.active_bot:
+            BOT = gss.active_bot[bind.WS_BOT_ID]
+            bot = Bot(BOT, ev)
+            await bot.send_option(**params)
+        else:
+            logger.error(f"[SteamBind] 机器人{bind.WS_BOT_ID}不存在, 该消息无法发送!")
+            return -1
+    else:
+        for bot_id in gss.active_bot:
+            BOT = gss.active_bot[bot_id]
+            bot = Bot(BOT, ev)
+            await bot.send_option(**params)

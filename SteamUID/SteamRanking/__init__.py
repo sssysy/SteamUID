@@ -25,9 +25,9 @@ from ..utils.render import (
     render_user_ranking,
 )
 from ..utils.helpers.steam_state import resolve_player_status
+from ..utils.helpers.game import resolve_target_appid
 from ..utils.utils import (
     auto2steamid64,
-    resolve_target_appid,
     steamid64_to_friend_code,
     time_convert_s,
 )

@@ -35,13 +35,15 @@ from ..utils.render import (
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
 from ..utils.exceptions import unwrap
-from ..utils.utils import (
+from ..utils.helpers.profile import get_user_static_avatar_frame
+from ..utils.helpers.push import (
     PUSH_EVENTS,
     get_enabled_push_events,
     is_push_event_enabled,
+)
+from ..utils.utils import (
     get_user_group_nickname,
     steamid64_to_friend_code,
-    get_user_static_avatar_frame,
 )
 
 

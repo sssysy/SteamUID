@@ -423,8 +423,9 @@ class SteamBind(BaseIDModel, table=True):
     is_main_id: bool = Field(default=False, title="是否主ID")
 
     async def send(self, reply=None, **kwargs):
-        """薄委托，路由逻辑见 push_sender.send_to_bind"""
-        from ..sender import send_to_bind
+        """薄委托，路由逻辑见 utils.send_to_bind"""
+        from ..utils import send_to_bind
+
         return await send_to_bind(self, reply, **kwargs)
 
     @classmethod

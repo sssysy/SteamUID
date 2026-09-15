@@ -20,7 +20,7 @@ from ..utils.Api import (
 )
 from ..utils.database.models import SteamBind, SteamNextAccount
 from ..utils.helpers.credentials import apply_cookies
-from ..utils.utils import get_account_display_name
+from ..utils.helpers.profile import get_account_display_name
 
 SUBSCRIBE_TASK_NAME = "订阅Steam自动探索队列"
 
