@@ -41,10 +41,11 @@
             width: 56px;
             height: 56px;
             flex-shrink: 0;
-            z-index: 2;
         }
 
         .game-status-card .avatar {
+            position: relative;
+            z-index: 1;
             width: 56px;
             height: 56px;
             object-fit: cover;
@@ -58,7 +59,7 @@
             width: 118.8%;
             height: 118.8%;
             pointer-events: none;
-            z-index: 2;
+            z-index: 3;
         }
 
         .game-status-card .avatar-frame img {
@@ -73,7 +74,7 @@
             background-color: {{status_bar_color}};
             flex-shrink: 0;
             position: relative;
-            z-index: 3;
+            z-index: 2;
             box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.75);
         }
 
