@@ -14,7 +14,7 @@ from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
 from ..utils.Api import get_app_build_meta
-from ..utils.exceptions import SteamValidationError
+from ..utils.exceptions import SteamError, SteamAPIError
 from ..utils.helpers.acf_vdf import (
     apply_latest_manifest,
     dumps_acf,
@@ -32,26 +32,26 @@ def _safe_name(file_name: str) -> str:
 
 async def _load_file_bytes(ev: Event) -> tuple[bytes, str]:
     if not ev.file:
-        raise SteamValidationError("请在同一条消息中附上 appmanifest_xxx.acf 文件")
+        raise SteamError("请附上 appmanifest_xxx.acf 文件执行命令！")
     file_name = _safe_name(ev.file_name or "appmanifest.acf")
     if not file_name.lower().endswith(".acf"):
-        raise SteamValidationError("仅支持 .acf 文件")
+        raise SteamError("仅支持 .acf 文件")
 
     raw = str(ev.file)
     if ev.file_type == "url" or raw.startswith(("http://", "https://")):
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.get(raw)
             if resp.status_code != 200:
-                raise SteamValidationError(f"下载 acf 文件失败: HTTP {resp.status_code}")
+                raise SteamError(f"下载 acf 文件失败: HTTP {resp.status_code}")
             content = resp.content
     else:
         try:
             content = base64.b64decode(raw)
         except Exception as e:
-            raise SteamValidationError("acf 文件内容解析失败") from e
+            raise SteamError("acf 文件内容解析失败") from e
 
     if not content:
-        raise SteamValidationError("acf 文件内容为空")
+        raise SteamError("acf 文件内容为空")
     return content, file_name
 
 
@@ -77,9 +77,12 @@ async def process_acf_update(bot: Bot, ev: Event) -> None:
         state = get_app_state(root)
         appid = str(state.get("appid") or "").strip()
         if not appid.isdigit():
-            raise SteamValidationError("ACF 中缺少有效的 appid")
+            raise SteamError("ACF 中缺少有效的 appid")
 
-        meta = await get_app_build_meta(appid)
+        try:
+            meta = await get_app_build_meta(appid)
+        except SteamAPIError as e:
+            raise SteamError(str(e)) from e
         updated_depots = apply_latest_manifest(
             root,
             buildid=meta["buildid"],
