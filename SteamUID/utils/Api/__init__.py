@@ -48,6 +48,7 @@ from .cover import (
     get_official_cover_url,
     resolve_games_covers,
 )
+from .pics import get_app_build_meta
 from .wishlist import add_to_wishlist, remove_from_wishlist
 
 __all__ = [
@@ -84,6 +85,8 @@ __all__ = [
     "search_game_store",
     "get_game_announcements",
     "get_user_wishlist",
+    # pics
+    "get_app_build_meta",
     # cover
     "get_game_cover_url",
     "get_official_cover_url",
