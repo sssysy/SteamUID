@@ -113,8 +113,9 @@ def apply_latest_manifest(
     buildid: str,
     depot_manifests: dict[str, str],
 ) -> list[str]:
-    """按约定改写 ACF：DownloadType/buildid/InstalledDepots.manifest；返回被更新的 depot 列表"""
+    """改写 ACF"""
     state = get_app_state(root)
+    state["StateFlags"] = "4"
     state["DownloadType"] = "4"
     state["buildid"] = str(buildid)
 
