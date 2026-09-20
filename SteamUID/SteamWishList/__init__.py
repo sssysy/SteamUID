@@ -8,6 +8,7 @@ from gsuid_core.sv import SV
 
 from ..SteamConfig import SteamConfig, get_current_currency
 from ..utils.Api import (
+    get_api_key,
     get_game_cover_url,
     get_game_info,
     get_miniprofile,
@@ -43,7 +44,7 @@ wishlist_sv = SV("steam愿望单相关")
 async def get_wishlist_card(bot: Bot, ev: Event):
     """获取指定 Steam 用户的愿望单列表并渲染为图片。"""
     # 1. 检查 Steam Web API Key 配置
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    api_key = get_api_key()
     if not api_key:
         raise SteamConfigError("请先配置 steam web api key")
 

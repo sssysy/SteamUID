@@ -12,6 +12,7 @@ from ..helpers.api_fallback import fetch_with_user_token
 from .client import make_async_client
 from .endpoints import SteamAPI
 from .cover import get_game_cover_url, get_official_cover_url
+from .key_pool import request_with_api_key
 
 # Steam 商店年龄与成年内容验证静态 Cookie
 STEAM_STORE_COOKIES = {
@@ -28,7 +29,6 @@ def get_default_cache_ttl() -> float:
 
 async def get_user_Summaries(steamid64: str | list[str]) -> list:
     """获取玩家摘要数据（即时请求不使用缓存）"""
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     if isinstance(steamid64, str):
         steamids = [steamid64]
@@ -46,8 +46,16 @@ async def get_user_Summaries(steamid64: str | list[str]) -> list:
     async def fetch_batch(client: httpx.AsyncClient, batch: list[str]) -> list:
         nonlocal timeout_count
         try:
-            params = {"key": api_key, "steamids": ",".join(batch)}
-            response = await client.get(url, params=params)
+            async def do(key: str):
+                params = {"key": key, "steamids": ",".join(batch)}
+                return await client.get(url, params=params)
+
+            response = await request_with_api_key(do)
+            if response is None:
+                return []
+            if response.status_code == 429:
+                logger.warning(f"[SteamUID] 获取玩家摘要 429 batch={batch[:3]}")
+                return []
             data = response.json()
             return data.get("response", {}).get("players", [])
         except (httpx.TimeoutException, asyncio.TimeoutError) as e:
@@ -142,22 +150,25 @@ async def get_game_icon_url(appid: str, steamid64: str | None = None) -> str:
     """获取游戏的小图标（客户端小logo）URL"""
     if steamid64:
         try:
-            api_key = SteamConfig.get_config("SteamWebAPIKey").data
             base_url = SteamConfig.get_config("APIBaseURL").data
             url = f"{base_url}{SteamAPI.api_GetOwnedGames}"
-            params = {
-                "key": api_key,
-                "steamid": steamid64,
-                "include_appinfo": True,
-                "appids_filter[0]": appid,
-            }
-            async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(url, params=params)
-                if response.status_code == 200:
-                    games = response.json().get("response", {}).get("games", [])
-                    if games and games[0].get("img_icon_url"):
-                        icon_hash = games[0]["img_icon_url"]
-                        return f"https://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{icon_hash}.jpg"
+
+            async def do(key: str):
+                params = {
+                    "key": key,
+                    "steamid": steamid64,
+                    "include_appinfo": True,
+                    "appids_filter[0]": appid,
+                }
+                async with httpx.AsyncClient(timeout=5) as client:
+                    return await client.get(url, params=params)
+
+            response = await request_with_api_key(do)
+            if response is not None and response.status_code == 200:
+                games = response.json().get("response", {}).get("games", [])
+                if games and games[0].get("img_icon_url"):
+                    icon_hash = games[0]["img_icon_url"]
+                    return f"https://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{icon_hash}.jpg"
         except Exception:
             pass
     return get_official_cover_url(appid, "capsule_sm_120")
@@ -186,17 +197,22 @@ async def get_steamlibrary_by_steamid64(api_key: str, steamid64: str) -> dict:
             return body.get("response", {})
 
     # 2. 降级使用公共 api_key 查询公开库
-    params = {
-        "key": api_key,
-        "steamid": steamid64,
-        "include_appinfo": True,
-        "include_played_free_games": True,
-    }
-    try:
+    async def do(key: str):
+        params = {
+            "key": key,
+            "steamid": steamid64,
+            "include_appinfo": True,
+            "include_played_free_games": True,
+        }
         async with make_async_client(timeout=10) as client:
-            response = await client.get(url, params=params)
-            data = response.json()
-            return data.get("response", {})
+            return await client.get(url, params=params)
+
+    try:
+        response = await request_with_api_key(do, preferred_key=api_key)
+        if response is None:
+            return {}
+        data = response.json()
+        return data.get("response", {})
     except (httpx.TimeoutException, asyncio.TimeoutError):
         logger.warning(f"[SteamUID] 获取玩家游戏库超时 steamid={steamid64}")
         raise SteamTimeoutError(TIMEOUT_ERR_MSG)
@@ -224,18 +240,22 @@ async def get_archivement_info(appid: str, steamid64: str):
             return playerstats
 
     # 2. 降级使用公共 key 查询
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
-    params = {
-        "key": api_key,
-        "appid": appid,
-        "steamid": steamid64,
-        "l": current_lang,
-    }
-    try:
+    async def do(key: str):
+        params = {
+            "key": key,
+            "appid": appid,
+            "steamid": steamid64,
+            "l": current_lang,
+        }
         async with make_async_client(timeout=10) as client:
-            response = await client.get(url, params=params)
-            data = response.json()
-            return data.get("playerstats", {})
+            return await client.get(url, params=params)
+
+    try:
+        response = await request_with_api_key(do)
+        if response is None:
+            return {}
+        data = response.json()
+        return data.get("playerstats", {})
     except (httpx.TimeoutException, asyncio.TimeoutError):
         logger.warning(
             f"[SteamUID] 获取玩家成就超时 appid={appid} steamid={steamid64}"
@@ -263,18 +283,23 @@ async def get_archivement_schema(appid: str) -> list[dict]:
     if cached is not None:
         return json.loads(cached)
 
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetSchemaForGame}"
-    params = {
-        "key": api_key,
-        "appid": appid,
-        "l": get_current_lang(),
-    }
     achievements = []
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(url, params=params)
+        async def do(key: str):
+            params = {
+                "key": key,
+                "appid": appid,
+                "l": get_current_lang(),
+            }
+            async with httpx.AsyncClient(timeout=10) as client:
+                return await client.get(url, params=params)
+
+        response = await request_with_api_key(do)
+        if response is None:
+            achievements = []
+        else:
             data = response.json()
             achievements = (
                 data.get("game", {}).get("availableGameStats", {}).get("achievements", [])
@@ -350,16 +375,19 @@ async def get_price_data(appid: str | list[str]) -> dict:
 
 async def get_profile_items_equipped(steamid64: str) -> dict:
     """获取玩家装备项（头像框/动画头像/迷你资料背景，即时请求不用内存缓存）"""
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
     base_url = SteamConfig.get_config("APIBaseURL").data
     url = f"{base_url}{SteamAPI.api_GetProfileItemsEquipped}"
-    params = {"key": api_key, "steamid": steamid64, "l": get_current_lang()}
     try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            response = await client.get(url, params=params)
-            data = response.json()
-            res = data.get("response", {})
-            return res
+        async def do(key: str):
+            params = {"key": key, "steamid": steamid64, "l": get_current_lang()}
+            async with httpx.AsyncClient(timeout=8) as client:
+                return await client.get(url, params=params)
+
+        response = await request_with_api_key(do)
+        if response is None:
+            return {}
+        data = response.json()
+        return data.get("response", {})
     except (httpx.TimeoutException, asyncio.TimeoutError) as e:
         logger.warning(f"[SteamUID] 获取玩家装备项超时 steamid={steamid64}: {e}")
         return {}
@@ -537,24 +565,28 @@ async def get_user_wishlist(steamid64: str) -> list[dict]:
             return items
 
     # 2. 降级使用公共 API Key 查询
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
-    params = {
-        "key": api_key,
-        "steamid": steamid64,
-    }
     try:
-        async with make_async_client(timeout=10) as client:
-            response = await client.get(url, params=params)
-            if response.status_code != 200:
-                logger.warning(
-                    f"[SteamUID] 获取愿望单失败 steamid={steamid64}, status_code={response.status_code}"
-                )
-                return []
-            data = response.json()
-            items = data.get("response", {}).get("items", [])
-            if isinstance(items, list):
-                items.sort(key=lambda x: (x.get("priority", 0), -x.get("date_added", 0)))
-                return items
+        async def do(key: str):
+            params = {
+                "key": key,
+                "steamid": steamid64,
+            }
+            async with make_async_client(timeout=10) as client:
+                return await client.get(url, params=params)
+
+        response = await request_with_api_key(do)
+        if response is None:
+            return []
+        if response.status_code != 200:
+            logger.warning(
+                f"[SteamUID] 获取愿望单失败 steamid={steamid64}, status_code={response.status_code}"
+            )
+            return []
+        data = response.json()
+        items = data.get("response", {}).get("items", [])
+        if isinstance(items, list):
+            items.sort(key=lambda x: (x.get("priority", 0), -x.get("date_added", 0)))
+            return items
     except (httpx.TimeoutException, asyncio.TimeoutError):
         logger.warning(f"[SteamUID] 请求愿望单接口超时 steamid={steamid64}")
         raise SteamTimeoutError(TIMEOUT_ERR_MSG)

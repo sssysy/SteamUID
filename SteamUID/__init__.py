@@ -13,9 +13,9 @@ Plugins(
 @on_core_start
 async def check():
     # 提醒配置steam api key
-    from .SteamConfig import SteamConfig
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
-    if not api_key:
+    from .utils.Api.key_pool import has_api_key
+
+    if not has_api_key():
         logger.warning("[SteamUID] 未检测到 steam web api key，请尽快配置，否则本插件大部分功能将无法使用！")
     
     # 判断是否能连上steam api（失败只告警不中断，后续功能照常启动）

@@ -50,6 +50,7 @@ from .cover import (
 )
 from .pics import get_app_build_meta
 from .wishlist import add_to_wishlist, remove_from_wishlist
+from .key_pool import get_api_key, has_api_key, mark_key_limited, request_with_api_key
 
 __all__ = [
     # auth
@@ -96,6 +97,11 @@ __all__ = [
     # wishlist
     "add_to_wishlist",
     "remove_from_wishlist",
+    # key_pool
+    "get_api_key",
+    "has_api_key",
+    "mark_key_limited",
+    "request_with_api_key",
     # store
     "register_cdkey",
     "generate_discovery_queue",

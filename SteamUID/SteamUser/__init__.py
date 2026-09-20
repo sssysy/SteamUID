@@ -7,8 +7,8 @@ from gsuid_core.sv import SV
 from gsuid_core.segment import MessageSegment
 from gsuid_core.logger import logger
 
-from ..SteamConfig import SteamConfig
 from ..utils.Api import (
+    get_api_key,
     get_user_Summaries,
     get_profile_items_equipped,
     get_miniprofile,
@@ -119,7 +119,7 @@ async def steam_info(bot: Bot, ev: Event):
     if not steamid64:
         raise SteamValidationError("请先绑定 steam 账号")
 
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    api_key = get_api_key()
     if not api_key:
         raise SteamConfigError("请先配置 steam web api key")
 
