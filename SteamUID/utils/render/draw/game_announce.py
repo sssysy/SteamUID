@@ -2,7 +2,7 @@ import datetime
 import html as html_lib
 import pathlib
 
-from ...bbcode import steam_bbcode_to_html
+from ...utils import steam_bbcode_to_html
 from ..render import (
     _DEFAULT_GAME_COVER_SVG,
     _fill_template,

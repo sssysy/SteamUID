@@ -12,7 +12,8 @@ from gsuid_core.models import Event
 from ..utils.Api import get_valid_session, register_cdkey
 from ..utils.database.models import SteamBind, SteamNextAccount
 from ..utils.exceptions import SteamValidationError
-from ..utils.utils import auto2steamid64, get_account_display_name
+from ..utils.helpers.profile import get_account_display_name
+from ..utils.utils import auto2steamid64
 
 # Steam CDKey 格式校验正则：支持 15 位 (5-5-5)、25 位 (5-5-5-5-5) 等标准格式
 CDK_PATTERN = re.compile(r"^[A-Z0-9]{4,5}(-[A-Z0-9]{4,5}){2,4}$")

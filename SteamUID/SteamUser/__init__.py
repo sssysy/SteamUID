@@ -7,8 +7,8 @@ from gsuid_core.sv import SV
 from gsuid_core.segment import MessageSegment
 from gsuid_core.logger import logger
 
-from ..SteamConfig import SteamConfig
 from ..utils.Api import (
+    get_api_key,
     get_user_Summaries,
     get_profile_items_equipped,
     get_miniprofile,
@@ -21,7 +21,7 @@ from .user_service import (
     refresh_user_cache,
 )
 from ..utils.database.models import SteamBind, SteamNextAccount
-from ..utils.helpers.profile import resolve_profile_assets
+from ..utils.helpers.profile import calc_account_age, resolve_profile_assets
 from ..utils.helpers.steam_state import (
     VISIBILITY_PRIVATE,
     VISIBILITY_PUBLIC,
@@ -30,7 +30,6 @@ from ..utils.helpers.steam_state import (
 )
 from ..utils.utils import (
     country_code_to_flag,
-    calc_account_age,
     steamid64_to_friend_code,
     maybe_hide_steamid,
     resolve_target_steamid64,
@@ -120,7 +119,7 @@ async def steam_info(bot: Bot, ev: Event):
     if not steamid64:
         raise SteamValidationError("请先绑定 steam 账号")
 
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    api_key = get_api_key()
     if not api_key:
         raise SteamConfigError("请先配置 steam web api key")
 

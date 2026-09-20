@@ -4,11 +4,11 @@ TIMEOUT_ERR_MSG = "网络请求超时，请检查后台代理设置或重试。"
 
 
 class SteamError(Exception):
-    """str(e) 即用户可见错误消息"""
+    """用户可见错误"""
 
 
 class SteamValidationError(SteamError):
-    """业务校验失败（绑定冲突、未绑定、参数无效等）"""
+    """业务校验失败"""
 
 
 class SteamAPIError(SteamError):

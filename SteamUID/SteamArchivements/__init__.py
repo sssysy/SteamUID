@@ -26,7 +26,8 @@ from ..utils.exceptions import (
 )
 from ..utils.helpers.profile import resolve_profile_assets
 from ..utils.render import render_steam_achievement
-from ..utils.utils import resolve_target_appid, resolve_target_steamid64, steamid64_to_friend_code
+from ..utils.helpers.game import resolve_target_appid
+from ..utils.utils import resolve_target_steamid64, steamid64_to_friend_code
 from ..utils.helpers.command import steam_command
 
 SV = SV("steam成就服务")

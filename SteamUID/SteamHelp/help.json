@@ -342,6 +342,14 @@
         "need_admin": false
       },
       {
+        "name": "伪造游戏更新",
+        "desc": "需要附带 acf 文件",
+        "eg": "steam更新acf",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "清除全部缓存",
         "desc": "清除全部缓存",
         "eg": "清除全部缓存",

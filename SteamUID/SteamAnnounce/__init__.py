@@ -9,7 +9,7 @@ from ..utils.Api import get_game_announcements, get_game_cover_url, get_game_inf
 from ..utils.database.models import SteamAnnounceInfo
 from ..utils.database.models_cache import SteamApiCache
 from ..utils.render import render_game_announce
-from ..utils.utils import resolve_target_appid
+from ..utils.helpers.game import resolve_target_appid
 from ..SteamConfig.interface import SteamAPI
 import json
 from ..utils.helpers.command import steam_command

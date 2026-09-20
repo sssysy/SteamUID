@@ -22,11 +22,16 @@ from .region_map import (
 CONFIG_PATH = get_res_path() / 'SteamUID'
 
 CONFIG_DEFAULT: dict[str, GSC] = {
-    "SteamWebAPIKey": GsStrConfig(
+    "SteamWebAPIKey": GsListStrConfig(
         "Steam Web API Key",
-        "前往 https://steamcommunity.com/dev/apikey 申请",
-        "",
+        "前往 https://steamcommunity.com/dev/apikey 申请，支持多 Key",
+        [],
         secret=True,
+    ),
+    "KeyPool429Cooldown": GsIntConfig(
+        "API 请求频繁冷却 CD",
+        "单 Key 触发 429 请求过多后这个 Key 的冷却时间",
+        600,
     ),
     "APIBaseURL": GsStrConfig(
         "SteamAPI反代URL",

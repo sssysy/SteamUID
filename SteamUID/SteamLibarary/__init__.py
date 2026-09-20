@@ -11,6 +11,7 @@ from gsuid_core.sv import SV
 from ..SteamConfig import SteamConfig
 from ..SteamConfig.interface import SteamAPI
 from ..utils.Api import (
+    get_api_key,
     get_game_cover_url,
     get_game_info,
     get_steamlibrary_by_steamid64,
@@ -50,7 +51,7 @@ async def _load_user_library(
 ) -> tuple[dict, list[dict]]:
     """并发拉取用户摘要 + 游戏库，完成全部校验，返回 (user_data, games)。
     """
-    api_key = SteamConfig.get_config("SteamWebAPIKey").data
+    api_key = get_api_key()
     if not api_key:
         raise SteamConfigError("请先配置 steam web api key")
 
