@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
@@ -14,7 +15,7 @@ from ..utils.Api import (
     get_game_info,
     get_user_Summaries,
 )
-from ..utils.database.models import SteamBind, SteamPlayRecord
+from ..utils.database.models import SteamBind, SteamIDInfo, SteamPlayRecord
 from ..utils.exceptions import SteamError, SteamValidationError
 from ..utils.helpers.profile import resolve_profile_assets
 from ..utils.helpers.command import steam_command
@@ -500,6 +501,30 @@ async def _enrich_member_item(candidate: dict, group_id: str) -> dict:
     }
 
 
+async def _load_poll_summaries(steamids: list[str]) -> list[dict]:
+    """读取轮询缓存玩家摘要；无记录不算异常，JSON 反序列化失败视为缓存异常。"""
+    players: list[dict] = []
+    for sid in steamids:
+        raw = await SteamIDInfo.get_steamuserinfo(sid)
+        if not raw:
+            continue
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict) and parsed:
+            players.append(parsed)
+    return players
+
+
+async def get_group_summaries(steamids: list[str]) -> list[dict]:
+    """群友状态数据源：开关开启时优先轮询缓存，缓存异常回退实时 API。"""
+    if not SteamConfig.get_config("GroupStatusUseCache").data:
+        return await get_user_Summaries(steamids)
+    try:
+        return await _load_poll_summaries(steamids)
+    except Exception as error:
+        logger.warning(f"[SteamRanking] 轮询缓存异常，回退实时获取玩家摘要: {error!r}")
+        return await get_user_Summaries(steamids)
+
+
 async def get_group_member_status_list(group_id: str) -> tuple[list[dict], bool]:
     """获取本群活跃（游戏中 / 在线）群友状态列表，最多返回 10 人，返回 (display_list, has_more)"""
     binds = await SteamBind.get_binds_by_group(group_id)
@@ -519,7 +544,7 @@ async def get_group_member_status_list(group_id: str) -> tuple[list[dict], bool]
         return [], False
 
     all_steamids = list(all_steamids_set)
-    summaries = await get_user_Summaries(all_steamids)
+    summaries = await get_group_summaries(all_steamids)
     summary_map: dict[str, dict] = {
         p.get("steamid", ""): p for p in summaries if isinstance(p, dict) and p.get("steamid")
     }

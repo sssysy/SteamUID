@@ -180,6 +180,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "自动探索队列执行完毕后是否向开启所在的群聊推送结果",
         True,
     ),
+    "GroupStatusUseCache": GsBoolConfig(
+        "群友状态使用缓存数据",
+        "开启后将直接使用轮询数据，作为群友状态命令的玩家数据来源。建议轮询间隔较短时开启",
+        False,
+    ),
 }
 
 CONFIG_PATH.mkdir(parents=True, exist_ok=True)
