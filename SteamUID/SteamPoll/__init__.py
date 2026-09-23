@@ -38,16 +38,6 @@ async def check_game_sale():
 async def check_game_announce():
     await poll_service.poll_and_push_game_announce()
 
-# steam 家庭库新增游戏轮询
-@scheduler.scheduled_job(
-    'interval',
-    hours=SteamConfig.get_config("FamilyLibraryPollInterval").data,
-)
-async def check_family_library():
-    from ..SteamFamily.family_service import poll_and_push_family_library
-
-    await poll_and_push_family_library()
-
 # steam 数据库缓存清理
 @scheduler.scheduled_job(
     'interval',

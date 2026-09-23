@@ -154,30 +154,6 @@
         "need_admin": false
       },
       {
-        "name": "家庭游戏墙",
-        "desc": "查询 Steam 家庭共享库游戏墙（需登录且已加入家庭）",
-        "eg": "家庭游戏墙",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "订阅家庭库",
-        "desc": "订阅家庭库新增游戏推送",
-        "eg": "订阅家庭库",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "退订家庭库",
-        "desc": "取消订阅家庭库新增游戏推送",
-        "eg": "退订家庭库",
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
         "name": "游戏成就",
         "desc": "查看指定游戏成就",
         "eg": "游戏成就cs2",
