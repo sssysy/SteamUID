@@ -78,6 +78,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "游戏公告轮询间隔。修改后需重启 GsCore 生效",
         1,
     ),
+    "FamilyLibraryPollInterval": GsIntConfig(
+        "家庭库轮询间隔 (小时)",
+        "家庭库新增游戏检测间隔。修改后需重启 GsCore 生效",
+        3,
+    ),
     "gscoreBaseURL": GsStrConfig(
         "steamOpenid登录基础URL",
         "应为 gscore 的公网地址或穿透地址",

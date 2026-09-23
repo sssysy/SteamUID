@@ -15,6 +15,8 @@ def render_steam_wall_html(
     user_data: dict,
     games_data: list[dict],
     canvas_width: int = 1200,
+    min_playtime: int = 10,
+    wall_title: str = "steam游戏墙",
 ) -> str:
     """构建 Steam 游戏墙卡片的 HTML 字符串。
 
@@ -38,16 +40,19 @@ def render_steam_wall_html(
     account_pill_html = render_account_pill_html(user_data, default_avatar)
 
     # 2. 游戏墙网格
-    # 过滤游玩时长 < 10 分钟的游戏
     valid_games = [
         g for g in games_data
-        if (g.get("playtime_forever") or 0) >= 10
+        if (g.get("playtime_forever") or 0) >= min_playtime
     ]
-    # 按游玩时长降序排序
     valid_games.sort(key=lambda g: g.get("playtime_forever", 0), reverse=True)
 
     if not valid_games:
-        grid_html = '<div class="empty-state">该 Steam 账号暂无可展示的游戏库存（需游玩时长 ≥ 10 分钟）</div>'
+        empty_hint = (
+            f"该 Steam 账号暂无可展示的游戏库存（需游玩时长 ≥ {min_playtime} 分钟）"
+            if min_playtime > 0
+            else "暂无可展示的家庭库游戏"
+        )
+        grid_html = f'<div class="empty-state">{empty_hint}</div>'
     else:
         game_items_parts = []
         for g in valid_games:
@@ -85,6 +90,7 @@ def render_steam_wall_html(
         "canvas_width": str(canvas_width),
         "account_pill_html": account_pill_html,
         "grid_html": grid_html,
+        "wall_title": wall_title,
     }
 
     return _fill_template(template, replacements)
@@ -94,14 +100,18 @@ async def render_steam_wall(
     user_data: dict,
     games_data: list[dict],
     canvas_width: int = 1200,
+    min_playtime: int = 10,
+    wall_title: str = "steam游戏墙",
 ) -> bytes:
     """渲染 Steam 游戏墙卡片为 PNG 字节。"""
     html_content = render_steam_wall_html(
         user_data=user_data,
         games_data=games_data,
         canvas_width=canvas_width,
+        min_playtime=min_playtime,
+        wall_title=wall_title,
     )
-    valid_count = len([g for g in games_data if (g.get("playtime_forever") or 0) >= 10])
+    valid_count = len([g for g in games_data if (g.get("playtime_forever") or 0) >= min_playtime])
     est_height = max(600, 140 + int(valid_count * 30)) + 40
 
     return await render_html(

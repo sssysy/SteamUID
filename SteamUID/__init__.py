@@ -13,6 +13,7 @@ Plugins(
 @on_core_start
 async def check():
     # 提醒配置steam api key
+    from .SteamConfig import SteamConfig
     from .utils.Api.key_pool import has_api_key
 
     if not has_api_key():

@@ -38,6 +38,12 @@ class SteamAPI:
     # 获取年度回顾分享图片
     api_GetUserYearInReviewShareImage = "/ISaleFeatureService/GetUserYearInReviewShareImage/v1"
 
+    # Steam 家庭组：查询用户所在家庭
+    api_FamilyGetGroupForUser = "/IFamilyGroupsService/GetFamilyGroupForUser/v1"
+
+    # Steam 家庭组：查询家庭共享库
+    api_FamilyGetSharedLibraryApps = "/IFamilyGroupsService/GetSharedLibraryApps/v1"
+
     # 游戏封面图api
     @staticmethod
     def GetGameCoverImageURL(appid: str, variant: str = "header") -> str:
