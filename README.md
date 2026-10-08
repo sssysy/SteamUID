@@ -33,10 +33,7 @@
 ## 丨使用前注意
 
 > [!CAUTION]
-> 使用前请务必阅读以下事项，否则会导致此插件无法正常工作
-> - 使用本插件前请先确保框架机器可以正常访问 **steam 官方服务器**，若无法访问请务必配置反向代理([参考](https://github.com/XasYer/steam-plugin#%E4%BD%BF%E7%94%A8cloudflare%E6%90%AD%E5%BB%BA%E5%8F%8D%E4%BB%A3-%E8%BF%9E%E6%8E%A5%E4%B8%8D%E4%B8%8Asteam%E6%83%85%E5%86%B5%E4%B8%8B%E7%9A%84%E5%A4%87%E9%80%89))并在设置中配置**SteamAPI反代URL** 和 **Steam商店反代URL**。
-> - 首次启用本插件务必在设置中填写**Steam API Key**，否则插件无法工作！。
-> - 本插件现已全面改用 playwright 进行图片渲染，请务必确保 playwright 安装正确。
+> 项目当前分支已放缓维护，将在2.0分支进行重构。故此分支不打算增加新功能
 
 ## 丨命令列表
 
