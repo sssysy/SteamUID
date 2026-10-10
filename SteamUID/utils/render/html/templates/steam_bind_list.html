@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_regular_url }}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_medium_url }}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_bold_url }}') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+{{ styles }}
+body {
+  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.bind-card {
+  background-image: linear-gradient(180deg, rgba(13, 17, 24, 0.35) 0%, rgba(9, 11, 16, 0.72) 100%){% if bg_url %}, url('{{ bg_url }}'){% endif %};
+}
+</style>
+</head>
+<body>
+<div class="bind-card" id="bind-card">
+  <div class="card-header">
+    <div class="qq-avatar-box">
+      <img class="qq-avatar" src="{{ qq_avatar_url }}" alt="">
+    </div>
+    <div class="header-info">
+      <div class="header-user-name">{{ user_name }}</div>
+    </div>
+  </div>
+
+  <div class="list-title">· 账户列表 ·</div>
+
+  <div class="legend-bar">
+    <div class="legend-item">
+      <span class="legend-dot main-dot"></span>
+      <span class="legend-text">当前账户</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot login-dot"></span>
+      <span class="legend-text">登录中</span>
+    </div>
+  </div>
+
+  <div class="account-list">{{ items_html }}</div>
+
+  <div class="card-footer">
+    Create by <span class="footer-highlight">GsCore</span> &amp; Power by <span class="footer-highlight">SteamUID</span> &amp; Author by <span class="footer-highlight">sssysy</span>
+  </div>
+</div>
+</body>
+</html>
