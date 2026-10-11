@@ -2,53 +2,54 @@
 
 import time
 import asyncio
-from dataclasses import dataclass, replace
+from dataclasses import replace, dataclass
 from collections.abc import Sequence
 
 import httpx
+
 from gsuid_core.logger import logger
 
 from ..steam_config import (
     get_api_keys,
+    get_region_cc,
     get_griddb_key,
     get_key_cooldown,
-    get_notify_switch,
     get_push_options,
+    get_notify_switch,
     get_allow_griddb_cover,
-    get_region_cc,
 )
 from ..utils.api.cover import build_app_icon_url, get_official_cover_url
-from ..utils.database.model_bind import SteamBind
-from ..utils.database.model_play_record import SteamPlayRecord
-from ..utils.database.model_poll import SteamPoll
+from ..utils.api.models import PlayerAchievement, AchievementSchemaEntry
 from ..utils.downloader import download
 from ..utils.helper.game import resolve_game_ref
-from ..utils.helper.profile import load_profile_assets
 from ..utils.render.push import dispatch_events
-from ..utils.render.html.account_pill import PillAccount
+from ..utils.helper.status import (
+    UserStatusEvent,
+    AchievementUnlock,
+    names_to_json,
+    unlocked_names,
+    names_from_json,
+    diff_achievements,
+)
+from ..utils.helper.profile import load_profile_assets
+from ..utils.helper.steam_api import (
+    fetch_owned_games,
+    fetch_player_summaries,
+    fetch_achievement_schema,
+    fetch_player_achievements,
+)
 from ..utils.helper.game_cover import resolve_cover_name
 from ..utils.helper.game_detail import load_store_detail
+from ..utils.database.model_bind import SteamBind
+from ..utils.database.model_poll import SteamPoll
+from ..utils.render.html.account_pill import PillAccount
+from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..utils.database.model_play_record import SteamPlayRecord
 from ..utils.render.html.achievement_card import (
     AchievementCard,
     AchievementSlot,
     displayed_slots,
     render_achievement_card,
-)
-from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
-from ..utils.helper.status import (
-    AchievementUnlock,
-    UserStatusEvent,
-    diff_achievements,
-    names_from_json,
-    names_to_json,
-    unlocked_names,
-)
-from ..utils.api.models import AchievementSchemaEntry, PlayerAchievement
-from ..utils.helper.steam_api import (
-    fetch_owned_games,
-    fetch_achievement_schema,
-    fetch_player_achievements,
-    fetch_player_summaries,
 )
 
 _TAG = "[Steam·成就轮询]"
@@ -75,14 +76,10 @@ async def _load_baselines() -> dict[tuple[str, str], list[str]]:
 
 
 async def _save_baseline(steamid64: str, appid: str, names: list[str]) -> None:
-    await SteamPoll.upsert(
-        TASK_NAME, _baseline_key(steamid64, appid), names_to_json(names)
-    )
+    await SteamPoll.upsert(TASK_NAME, _baseline_key(steamid64, appid), names_to_json(names))
 
 
-async def _prune_baselines(
-    alive: set[tuple[str, str]], baselines: dict[tuple[str, str], list[str]]
-) -> None:
+async def _prune_baselines(alive: set[tuple[str, str]], baselines: dict[tuple[str, str], list[str]]) -> None:
     """清掉已结束会话的成就基线。"""
     for steamid64, appid in baselines:
         if (steamid64, appid) not in alive:
@@ -98,9 +95,7 @@ class _PlayerInfo:
     avatar: str
 
 
-async def _load_players(
-    steamids: Sequence[str], *, keys: Sequence[str], cooldown: int
-) -> dict[str, _PlayerInfo]:
+async def _load_players(steamids: Sequence[str], *, keys: Sequence[str], cooldown: int) -> dict[str, _PlayerInfo]:
     """返回在玩账号的 steamid 到玩家信息映射。"""
     players = await fetch_player_summaries(steamids, keys=keys, cooldown=cooldown)
     infos: dict[str, _PlayerInfo] = {}
@@ -115,9 +110,7 @@ async def _load_players(
     return infos
 
 
-async def _load_unlocks(
-    appid: str, *, keys: Sequence[str], cooldown: int
-) -> dict[str, AchievementUnlock]:
+async def _load_unlocks(appid: str, *, keys: Sequence[str], cooldown: int) -> dict[str, AchievementUnlock]:
     """apiname 到成就定义的映射，缺项由调用方回落 apiname。"""
     entries = await fetch_achievement_schema(appid, keys=keys, cooldown=cooldown)
     unlocks: dict[str, AchievementUnlock] = {}
@@ -171,9 +164,7 @@ async def _poll_once() -> None:
     for record in records:
         pair = (record.steamid64, record.appid)
 
-        payload = await fetch_player_achievements(
-            record.appid, record.steamid64, keys=keys, cooldown=cooldown
-        )
+        payload = await fetch_player_achievements(record.appid, record.steamid64, keys=keys, cooldown=cooldown)
         if "success" in payload and not payload["success"]:
             continue
         entries = payload["achievements"] if "achievements" in payload else []
@@ -232,9 +223,7 @@ class AchievementCardResult:
     hint: str
 
 
-async def _owned_icon_url(
-    steamid64: str, appid: str, *, keys: Sequence[str], cooldown: int
-) -> str:
+async def _owned_icon_url(steamid64: str, appid: str, *, keys: Sequence[str], cooldown: int) -> str:
     """库内这款游戏的客户端小图标直链；库接口失败或未收录时回落官方小胶囊图。"""
     try:
         payload = await fetch_owned_games(steamid64, keys=keys, cooldown=cooldown)
@@ -308,9 +297,7 @@ async def _image_links(urls: Sequence[str]) -> dict[str, str]:
     if not ordered:
         return {}
 
-    results = await asyncio.gather(
-        *(download(url, kind="image") for url in ordered), return_exceptions=True
-    )
+    results = await asyncio.gather(*(download(url, kind="image") for url in ordered), return_exceptions=True)
     links: dict[str, str] = {}
     failed = 0
     for url, result in zip(ordered, results):
@@ -333,9 +320,7 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
     cooldown = get_key_cooldown()
 
     ref = await resolve_game_ref(query, cc=get_region_cc())
-    payload = await fetch_player_achievements(
-        ref.appid, steamid64, keys=keys, cooldown=cooldown
-    )
+    payload = await fetch_player_achievements(ref.appid, steamid64, keys=keys, cooldown=cooldown)
     if "success" in payload and not payload["success"]:
         raise ValueError("未获取到成就数据，可能该游戏无成就、steam 资料未公开或登录授权已失效")
     entries = payload["achievements"] if "achievements" in payload else []
@@ -354,8 +339,7 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
     slots = _achievement_slots(entries, schema)
     links = await _image_links([icon_raw] + [slot.icon_url for slot in displayed_slots(slots)])
     achievements = tuple(
-        replace(slot, icon_url=links[slot.icon_url] if slot.icon_url in links else "")
-        for slot in slots
+        replace(slot, icon_url=links[slot.icon_url] if slot.icon_url in links else "") for slot in slots
     )
 
     # 游戏名优先取商店详情，其次玩家成就接口返回的游戏名

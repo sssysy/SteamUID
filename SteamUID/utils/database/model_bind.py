@@ -180,12 +180,8 @@ class SteamBind(Bind, table=True):
             col(cls.bot_self_id) == bot_self_id,
             col(cls.group_id) == group_id,
         )
-        await session.execute(
-            update(cls).where(*scope, col(cls.is_main_id).is_(True)).values(is_main_id=False)
-        )
-        await session.execute(
-            update(cls).where(*scope, col(cls.steamid64) == steamid64).values(is_main_id=True)
-        )
+        await session.execute(update(cls).where(*scope, col(cls.is_main_id).is_(True)).values(is_main_id=False))
+        await session.execute(update(cls).where(*scope, col(cls.steamid64) == steamid64).values(is_main_id=True))
         return True
 
     @classmethod
@@ -206,9 +202,7 @@ class SteamBind(Bind, table=True):
     ) -> list[T_SteamBind]:
         if not steamid64s:
             return []
-        result = await session.execute(
-            select(cls).where(col(cls.steamid64).in_(list(steamid64s)))
-        )
+        result = await session.execute(select(cls).where(col(cls.steamid64).in_(list(steamid64s))))
         return list(result.scalars().all())
 
     @classmethod
@@ -232,13 +226,9 @@ class SteamBind(Bind, table=True):
                 col(cls.steamid64) == steamid64,
             )
         )
-        remain = await session.execute(
-            select(col(cls.id)).where(col(cls.steamid64) == steamid64).limit(1)
-        )
+        remain = await session.execute(select(col(cls.id)).where(col(cls.steamid64) == steamid64).limit(1))
         if remain.scalars().first() is None:
-            await session.execute(
-                delete(SteamAuth).where(col(SteamAuth.steamid64) == steamid64)
-            )
+            await session.execute(delete(SteamAuth).where(col(SteamAuth.steamid64) == steamid64))
         return result.rowcount if isinstance(result, CursorResult) else 0
 
 

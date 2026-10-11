@@ -4,9 +4,9 @@ import html
 from collections.abc import Sequence
 
 from .render import read_styles, render_html, get_template
-from .account_pill import PillAccount, pill_html
 from .card_footer import footer_html
-from .static_assets import get_font_url, get_bg_url, get_default_avatar_url
+from .account_pill import PillAccount, pill_html
+from .static_assets import get_bg_url, get_font_url, get_default_avatar_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"

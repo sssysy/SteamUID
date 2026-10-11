@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 from gsuid_core.logger import logger
 
-from ..downloader import download
 from ..maps import level_style
-from ..api.endpoints import COMMUNITY_CDN_BASE_DEFAULT, COMMUNITY_LEVEL_SPRITE
+from ..downloader import download
+from ..api.endpoints import COMMUNITY_LEVEL_SPRITE, COMMUNITY_CDN_BASE_DEFAULT
 
 _TAG = "[Steam·信息卡片]"
 
@@ -26,10 +26,7 @@ async def load_level_badge(level: int) -> LevelBadge:
     style = level_style(level)
     sprite_name = ""
     if style.sprite_file:
-        url = (
-            COMMUNITY_CDN_BASE_DEFAULT
-            + COMMUNITY_LEVEL_SPRITE.format(name=style.sprite_file)
-        )
+        url = COMMUNITY_CDN_BASE_DEFAULT + COMMUNITY_LEVEL_SPRITE.format(name=style.sprite_file)
         path = await download(url, kind="image")
         if path is None:
             logger.warning(f"{_TAG} 等级图案下载失败: {style.sprite_file}")

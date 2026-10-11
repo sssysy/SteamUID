@@ -34,9 +34,7 @@ class SteamPoll(BaseIDModel, table=True):
         key: str,
         value: str,
     ) -> None:
-        result = await session.execute(
-            select(cls).where(col(cls.task_name) == task_name, col(cls.key) == key)
-        )
+        result = await session.execute(select(cls).where(col(cls.task_name) == task_name, col(cls.key) == key))
         row = result.scalars().first()
         if row is None:
             session.add(cls(task_name=task_name, key=key, value=value))
@@ -53,9 +51,7 @@ class SteamPoll(BaseIDModel, table=True):
         task_name: str,
         key: str,
     ) -> Optional[T_SteamPoll]:
-        result = await session.execute(
-            select(cls).where(col(cls.task_name) == task_name, col(cls.key) == key)
-        )
+        result = await session.execute(select(cls).where(col(cls.task_name) == task_name, col(cls.key) == key))
         return result.scalars().first()
 
     @classmethod
@@ -67,9 +63,7 @@ class SteamPoll(BaseIDModel, table=True):
         key: str,
     ) -> Optional[str]:
         result = await session.execute(
-            select(col(cls.value)).where(
-                col(cls.task_name) == task_name, col(cls.key) == key
-            )
+            select(col(cls.value)).where(col(cls.task_name) == task_name, col(cls.key) == key)
         )
         return result.scalars().first()
 
@@ -80,9 +74,7 @@ class SteamPoll(BaseIDModel, table=True):
         session: AsyncSession,
         task_name: str,
     ) -> list[T_SteamPoll]:
-        result = await session.execute(
-            select(cls).where(col(cls.task_name) == task_name)
-        )
+        result = await session.execute(select(cls).where(col(cls.task_name) == task_name))
         return list(result.scalars().all())
 
     @classmethod
@@ -92,9 +84,7 @@ class SteamPoll(BaseIDModel, table=True):
         session: AsyncSession,
         task_name: str,
     ) -> list[str]:
-        result = await session.execute(
-            select(col(cls.key)).where(col(cls.task_name) == task_name)
-        )
+        result = await session.execute(select(col(cls.key)).where(col(cls.task_name) == task_name))
         return list(result.scalars().all())
 
     @classmethod
@@ -105,9 +95,7 @@ class SteamPoll(BaseIDModel, table=True):
         task_name: str,
         key: str,
     ) -> int:
-        result = await session.execute(
-            delete(cls).where(col(cls.task_name) == task_name, col(cls.key) == key)
-        )
+        result = await session.execute(delete(cls).where(col(cls.task_name) == task_name, col(cls.key) == key))
         return result.rowcount if isinstance(result, CursorResult) else 0
 
     @classmethod
@@ -117,9 +105,7 @@ class SteamPoll(BaseIDModel, table=True):
         session: AsyncSession,
         task_name: str,
     ) -> int:
-        result = await session.execute(
-            delete(cls).where(col(cls.task_name) == task_name)
-        )
+        result = await session.execute(delete(cls).where(col(cls.task_name) == task_name))
         return result.rowcount if isinstance(result, CursorResult) else 0
 
 

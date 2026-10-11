@@ -5,11 +5,11 @@
 """
 
 from typing import Literal, TypedDict
-from dataclasses import dataclass, field
+from dataclasses import field, dataclass
 
 import msgspec
 
-from ..api.models import PlayerAchievement, PlayerSummary
+from ..api.models import PlayerSummary, PlayerAchievement
 
 # 成就事件：同一玩家同一游戏的成就往下拼成一张卡，其余事件一个一张卡
 ACHIEVEMENT_KIND = "获得成就"

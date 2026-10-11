@@ -35,9 +35,7 @@ async def load_store_detail(appid: str, cc: str | None) -> AppDetailsEntry | Non
     try:
         entry = await get_game_details(appid, lang=_LANG, cc=cc)
     except (httpx.HTTPError, ValueError) as error:
-        logger.warning(
-            f"{_TAG} 商店详情查询失败 appid={appid} cc={cc}: {type(error).__name__}"
-        )
+        logger.warning(f"{_TAG} 商店详情查询失败 appid={appid} cc={cc}: {type(error).__name__}")
         return None
 
     # 只有 success + data 的结构才落缓存，避免把失败响应当成命中

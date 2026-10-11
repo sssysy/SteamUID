@@ -1,22 +1,22 @@
 """steam 信息：汇总资料 / 状态 / 库存统计与实时价格，最后渲染出图。"""
 
-import asyncio
 import time
+import asyncio
 
+from ..utils.maps import flag_emoji
 from ..steam_config import (
-    get_api_keys,
-    get_key_cooldown,
     get_region,
+    get_api_keys,
     get_region_cc,
+    get_key_cooldown,
 )
-from ..utils.api.models import OwnedGamesPayload, PlayerSummary
+from ..utils.api.models import PlayerSummary, OwnedGamesPayload
 from ..utils.helper.level import load_level_badge
 from ..utils.helper.price import sum_library_value
 from ..utils.helper.profile import load_profile_assets
 from ..utils.helper.steam_api import fetch_owned_games, fetch_player_summaries
-from ..utils.maps import flag_emoji
 from ..utils.render.html.info_card import InfoCard, render_info_card
-from ..utils.render.html.static_assets import get_default_avatar_url, get_img_cache_url
+from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
 
 _SECONDS_PER_YEAR = 31557600.0
 _MINUTES_PER_HOUR = 60

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from starlette.types import Scope
 from fastapi import HTTPException
+from starlette.types import Scope
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response

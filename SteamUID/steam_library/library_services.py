@@ -7,10 +7,10 @@ from collections.abc import Sequence
 
 from ..steam_config import (
     get_api_keys,
+    get_region_cc,
     get_griddb_key,
     get_key_cooldown,
     get_allow_griddb_cover,
-    get_region_cc,
 )
 from ..utils.helper.library import LibraryGame, visible_games
 from ..utils.helper.profile import SteamProfile, load_profile_assets
@@ -52,9 +52,7 @@ async def _load_profile_library(steamid64: str) -> tuple[SteamProfile, list[Libr
         LibraryGame(
             appid=str(game["appid"]),
             name=game["name"] if "name" in game else "",
-            playtime_minutes=(
-                game["playtime_forever"] if "playtime_forever" in game else 0
-            ),
+            playtime_minutes=(game["playtime_forever"] if "playtime_forever" in game else 0),
         )
         for game in payload["games"]
         if "appid" in game
@@ -157,9 +155,7 @@ async def build_recommend_pick(steamid64: str) -> bytes:
         RecommendGame(
             name=candidate.name,
             description=candidate.description,
-            cover_url=(
-                get_img_cache_url(covers[candidate.appid]) if candidate.appid in covers else ""
-            ),
+            cover_url=(get_img_cache_url(covers[candidate.appid]) if candidate.appid in covers else ""),
         )
         for candidate in picked
     ]

@@ -3,9 +3,9 @@
 import html
 from dataclasses import dataclass
 
-from .render import get_template, read_styles, render_html
+from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import get_default_avatar_url, get_font_url, get_bg_url
+from .static_assets import get_bg_url, get_font_url, get_default_avatar_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
@@ -49,17 +49,9 @@ class InfoCard:
 def _avatar_html(card: InfoCard) -> str:
     frame_html = ""
     if card.frame_url:
-        frame_html = (
-            f'<div class="avatar-frame">'
-            f'<img src="{html.escape(card.frame_url)}" alt=""></div>'
-        )
+        frame_html = f'<div class="avatar-frame"><img src="{html.escape(card.frame_url)}" alt=""></div>'
     avatar_url = html.escape(card.avatar_url or get_default_avatar_url())
-    return (
-        '<div class="avatar-wrap">'
-        f"{frame_html}"
-        f'<img class="avatar-img" src="{avatar_url}" alt="">'
-        "</div>"
-    )
+    return f'<div class="avatar-wrap">{frame_html}<img class="avatar-img" src="{avatar_url}" alt=""></div>'
 
 
 def _header_html(card: InfoCard) -> str:
@@ -93,24 +85,13 @@ def _level_html(card: InfoCard) -> str:
             f"background-image: url('{html.escape(card.level_sprite_url)}');"
             f" background-position: 0 {card.level_offset_px}px;"
         )
-        return (
-            f'<div class="level-badge is-pattern" style="{style}">'
-            f'<span class="level-num">{card.level}</span></div>'
-        )
+        return f'<div class="level-badge is-pattern" style="{style}"><span class="level-num">{card.level}</span></div>'
     style = f"border-color: {html.escape(card.level_border_color)};"
-    return (
-        f'<div class="level-badge is-ring" style="{style}">'
-        f'<span class="level-num">{card.level}</span></div>'
-    )
+    return f'<div class="level-badge is-ring" style="{style}"><span class="level-num">{card.level}</span></div>'
 
 
 def _stat_html(value: str, label: str) -> str:
-    return (
-        '<div class="stat-col">'
-        f'<div class="stat-num">{value}</div>'
-        f'<div class="stat-label">{label}</div>'
-        "</div>"
-    )
+    return f'<div class="stat-col"><div class="stat-num">{value}</div><div class="stat-label">{label}</div></div>'
 
 
 def _stats_html(card: InfoCard) -> str:
@@ -124,9 +105,9 @@ def _stats_html(card: InfoCard) -> str:
         f'<div class="meta-item">地区: <span class="val">{region}</span></div>'
         f'<div class="meta-item">年限: <span class="val">{age}</span></div>'
         "</div>"
-        f'{_stat_html(value, f"账号价值 {card.currency}")}'
-        f'{_stat_html(str(card.playtime_hours), "游戏时长 h")}'
-        f'{_stat_html(str(card.game_count), "游戏数量")}'
+        f"{_stat_html(value, f'账号价值 {card.currency}')}"
+        f"{_stat_html(str(card.playtime_hours), '游戏时长 h')}"
+        f"{_stat_html(str(card.game_count), '游戏数量')}"
         "</div>"
     )
 

@@ -43,9 +43,7 @@ class SteamAuth(BaseIDModel, table=True):
         updated_at: int = 0,
     ) -> None:
         """整行覆盖写入凭据；登录回传的字段一次性落库。"""
-        result = await session.execute(
-            select(cls).where(col(cls.steamid64) == steamid64)
-        )
+        result = await session.execute(select(cls).where(col(cls.steamid64) == steamid64))
         row = result.scalars().first()
         if row is None:
             session.add(
@@ -76,9 +74,7 @@ class SteamAuth(BaseIDModel, table=True):
         session: AsyncSession,
         steamid64: str,
     ) -> Optional[T_SteamAuth]:
-        result = await session.execute(
-            select(cls).where(col(cls.steamid64) == steamid64)
-        )
+        result = await session.execute(select(cls).where(col(cls.steamid64) == steamid64))
         return result.scalars().first()
 
     @classmethod
@@ -97,9 +93,7 @@ class SteamAuth(BaseIDModel, table=True):
         session: AsyncSession,
         steamid64: str,
     ) -> int:
-        result = await session.execute(
-            delete(cls).where(col(cls.steamid64) == steamid64)
-        )
+        result = await session.execute(delete(cls).where(col(cls.steamid64) == steamid64))
         return result.rowcount if isinstance(result, CursorResult) else 0
 
 

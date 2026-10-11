@@ -6,9 +6,9 @@ from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
 from ..steam_config import get_allow_at
+from .status_services import build_status_image
 from ..utils.helper.bind import get_main_steamid64
 from ..utils.helper.command import command_guard, resolve_target
-from .status_services import build_status_image
 
 status_sv = SV("steam用户相关")
 

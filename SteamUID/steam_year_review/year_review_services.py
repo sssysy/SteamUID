@@ -43,11 +43,7 @@ async def fetch_year_review_images(steamid64: str, year: int) -> list[Path]:
     """取该账号该年的官方分享图并落 img_cache；未公开或无数据返回空列表。"""
     payload = await get_year_in_review_share_images(steamid64, year, language=_LANGUAGE)
     images = payload["images"] if "images" in payload else []
-    urls = [
-        f"{_SHARE_CDN_PREFIX}{image['url_path']}"
-        for image in images
-        if "url_path" in image and image["url_path"]
-    ]
+    urls = [f"{_SHARE_CDN_PREFIX}{image['url_path']}" for image in images if "url_path" in image and image["url_path"]]
     if not urls:
         return []
 

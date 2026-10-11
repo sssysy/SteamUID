@@ -2,8 +2,8 @@
 
 from gsuid_core.bot import Bot
 
-from ..utils.database.model_cache import SteamCache
 from ..utils.downloader import clear_cache_files
+from ..utils.database.model_cache import SteamCache
 
 
 async def clear_cache(bot: Bot, target: str) -> None:

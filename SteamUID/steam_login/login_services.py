@@ -1,7 +1,7 @@
 """扫码登录流程：发起会话、发送二维码、轮询、落库与自动绑定。"""
 
-import time
 import json
+import time
 import asyncio
 
 from gsuid_core.bot import Bot
@@ -12,10 +12,10 @@ from gsuid_core.segment import MessageSegment
 from ..steam_config import get_default_notify_types
 from ..utils.api.auth import generate_session_id
 from ..utils.api.models import QrReady
-from ..utils.api.qr_login import SteamQrLogin
-from ..utils.database.model_auth import SteamAuth
 from ..utils.helper.bind import add_bind, get_binds
+from ..utils.api.qr_login import SteamQrLogin
 from ..utils.render.bind_card import render_bind_card_image
+from ..utils.database.model_auth import SteamAuth
 from ..utils.render.pil.render_qr import render_qr_png
 
 _TAG = "[Steam·扫码登录]"

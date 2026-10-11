@@ -4,8 +4,8 @@
 """
 
 import time
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import field, dataclass
 from collections.abc import Sequence
 
 from gsuid_core.subscribe import gs_subscribe
@@ -86,26 +86,20 @@ async def _group_display(sub: Subscribe) -> str:
     """群名片优先，取不到回落用户 ID；私聊没有群名片，同样回落 ID。"""
     if not sub.group_id:
         return sub.user_id
-    user = await CoreUser.base_select_data(
-        bot_id=sub.bot_id, user_id=sub.user_id, group_id=sub.group_id
-    )
+    user = await CoreUser.base_select_data(bot_id=sub.bot_id, user_id=sub.user_id, group_id=sub.group_id)
     if user is not None and user.user_name and user.user_name != "1":
         return str(user.user_name)
     return sub.user_id
 
 
-async def collect_deliveries(
-    events: Sequence[UserStatusEvent], options: PushOptions
-) -> list[Delivery]:
+async def collect_deliveries(events: Sequence[UserStatusEvent], options: PushOptions) -> list[Delivery]:
     """按 全局类型 -> 个人订阅 -> 冷却 过滤后，按推送会话聚合。"""
     grouped: dict[tuple[str, str, str, str], _Bucket] = {}
     for event in events:
         if event.kind not in options.kinds:
             continue
         # 框架订阅接口无类型标注，这里立刻收窄为 Subscribe
-        raw = await gs_subscribe.get_subscribe(
-            subscribe_task_name(event.kind), uid=event.steamid64
-        )
+        raw = await gs_subscribe.get_subscribe(subscribe_task_name(event.kind), uid=event.steamid64)
         if not raw:
             continue
         for sub in raw:

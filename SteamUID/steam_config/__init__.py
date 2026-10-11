@@ -6,25 +6,25 @@ from gsuid_core.logger import logger
 from gsuid_core.data_store import get_res_path
 from gsuid_core.utils.plugins_config.models import (
     GSC,
+    GsIntConfig,
     GsStrConfig,
     GsBoolConfig,
-    GsIntConfig,
     GsImageConfig,
     GsListStrConfig,
 )
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
 
-from ..utils.helper.status import (
-    PUSH_MODES,
-    PushOptions,
-    NOTIFY_KINDS,
-    DEFAULT_PUSH_MODE,
-)
 from ..utils.maps import (
     DEFAULT_REGION,
     SUPPORTED_REGIONS,
     SteamRegion,
     find_region,
+)
+from ..utils.helper.status import (
+    PUSH_MODES,
+    NOTIFY_KINDS,
+    DEFAULT_PUSH_MODE,
+    PushOptions,
 )
 
 DATA_DIR = get_res_path("SteamUID")

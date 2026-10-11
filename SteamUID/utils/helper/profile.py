@@ -5,28 +5,28 @@
 
 import asyncio
 from functools import partial
-from collections.abc import Sequence
 from xml.etree import ElementTree
 from dataclasses import replace, dataclass
+from collections.abc import Sequence
 
 from gsuid_core.logger import logger
 
 from .steamid import steamid64_to_friend_code
-from .game_detail import clean_description
 from ..key_pool import request_with_api_key
-from ..api.endpoints import COMMUNITY_ASSETS_TEMPLATE
 from ..api.models import (
-    MiniprofilePayload,
     ProfileItemEntry,
-    ProfileItemsEquippedPayload,
+    MiniprofilePayload,
     MiniprofileBackground,
+    ProfileItemsEquippedPayload,
 )
 from ..api.public import (
     get_miniprofile,
-    get_profile_items_equipped,
     get_community_profile_xml,
+    get_profile_items_equipped,
 )
 from ..downloader import download
+from .game_detail import clean_description
+from ..api.endpoints import COMMUNITY_ASSETS_TEMPLATE
 
 _TAG = "[Steam·账户绑定]"
 _STATUS_TAG = "[Steam·用户状态]"
@@ -119,11 +119,7 @@ class _MiniDeco:
 def _parse_miniprofile(payload: MiniprofilePayload) -> _MiniDeco:
     """从迷你资料解析装扮与等级；缺失字段统一回落到空串 / 0。"""
     frame = payload["avatar_frame"] if "avatar_frame" in payload else ""
-    background = (
-        payload["profile_background"]
-        if "profile_background" in payload
-        else MiniprofileBackground()
-    )
+    background = payload["profile_background"] if "profile_background" in payload else MiniprofileBackground()
     badge_name = ""
     badge_icon = ""
     badge_xp = ""
@@ -136,12 +132,8 @@ def _parse_miniprofile(payload: MiniprofilePayload) -> _MiniDeco:
     return _MiniDeco(
         frame_url=frame,
         background_url=background["image"] if "image" in background else "",
-        background_webm_url=(
-            background["video/webm"] if "video/webm" in background else ""
-        ),
-        background_mp4_url=(
-            background["video/mp4"] if "video/mp4" in background else ""
-        ),
+        background_webm_url=(background["video/webm"] if "video/webm" in background else ""),
+        background_mp4_url=(background["video/mp4"] if "video/mp4" in background else ""),
         level=payload["level"] if "level" in payload else 0,
         badge_name=badge_name,
         badge_icon_url=badge_icon,
@@ -212,9 +204,7 @@ def _community_asset_url(relative_path: str) -> str:
     return COMMUNITY_ASSETS_TEMPLATE.format(path=relative_path)
 
 
-async def _request_equipped(
-    steamid64: str, lang: str, key: str
-) -> ProfileItemsEquippedPayload:
+async def _request_equipped(steamid64: str, lang: str, key: str) -> ProfileItemsEquippedPayload:
     return await get_profile_items_equipped(steamid64, key=key, lang=lang)
 
 
@@ -251,43 +241,22 @@ async def load_status_assets(
         equipped = equipped_raw
 
     deco = _parse_miniprofile(mini)
-    animated = (
-        equipped["animated_avatar"]
-        if "animated_avatar" in equipped
-        else ProfileItemEntry()
-    )
-    frame_item = (
-        equipped["avatar_frame"] if "avatar_frame" in equipped else ProfileItemEntry()
-    )
-    mini_bg = (
-        equipped["mini_profile_background"]
-        if "mini_profile_background" in equipped
-        else ProfileItemEntry()
-    )
+    animated = equipped["animated_avatar"] if "animated_avatar" in equipped else ProfileItemEntry()
+    frame_item = equipped["avatar_frame"] if "avatar_frame" in equipped else ProfileItemEntry()
+    mini_bg = equipped["mini_profile_background"] if "mini_profile_background" in equipped else ProfileItemEntry()
 
-    animated_url = _community_asset_url(
-        animated["image_small"] if "image_small" in animated else ""
-    )
-    mini_bg_url = _community_asset_url(
-        mini_bg["image_large"] if "image_large" in mini_bg else ""
-    )
-    frame_url = (
-        _community_asset_url(
-            frame_item["image_small"] if "image_small" in frame_item else ""
-        )
-        or deco.frame_url
-    )
+    animated_url = _community_asset_url(animated["image_small"] if "image_small" in animated else "")
+    mini_bg_url = _community_asset_url(mini_bg["image_large"] if "image_large" in mini_bg else "")
+    frame_url = _community_asset_url(frame_item["image_small"] if "image_small" in frame_item else "") or deco.frame_url
     mini_avatar_url = mini["avatar_url"] if "avatar_url" in mini else ""
 
-    avatar_name, frame_name, background_name, webm_name, mp4_name, badge_icon_name = (
-        await asyncio.gather(
-            _download_name(animated_url or mini_avatar_url or fallback_avatar_url),
-            _download_name(frame_url),
-            _download_name(mini_bg_url or deco.background_url),
-            _download_name(deco.background_webm_url),
-            _download_name(deco.background_mp4_url),
-            _download_name(deco.badge_icon_url),
-        )
+    avatar_name, frame_name, background_name, webm_name, mp4_name, badge_icon_name = await asyncio.gather(
+        _download_name(animated_url or mini_avatar_url or fallback_avatar_url),
+        _download_name(frame_url),
+        _download_name(mini_bg_url or deco.background_url),
+        _download_name(deco.background_webm_url),
+        _download_name(deco.background_mp4_url),
+        _download_name(deco.badge_icon_url),
     )
     return StatusAssets(
         avatar_name=avatar_name,

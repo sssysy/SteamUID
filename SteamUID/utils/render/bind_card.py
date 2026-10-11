@@ -9,14 +9,14 @@ from collections.abc import Sequence
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..database.model_bind import SteamBind
 from ..downloader import download
-from ..helper.bind import get_binds, is_logged_in, session_ids
+from ..helper.bind import get_binds, session_ids, is_logged_in
+from .html.bind_list import BindCardItem, render_bind_list
 from ..helper.command import sender_text
 from ..helper.profile import load_profile_assets
 from ..helper.steamid import steamid64_to_friend_code
-from .html.bind_list import BindCardItem, render_bind_list
-from .html.static_assets import get_default_avatar_url, get_img_cache_url
+from .html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..database.model_bind import SteamBind
 
 _TAG = "[Steam·账户绑定]"
 

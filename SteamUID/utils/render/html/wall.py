@@ -5,9 +5,9 @@ import math
 from dataclasses import dataclass
 from collections.abc import Sequence
 
-from .render import get_template, read_styles, render_html
-from .account_pill import PillAccount, pill_html
+from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
+from .account_pill import PillAccount, pill_html
 from .static_assets import get_font_url
 from ...helper.library import span_of
 
@@ -40,11 +40,7 @@ def _game_html(game: WallGame) -> str:
     style = f"grid-column: span {span}; grid-row: span {span};"
     if not game.cover_url:
         return f'<div class="game" style="{style}"></div>'
-    return (
-        f'<div class="game" style="{style}">'
-        f'<img class="game-img" src="{html.escape(game.cover_url)}" alt="">'
-        f"</div>"
-    )
+    return f'<div class="game" style="{style}"><img class="game-img" src="{html.escape(game.cover_url)}" alt=""></div>'
 
 
 def render_game_wall_html(user: PillAccount, games: Sequence[WallGame]) -> str:

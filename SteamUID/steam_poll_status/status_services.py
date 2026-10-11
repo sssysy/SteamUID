@@ -4,27 +4,28 @@ import time
 from collections.abc import Sequence
 
 import httpx
+
 from gsuid_core.logger import logger
 
 from ..steam_config import (
     get_api_keys,
     get_key_cooldown,
-    get_notify_switch,
     get_push_options,
+    get_notify_switch,
 )
-from ..utils.database.model_bind import SteamBind
-from ..utils.database.model_play_record import SteamPlayRecord
-from ..utils.database.model_poll import SteamPoll
 from ..utils.render.push import dispatch_events
 from ..utils.helper.status import (
     StatusSnapshot,
     UserStatusEvent,
     diff_status,
-    snapshot_from_json,
-    snapshot_to_json,
     to_snapshot,
+    snapshot_to_json,
+    snapshot_from_json,
 )
 from ..utils.helper.steam_api import fetch_player_summaries
+from ..utils.database.model_bind import SteamBind
+from ..utils.database.model_poll import SteamPoll
+from ..utils.database.model_play_record import SteamPlayRecord
 
 _TAG = "[Steam·状态轮询]"
 TASK_NAME = "用户状态轮询"
@@ -48,14 +49,10 @@ async def _load_baselines() -> dict[str, StatusSnapshot]:
 
 async def _save_baselines(changed: dict[str, StatusSnapshot]) -> None:
     for steamid64, snapshot in changed.items():
-        await SteamPoll.upsert(
-            TASK_NAME, _baseline_key(steamid64), snapshot_to_json(snapshot)
-        )
+        await SteamPoll.upsert(TASK_NAME, _baseline_key(steamid64), snapshot_to_json(snapshot))
 
 
-async def _prune_baselines(
-    steamids: set[str], baselines: dict[str, StatusSnapshot]
-) -> None:
+async def _prune_baselines(steamids: set[str], baselines: dict[str, StatusSnapshot]) -> None:
     """清理解绑账号的基线，避免表随历史绑定无限增长。"""
     for steamid64 in baselines:
         if steamid64 not in steamids:
@@ -92,9 +89,7 @@ async def _poll_once() -> None:
         logger.warning(f"{_TAG} 未配置 Steam API Key，跳过本轮轮询")
         return
 
-    players = await fetch_player_summaries(
-        steamids, keys=keys, cooldown=get_key_cooldown()
-    )
+    players = await fetch_player_summaries(steamids, keys=keys, cooldown=get_key_cooldown())
 
     now = int(time.time())
 

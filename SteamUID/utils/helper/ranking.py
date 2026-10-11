@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from collections.abc import Sequence
 
 import httpx
+
 from gsuid_core.logger import logger
 from gsuid_core.utils.database.models import CoreUser
 
@@ -53,9 +54,7 @@ async def _member(user_id: str, group_id: str) -> GroupMember:
     return GroupMember(name=name, avatar_name=avatar_name)
 
 
-async def load_group_members(
-    group_id: str, user_ids: Sequence[str]
-) -> dict[str, GroupMember]:
+async def load_group_members(group_id: str, user_ids: Sequence[str]) -> dict[str, GroupMember]:
     """并发取一批群成员资料，返回 user_id 到资料的映射。"""
     ordered = list(dict.fromkeys(user_ids))
     if not ordered:

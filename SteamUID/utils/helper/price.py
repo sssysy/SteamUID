@@ -35,10 +35,7 @@ async def _chunk_value(appids: list[str], *, cc: str) -> int:
 
 async def sum_library_value(appids: Sequence[str], *, cc: str) -> int | None:
     """按所选地区求和库内游戏原价（元）；任一批次失败返回 None 交给上层占位。"""
-    chunks = [
-        list(appids[start : start + _PRICE_CHUNK])
-        for start in range(0, len(appids), _PRICE_CHUNK)
-    ]
+    chunks = [list(appids[start : start + _PRICE_CHUNK]) for start in range(0, len(appids), _PRICE_CHUNK)]
     if not chunks:
         return 0
 
@@ -48,9 +45,7 @@ async def sum_library_value(appids: Sequence[str], *, cc: str) -> int | None:
         async with sem:
             return await _chunk_value(chunk, cc=cc)
 
-    results = await asyncio.gather(
-        *(_worker(chunk) for chunk in chunks), return_exceptions=True
-    )
+    results = await asyncio.gather(*(_worker(chunk) for chunk in chunks), return_exceptions=True)
     total_cents = 0
     for result in results:
         if isinstance(result, BaseException):

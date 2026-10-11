@@ -8,10 +8,10 @@ from collections.abc import Sequence
 from gsuid_core.models import Event
 from gsuid_core.subscribe import gs_subscribe
 
-from ..database.model_auth import SteamAuth
-from ..database.model_bind import SteamBind
 from .notify import subscribe_task_name
 from .status import NOTIFY_KINDS
+from ..database.model_auth import SteamAuth
+from ..database.model_bind import SteamBind
 
 
 def session_ids(ev: Event) -> tuple[str, str, str]:
@@ -56,16 +56,12 @@ async def is_subscribed(ev: Event, steamid64: str, kind: str) -> bool:
 
 async def subscribe_kind(ev: Event, steamid64: str, kind: str) -> None:
     """按类型建立个人订阅，任务名与绑定默认订阅一致。"""
-    await gs_subscribe.add_subscribe(
-        "single", subscribe_task_name(kind), ev, uid=steamid64
-    )
+    await gs_subscribe.add_subscribe("single", subscribe_task_name(kind), ev, uid=steamid64)
 
 
 async def unsubscribe_kind(ev: Event, steamid64: str, kind: str) -> None:
     """按类型取消个人订阅。"""
-    await gs_subscribe.delete_subscribe(
-        "single", subscribe_task_name(kind), ev, uid=steamid64
-    )
+    await gs_subscribe.delete_subscribe("single", subscribe_task_name(kind), ev, uid=steamid64)
 
 
 async def add_bind(

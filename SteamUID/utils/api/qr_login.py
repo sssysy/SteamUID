@@ -10,19 +10,19 @@ from gsuid_core.logger import logger
 
 from .auth import steamid_from_access_token
 from .client import DEFAULT_USER_AGENT, make_async_client, request_ok_response
-from .endpoints import (
-    API_BASE_DEFAULT,
-    AUTH_BEGIN_QR,
-    AUTH_POLL_STATUS,
-    COMMUNITY_BASE_DEFAULT,
-)
 from .models import (
     QrReady,
     QrWaiting,
     QrChallenge,
     QrPollResult,
-    BeginQrResponse,
     QrPollResponse,
+    BeginQrResponse,
+)
+from .endpoints import (
+    AUTH_BEGIN_QR,
+    API_BASE_DEFAULT,
+    AUTH_POLL_STATUS,
+    COMMUNITY_BASE_DEFAULT,
 )
 
 _TAG = "扫码登录"

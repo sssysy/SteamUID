@@ -7,26 +7,26 @@ from collections.abc import Mapping, Sequence
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..steam_config import get_griddb_key, get_region_cc, get_allow_griddb_cover
+from ..steam_config import get_region_cc, get_griddb_key, get_allow_griddb_cover
 from ..utils.api.models import AppDetailsEntry
 from ..utils.helper.bind import get_binds, session_ids
-from ..utils.helper.command import resolve_viewer
 from ..utils.helper.game import resolve_game_ref
-from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import load_store_detail
+from ..utils.helper.command import resolve_viewer
 from ..utils.helper.profile import load_profile_assets
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steamid import auto2steamid64
+from ..utils.helper.game_cover import resolve_cover_names
+from ..utils.helper.game_detail import load_store_detail
 from ..utils.database.model_bind import SteamBind
-from ..utils.database.model_play_record import SteamPlayRecord
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.game_ranking import GameRankingEntry, render_game_ranking
-from ..utils.render.html.static_assets import get_default_avatar_url, get_img_cache_url
 from ..utils.render.html.user_ranking import (
     RankingBadge,
     UserRankingEntry,
     render_user_ranking,
 )
+from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..utils.database.model_play_record import SteamPlayRecord
 
 _TAG = "[Steam·排行]"
 _DEFAULT_LIMIT = 10
@@ -62,9 +62,7 @@ def _steamid_user_map(binds: Sequence[SteamBind]) -> dict[str, str]:
     return mapping
 
 
-def _user_totals(
-    records: Sequence[SteamPlayRecord], steamid_to_user: Mapping[str, str]
-) -> dict[str, int]:
+def _user_totals(records: Sequence[SteamPlayRecord], steamid_to_user: Mapping[str, str]) -> dict[str, int]:
     """按用户累加游玩秒数；不在绑定表内的记录跳过。"""
     totals: defaultdict[str, int] = defaultdict(int)
     for record in records:
@@ -145,17 +143,13 @@ async def _account_pill(steamid64: str) -> PillAccount | None:
     )
 
 
-async def _user_entries(
-    group_id: str, ranked: Sequence[tuple[str, int]]
-) -> list[UserRankingEntry]:
+async def _user_entries(group_id: str, ranked: Sequence[tuple[str, int]]) -> list[UserRankingEntry]:
     """把 (user_id, 秒数) 排行补齐群名片与头像后组装成排行行。"""
     members = await load_group_members(group_id, [user_id for user_id, _ in ranked])
     return [
         UserRankingEntry(
             name=members[user_id].name,
-            avatar_url=(
-                get_img_cache_url(members[user_id].avatar_name) or get_default_avatar_url()
-            ),
+            avatar_url=(get_img_cache_url(members[user_id].avatar_name) or get_default_avatar_url()),
             duration_seconds=seconds,
         )
         for user_id, seconds in ranked
@@ -219,18 +213,14 @@ async def build_group_game_player_ranking(ev: Event) -> bytes:
 
     steamid_to_user = _steamid_user_map(binds)
     records = await SteamPlayRecord.get_records_by_steamids(list(steamid_to_user))
-    totals = _user_totals(
-        [record for record in records if record.appid == ref.appid], steamid_to_user
-    )
+    totals = _user_totals([record for record in records if record.appid == ref.appid], steamid_to_user)
     if not totals:
         raise ValueError(f"未找到 {ref.appid} 的相关游玩数据！")
 
     ranked = _rank_desc(totals, _limit_of(words[1:]))
     entries = await _user_entries(group_id, ranked)
     badge = await _game_badge(ref.appid, ref.name)
-    return await render_user_ranking(
-        f"steam群游戏玩家排行 Top{len(entries)}", entries, badge=badge
-    )
+    return await render_user_ranking(f"steam群游戏玩家排行 Top{len(entries)}", entries, badge=badge)
 
 
 async def build_self_ranking(ev: Event, *, allow_at: bool) -> bytes:
@@ -254,19 +244,13 @@ async def build_self_ranking(ev: Event, *, allow_at: bool) -> bytes:
     else:
         binds = await get_binds(ev, target_user_id)
         if not binds:
-            raise ValueError(
-                "您在当前群未绑定 Steam 账号，请先绑定"
-                if is_self
-                else "对方在当前群未绑定 Steam 账号"
-            )
+            raise ValueError("您在当前群未绑定 Steam 账号，请先绑定" if is_self else "对方在当前群未绑定 Steam 账号")
         target_steamids = list(dict.fromkeys(bind.steamid64 for bind in binds))
 
     records = await SteamPlayRecord.get_records_by_steamids(target_steamids)
     totals = _app_totals(records)
     if not totals:
-        raise ValueError(
-            "您在当前群暂无游戏时长数据" if is_self else "对方在当前群暂无游戏时长数据"
-        )
+        raise ValueError("您在当前群暂无游戏时长数据" if is_self else "对方在当前群暂无游戏时长数据")
 
     ranked = dict(_rank_desc(totals, limit))
     entries = await _game_entries(ranked)

@@ -37,9 +37,7 @@ class SteamCache(BaseIDModel, table=True):
         updated_at: int,
     ) -> None:
         result = await session.execute(
-            select(cls).where(
-                col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key
-            )
+            select(cls).where(col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key)
         )
         row = result.scalars().first()
         if row is None:
@@ -66,9 +64,7 @@ class SteamCache(BaseIDModel, table=True):
         cache_key: str,
     ) -> Optional[T_SteamCache]:
         result = await session.execute(
-            select(cls).where(
-                col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key
-            )
+            select(cls).where(col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key)
         )
         return result.scalars().first()
 
@@ -81,9 +77,7 @@ class SteamCache(BaseIDModel, table=True):
         cache_key: str,
     ) -> Optional[str]:
         result = await session.execute(
-            select(col(cls.cache_value)).where(
-                col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key
-            )
+            select(col(cls.cache_value)).where(col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key)
         )
         return result.scalars().first()
 
@@ -96,9 +90,7 @@ class SteamCache(BaseIDModel, table=True):
         cache_key: str,
     ) -> int:
         result = await session.execute(
-            delete(cls).where(
-                col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key
-            )
+            delete(cls).where(col(cls.cache_type) == cache_type, col(cls.cache_key) == cache_key)
         )
         return result.rowcount if isinstance(result, CursorResult) else 0
 
@@ -109,9 +101,7 @@ class SteamCache(BaseIDModel, table=True):
         session: AsyncSession,
         cache_type: str,
     ) -> int:
-        result = await session.execute(
-            delete(cls).where(col(cls.cache_type) == cache_type)
-        )
+        result = await session.execute(delete(cls).where(col(cls.cache_type) == cache_type))
         return result.rowcount if isinstance(result, CursorResult) else 0
 
     @classmethod

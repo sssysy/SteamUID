@@ -6,11 +6,11 @@ from ..utils.helper.bind import is_logged_in
 from ..utils.helper.level import load_level_badge
 from ..utils.helper.profile import load_status_assets
 from ..utils.helper.steam_api import fetch_player_summaries
-from ..utils.render.html.static_assets import (
-    get_default_avatar_url,
-    get_img_cache_url,
-)
 from ..utils.render.html.status_card import StatusCard, render_status_card
+from ..utils.render.html.static_assets import (
+    get_img_cache_url,
+    get_default_avatar_url,
+)
 
 _LANG = "schinese"
 
@@ -91,9 +91,5 @@ async def build_status_image(steamid64: str) -> bytes:
         badge_name=assets.badge_name,
         badge_xp=assets.badge_xp,
     )
-    dynamic = bool(
-        assets.animated_avatar_name
-        or assets.background_webm_name
-        or assets.background_mp4_name
-    )
+    dynamic = bool(assets.animated_avatar_name or assets.background_webm_name or assets.background_mp4_name)
     return await render_status_card(card, dynamic=dynamic)

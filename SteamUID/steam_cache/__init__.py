@@ -3,16 +3,16 @@
 import time
 
 from gsuid_core.sv import SV
-from gsuid_core.bot import Bot
 from gsuid_core.aps import scheduler
+from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
 from ..steam_config import get_cache_clean_days
-from ..utils.database.model_cache import SteamCache
+from .cache_services import clear_cache
 from ..utils.downloader import clean_cache_files
 from ..utils.helper.command import command_guard
-from .cache_services import clear_cache
+from ..utils.database.model_cache import SteamCache
 
 _TAG = "[Steam·缓存清理]"
 
@@ -39,6 +39,4 @@ if _CLEAN_DAYS > 0:
         cutoff = int(time.time()) - _CLEAN_DAYS * 86400
         deleted = await SteamCache.delete_expired(cutoff)
         removed = await clean_cache_files(cutoff)
-        logger.info(
-            f"{_TAG} 清理 {_CLEAN_DAYS} 天前的缓存，删除 {deleted} 行 / {removed} 个文件"
-        )
+        logger.info(f"{_TAG} 清理 {_CLEAN_DAYS} 天前的缓存，删除 {deleted} 行 / {removed} 个文件")

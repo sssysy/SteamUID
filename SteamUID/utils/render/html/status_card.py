@@ -3,8 +3,8 @@
 import html
 from dataclasses import dataclass
 
-from .render import get_template, read_styles, render_html, render_html_gif
-from .static_assets import get_default_avatar_url, get_font_url
+from .render import read_styles, render_html, get_template, render_html_gif
+from .static_assets import get_font_url, get_default_avatar_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
@@ -45,10 +45,7 @@ def _avatar_frame_html(card: StatusCard) -> str:
     """头像框叠加在头像之上；无框时不输出。"""
     if not card.frame_url:
         return ""
-    return (
-        '<div class="playersection_avatar_frame">'
-        f'<img src="{html.escape(card.frame_url)}" alt=""></div>'
-    )
+    return f'<div class="playersection_avatar_frame"><img src="{html.escape(card.frame_url)}" alt=""></div>'
 
 
 def _background_html(card: StatusCard) -> str:
@@ -61,10 +58,7 @@ def _background_html(card: StatusCard) -> str:
         if card.background_mp4_url:
             src = html.escape(card.background_mp4_url)
             sources += f'<source src="{src}" type="video/mp4">'
-        return (
-            '<video class="miniprofile_nameplate" playsinline autoplay muted loop>'
-            f"{sources}</video>"
-        )
+        return f'<video class="miniprofile_nameplate" playsinline autoplay muted loop>{sources}</video>'
     if card.background_url:
         src = html.escape(card.background_url)
         return f'<img class="miniprofile_nameplate" src="{src}" alt="">'
@@ -94,10 +88,7 @@ def _level_html(card: StatusCard) -> str:
     """等级徽章：100 级以上用官方图案精灵图，其余用段位色圆环。"""
     if card.level_sprite_url:
         src = html.escape(card.level_sprite_url)
-        style = (
-            f"background-image: url('{src}');"
-            f" background-position: 0 {card.level_offset_px}px;"
-        )
+        style = f"background-image: url('{src}'); background-position: 0 {card.level_offset_px}px;"
         badge_class = "friendPlayerLevel is-pattern"
     else:
         style = f"border-color: {html.escape(card.level_border_color)};"

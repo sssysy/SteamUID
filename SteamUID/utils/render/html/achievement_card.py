@@ -1,13 +1,13 @@
 """成就卡：复刻 Steam 成就页排版，封面模糊头图 + 进度条 + 多列成就列表。"""
 
 import html
+from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 from collections.abc import Sequence
 
-from .render import get_template, read_styles, render_html
-from .account_pill import PillAccount, pill_html
+from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
+from .account_pill import PillAccount, pill_html
 from .static_assets import get_font_url, get_texture_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
@@ -58,10 +58,7 @@ def _unlock_text(ts: int) -> str:
     if ts <= 0:
         return ""
     moment = datetime.fromtimestamp(ts, tz=_UNLOCK_TZ)
-    return (
-        f"解锁时间: {moment.year}年{moment.month}月{moment.day}日 "
-        f"{moment.hour:02d}:{moment.minute:02d}"
-    )
+    return f"解锁时间: {moment.year}年{moment.month}月{moment.day}日 {moment.hour:02d}:{moment.minute:02d}"
 
 
 def _column_count(total: int) -> int:
@@ -105,7 +102,7 @@ def _icon_image_html(icon_url: str, default_icon: str) -> str:
     """成就图标；外链失效时回落到默认图标，兜底地址由挂载直链给出。"""
     return (
         f'<img class="ach-icon" src="{html.escape(icon_url)}" '
-        f"onerror=\"this.onerror=null;this.src='{default_icon}'\" alt=\"\">"
+        f'onerror="this.onerror=null;this.src=\'{default_icon}\'" alt="">'
     )
 
 
@@ -119,12 +116,7 @@ def _slot_html(slot: AchievementSlot, default_icon: str) -> str:
         "</div>"
     )
     if slot.overflow:
-        return (
-            '<div class="ach-card">'
-            '<div class="ach-icon-box overflow-icon">?</div>'
-            f"{info}"
-            "</div>"
-        )
+        return f'<div class="ach-card"><div class="ach-icon-box overflow-icon">?</div>{info}</div>'
 
     icon = f'<div class="ach-icon-box">{_icon_image_html(slot.icon_url, default_icon)}</div>'
     if not slot.achieved:
@@ -175,9 +167,7 @@ def render_achievement_card_html(card: AchievementCard) -> str:
         total_count=total,
         percentage=percentage,
         columns_html=(
-            _columns_html(slots, default_icon)
-            if slots
-            else '<div class="empty-state">该游戏暂无成就数据</div>'
+            _columns_html(slots, default_icon) if slots else '<div class="empty-state">该游戏暂无成就数据</div>'
         ),
         footer_html=footer_html(),
     )

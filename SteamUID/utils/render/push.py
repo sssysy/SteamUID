@@ -11,25 +11,25 @@ from gsuid_core.models import Message
 from gsuid_core.segment import MessageSegment
 
 from ..downloader import download
-from ..helper.notify import Delivery, build_message, cd_mark, collect_deliveries
-from ..helper.game_cover import resolve_cover_name
+from ..helper.notify import Delivery, cd_mark, build_message, collect_deliveries
 from ..helper.status import (
-    ACHIEVEMENT_KIND,
     CARD_KINDS,
     GAME_KINDS,
+    ACHIEVEMENT_KIND,
     PushOptions,
     UserStatusEvent,
     is_image_mode,
     is_merge_mode,
 )
 from .html.game_status import (
-    AchievementItem,
-    AchievementRow,
     CardItem,
+    AchievementRow,
     GameStatusItem,
+    AchievementItem,
     render_game_status,
 )
-from .html.static_assets import get_default_avatar_url, get_img_cache_url
+from ..helper.game_cover import resolve_cover_name
+from .html.static_assets import get_img_cache_url, get_default_avatar_url
 
 _TAG = "[Steam·状态推送]"
 _PREFIX = "[Steam]"
@@ -235,9 +235,7 @@ def _achievement_item(
     )
 
 
-async def _resolve_covers(
-    entries: Sequence[_Entry], options: PushOptions
-) -> dict[str, str]:
+async def _resolve_covers(entries: Sequence[_Entry], options: PushOptions) -> dict[str, str]:
     """开关开启时，按 appid 去重解析封面直链；关闭时不做任何请求。"""
     if not options.with_cover:
         return {}
@@ -247,12 +245,7 @@ async def _resolve_covers(
             wanted.add(event.appid)
     ordered = sorted(wanted)
     results = await asyncio.gather(
-        *(
-            resolve_cover_name(
-                appid, country=options.region_cc, griddb_key=options.griddb_key
-            )
-            for appid in ordered
-        ),
+        *(resolve_cover_name(appid, country=options.region_cc, griddb_key=options.griddb_key) for appid in ordered),
         return_exceptions=True,
     )
     covers: dict[str, str] = {}
@@ -271,11 +264,7 @@ async def _resolve_avatars(entries: Sequence[_Entry]) -> dict[str, str]:
 
 
 async def _resolve_icons(entries: Sequence[_Entry]) -> dict[str, str]:
-    urls = [
-        event.achievement.icon
-        for event, _ in entries
-        if event.kind == ACHIEVEMENT_KIND and event.achievement.icon
-    ]
+    urls = [event.achievement.icon for event, _ in entries if event.kind == ACHIEVEMENT_KIND and event.achievement.icon]
     return await _resolve_images(urls)
 
 
@@ -284,9 +273,7 @@ async def _resolve_images(urls: Sequence[str]) -> dict[str, str]:
     ordered = sorted(set(urls))
     if not ordered:
         return {}
-    results = await asyncio.gather(
-        *(download(url, kind="image") for url in ordered), return_exceptions=True
-    )
+    results = await asyncio.gather(*(download(url, kind="image") for url in ordered), return_exceptions=True)
     links: dict[str, str] = {}
     for url, result in zip(ordered, results):
         if isinstance(result, BaseException) or result is None:

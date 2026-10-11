@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import time
-import asyncio
 import shutil
+import asyncio
 import tempfile
 from typing import TYPE_CHECKING
 from pathlib import Path
@@ -12,7 +12,7 @@ import jinja2
 from gsuid_core.logger import logger
 
 if TYPE_CHECKING:
-    from playwright.async_api import Browser, FloatRect, Page, Playwright
+    from playwright.async_api import Page, Browser, FloatRect, Playwright
 
 _HTML_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = _HTML_DIR / "templates"
@@ -258,8 +258,7 @@ async def render_html_gif(
                 await page.set_content(html_content, wait_until="load", timeout=timeout_ms)
                 # 图片直链走本地服务，等全部加载完再取帧，避免截到半张图
                 await page.wait_for_function(
-                    "() => Array.from(document.querySelectorAll('img'))"
-                    ".every((img) => img.complete)",
+                    "() => Array.from(document.querySelectorAll('img')).every((img) => img.complete)",
                     timeout=timeout_ms,
                 )
                 element = page.locator(selector)
@@ -267,9 +266,7 @@ async def render_html_gif(
                 box = await element.bounding_box()
                 if box is None:
                     raise RuntimeError(f"截取目标不可见: {selector}")
-                has_video = bool(
-                    await page.evaluate("() => !!document.querySelector('video')")
-                )
+                has_video = bool(await page.evaluate("() => !!document.querySelector('video')"))
                 seconds = await _gif_seconds(page, has_video, max_seconds)
                 frame_count = max(1, int(round(seconds * fps)))
                 frames = await _capture_frames(page, box, has_video, frame_count, fps)
@@ -294,13 +291,11 @@ async def _gif_seconds(page: Page, has_video: bool, max_seconds: float) -> float
     seconds = max_seconds
     if has_video:
         await page.wait_for_function(
-            "() => { const v = document.querySelector('video');"
-            " return !!v && v.readyState >= 2; }",
+            "() => { const v = document.querySelector('video'); return !!v && v.readyState >= 2; }",
             timeout=_GIF_SEEK_TIMEOUT_MS,
         )
         raw: object = await page.evaluate(
-            "() => { const v = document.querySelector('video');"
-            " return (v && isFinite(v.duration)) ? v.duration : 0; }"
+            "() => { const v = document.querySelector('video'); return (v && isFinite(v.duration)) ? v.duration : 0; }"
         )
         if isinstance(raw, (int, float)) and raw > 0:
             seconds = min(float(raw), max_seconds)
@@ -316,9 +311,7 @@ async def _capture_frames(
 ) -> list[bytes]:
     """逐帧截取目标元素；有视频时先暂停再按帧 seek，保证帧可复现。"""
     if has_video:
-        await page.evaluate(
-            "() => { const v = document.querySelector('video'); if (v) v.pause(); }"
-        )
+        await page.evaluate("() => { const v = document.querySelector('video'); if (v) v.pause(); }")
 
     frames: list[bytes] = []
     for index in range(frame_count):
@@ -372,11 +365,7 @@ async def _encode_gif(
         (tmp_dir / f"frame_{index:03d}.png").write_bytes(frame)
 
     gif_path = tmp_dir / "output.gif"
-    filter_complex = (
-        "[0:v]split[s0][s1];"
-        "[s0]palettegen=stats_mode=diff[p];"
-        "[s1][p]paletteuse=dither=bayer:bayer_scale=5"
-    )
+    filter_complex = "[0:v]split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5"
     process = await asyncio.create_subprocess_exec(
         ffmpeg_exe,
         "-y",

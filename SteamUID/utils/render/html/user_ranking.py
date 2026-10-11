@@ -4,9 +4,9 @@ import html
 from dataclasses import dataclass
 from collections.abc import Sequence
 
-from .render import get_template, read_styles, render_html
+from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import get_default_avatar_url, get_font_url, get_bg_url
+from .static_assets import get_bg_url, get_font_url, get_default_avatar_url
 from ...helper.ranking import format_duration
 
 _FONT_REGULAR = "steam-Regular.ttf"
@@ -64,12 +64,7 @@ def _badge_html(badge: RankingBadge | None) -> str:
     if badge.logo_url:
         logo_html = f'<img class="badge-logo" src="{html.escape(badge.logo_url)}" alt="">'
     name = html.escape(badge.name)
-    return (
-        '<div class="game-badge">'
-        f"{logo_html}"
-        f'<div class="badge-name" title="{name}">{name}</div>'
-        "</div>"
-    )
+    return f'<div class="game-badge">{logo_html}<div class="badge-name" title="{name}">{name}</div></div>'
 
 
 def render_user_ranking_html(

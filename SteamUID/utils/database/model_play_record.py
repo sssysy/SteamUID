@@ -127,9 +127,7 @@ class SteamPlayRecord(BaseIDModel, table=True):
         session: AsyncSession,
         steamid64: str,
     ) -> int:
-        result = await session.execute(
-            delete(cls).where(col(cls.steamid64) == steamid64)
-        )
+        result = await session.execute(delete(cls).where(col(cls.steamid64) == steamid64))
         return result.rowcount if isinstance(result, CursorResult) else 0
 
 

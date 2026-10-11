@@ -6,20 +6,20 @@ from collections.abc import Sequence
 
 import msgspec
 
+from ..key_pool import request_with_api_key
 from ..api.models import (
-    AchievementSchemaEntry,
+    PlayerSummary,
     OwnedGamesPayload,
     PlayerStatsPayload,
-    PlayerSummary,
+    AchievementSchemaEntry,
 )
 from ..api.public import (
     get_owned_games,
+    get_player_summaries,
     get_achievement_schema,
     get_player_achievements,
-    get_player_summaries,
 )
 from ..database.model_cache import SteamCache
-from ..key_pool import request_with_api_key
 
 # GetPlayerSummaries 单次请求的 steamid 上限，写死不再配置
 SUMMARY_CHUNK = 50
@@ -42,11 +42,7 @@ async def fetch_player_summaries(
     players: list[PlayerSummary] = []
     for start in range(0, len(ids), SUMMARY_CHUNK):
         chunk = ids[start : start + SUMMARY_CHUNK]
-        players.extend(
-            await request_with_api_key(
-                partial(_request_summaries, chunk), keys, cooldown_seconds=cooldown
-            )
-        )
+        players.extend(await request_with_api_key(partial(_request_summaries, chunk), keys, cooldown_seconds=cooldown))
     return players
 
 
@@ -68,9 +64,7 @@ async def fetch_owned_games(
     )
 
 
-async def _request_achievements(
-    appid: str, steamid64: str, key: str
-) -> PlayerStatsPayload:
+async def _request_achievements(appid: str, steamid64: str, key: str) -> PlayerStatsPayload:
     return await get_player_achievements(appid, steamid64, key=key, lang=_LANG)
 
 
@@ -103,9 +97,7 @@ async def fetch_achievement_schema(
     if cached:
         return msgspec.json.decode(cached, type=list[AchievementSchemaEntry])
 
-    entries = await request_with_api_key(
-        partial(_request_schema, appid), keys, cooldown_seconds=cooldown
-    )
+    entries = await request_with_api_key(partial(_request_schema, appid), keys, cooldown_seconds=cooldown)
     if entries:
         encoded = msgspec.json.encode(entries).decode("utf-8")
         await SteamCache.upsert(_SCHEMA_CACHE_TYPE, appid, encoded, int(time.time()))

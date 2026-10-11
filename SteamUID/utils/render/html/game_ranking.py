@@ -4,10 +4,10 @@ import html
 from dataclasses import dataclass
 from collections.abc import Sequence
 
-from .render import get_template, read_styles, render_html
+from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_font_url, get_bg_url
+from .static_assets import get_bg_url, get_font_url
 from ...helper.ranking import format_duration
 
 _FONT_REGULAR = "steam-Regular.ttf"

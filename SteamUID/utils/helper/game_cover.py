@@ -129,18 +129,14 @@ def _first_grid_url_of(grids: Sequence[GridDbGrid]) -> str:
 async def _griddb_cover_urls(appids: Sequence[str], api_key: str) -> list[str]:
     """批量取 GridDB 最高票封面直链；未收录或响应错位的位置回落空串。"""
     try:
-        entries: list[GridDbBatchEntry] = await fetch_griddb_grids_batch(
-            appids, api_key=api_key
-        )
+        entries: list[GridDbBatchEntry] = await fetch_griddb_grids_batch(appids, api_key=api_key)
     except (httpx.HTTPError, ValueError) as error:
         logger.warning(f"{_TAG} GridDB 批量查询失败: {type(error).__name__}")
         return ["" for _ in appids]
 
     # 条目与请求顺序对齐，数量不符时无法安全映射到 appid
     if len(entries) != len(appids):
-        logger.warning(
-            f"{_TAG} GridDB 批量返回数量与请求不一致 请求={len(appids)} 返回={len(entries)}"
-        )
+        logger.warning(f"{_TAG} GridDB 批量返回数量与请求不一致 请求={len(appids)} 返回={len(entries)}")
         return ["" for _ in appids]
 
     urls: list[str] = []
@@ -179,9 +175,7 @@ async def resolve_cover_names(
         chunk = remaining[start : start + _DETAIL_CHUNK]
         details = await asyncio.gather(*(_store_header(appid, cc) for appid in chunk))
         # 详情接口返回的常与官方直链同址，同址不再重复下载
-        candidates = [
-            url if url != official[appid] else "" for appid, url in zip(chunk, details)
-        ]
+        candidates = [url if url != official[appid] else "" for appid, url in zip(chunk, details)]
         for appid, name in zip(chunk, await _download_names(candidates)):
             if name:
                 names[appid] = name

@@ -5,9 +5,9 @@ import time
 from dataclasses import dataclass
 from collections.abc import Sequence
 
-from .render import get_template, read_styles, render_html
-from .static_assets import get_font_url, get_bg_url
-from ...helper.status import ACHIEVEMENT_KIND, GAME_KINDS
+from .render import read_styles, render_html, get_template
+from .static_assets import get_bg_url, get_font_url
+from ...helper.status import GAME_KINDS, ACHIEVEMENT_KIND
 
 _CARD_WIDTH = 460
 _COVER_HEIGHT = 215
@@ -162,15 +162,13 @@ def _achievement_row_html(row: AchievementRow) -> str:
 
 def _achievement_html(item: AchievementItem) -> str:
     theme = _THEMES[ACHIEVEMENT_KIND]
-    shown = item.achievements[: _MAX_ACHIEVEMENT_ROWS]
+    shown = item.achievements[:_MAX_ACHIEVEMENT_ROWS]
     rows = "".join(_achievement_row_html(row) for row in shown)
     more_html = ""
     if len(item.achievements) > _MAX_ACHIEVEMENT_ROWS:
         more_html = f'<div class="achievement-more">等共 {len(item.achievements)} 个成就</div>'
     subtitle = (
-        "在 "
-        f'<span class="game-name-text" style="color: {theme.game};">{html.escape(item.game_name)}</span>'
-        " 解锁了成就"
+        f'在 <span class="game-name-text" style="color: {theme.game};">{html.escape(item.game_name)}</span> 解锁了成就'
     )
     info = (
         '<div class="info-row">'
