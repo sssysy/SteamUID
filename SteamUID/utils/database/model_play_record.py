@@ -72,6 +72,16 @@ class SteamPlayRecord(BaseIDModel, table=True):
 
     @classmethod
     @with_session
+    async def get_open_records(
+        cls: type[T_SteamPlayRecord],
+        session: AsyncSession,
+    ) -> list[T_SteamPlayRecord]:
+        """全部进行中的游玩会话，即仍未结束的那些记录。"""
+        result = await session.execute(select(cls).where(col(cls.end_ts).is_(None)))
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
     async def get_records(
         cls: type[T_SteamPlayRecord],
         session: AsyncSession,

@@ -4,42 +4,60 @@
 结构表示字段可能缺失，调用方需自行做存在性判断。
 """
 
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 
-class RsaKeyPayload(TypedDict, total=False):
-    publickey_mod: str
-    publickey_exp: str
-    timestamp: str
-
-
-class RsaKeyResponse(TypedDict):
-    response: RsaKeyPayload
-
-
-class AllowedConfirmation(TypedDict, total=False):
-    confirmation_type: int
-
-
-class BeginAuthSessionPayload(TypedDict, total=False):
+class BeginQrPayload(TypedDict, total=False):
     client_id: str
+    challenge_url: str
     request_id: str
-    steamid: str
-    allowed_confirmations: list[AllowedConfirmation]
+    interval: float
+    version: int
 
 
-class BeginAuthSessionResponse(TypedDict):
-    response: BeginAuthSessionPayload
+class BeginQrResponse(TypedDict):
+    response: BeginQrPayload
 
 
-class PollAuthStatusPayload(TypedDict, total=False):
+class QrPollPayload(TypedDict, total=False):
     refresh_token: str
     access_token: str
+    account_name: str
     had_remote_interaction: bool
+    new_challenge_url: str
 
 
-class PollAuthStatusResponse(TypedDict):
-    response: PollAuthStatusPayload
+class QrPollResponse(TypedDict):
+    response: QrPollPayload
+
+
+class QrChallenge(TypedDict):
+    """一次扫码会话：二维码内容与轮询所需参数。"""
+
+    client_id: str
+    request_id: str
+    challenge_url: str
+    interval: float
+
+
+class QrWaiting(TypedDict):
+    """等待手机端确认：done 恒为 False，scanned 表示已扫码。"""
+
+    done: Literal[False]
+    scanned: bool
+
+
+class QrReady(TypedDict):
+    """已确认，拿到凭据。"""
+
+    done: Literal[True]
+    steamid64: str
+    account_name: str
+    access_token: str
+    refresh_token: str
+
+
+QrPollResult = QrWaiting | QrReady
 
 
 class AccessTokenPayload(TypedDict, total=False):
@@ -48,58 +66,6 @@ class AccessTokenPayload(TypedDict, total=False):
 
 class AccessTokenResponse(TypedDict):
     response: AccessTokenPayload
-
-
-class AuthLoginDone(TypedDict):
-    """登录已完成，拿到 steamid64 与双 token。"""
-
-    ok: bool
-    done: bool
-    need_2fa: bool
-    steamid64: str
-
-
-class AuthLoginPending(TypedDict):
-    """等待两步验证。"""
-
-    ok: bool
-    done: bool
-    need_2fa: bool
-    can_app_confirm: bool
-    hint: str
-
-
-AuthStartResult = AuthLoginDone | AuthLoginPending
-
-
-class AppConfirmDone(TypedDict):
-    ok: bool
-    done: bool
-    steamid64: str
-
-
-class AppConfirmWaiting(TypedDict):
-    ok: bool
-    done: bool
-    msg: str
-
-
-AppConfirmResult = AppConfirmDone | AppConfirmWaiting
-
-
-class AuthCodeResult(TypedDict):
-    ok: bool
-    done: bool
-    steamid64: str
-
-
-class SteamCredentials(TypedDict):
-    steamid64: str
-    account_name: str
-    access_token: str
-    refresh_token: str
-    session_id: str
-    cookies: dict[str, str]
 
 
 class PlayerSummary(TypedDict, total=False):

@@ -1,0 +1,200 @@
+/* ============================================================
+   SteamUID 页面样式 - game_status
+   ============================================================ */
+
+.game-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  /* 卡片之间不留间隔，拼接成整块 */
+  gap: 0;
+  background-color: #171a21;
+}
+
+.game-status-card {
+  position: relative;
+  overflow: hidden;
+  background-color: #171a21;
+}
+
+.game-status-card .cover-img {
+  display: block;
+  width: 100%;
+  height: 215px;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.game-status-card .info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #1e2430 0%, #171a21 60%, #13161c 100%);
+}
+
+.game-status-card .avatar-box {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+}
+
+.game-status-card .avatar {
+  display: block;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.game-status-card .status-bar {
+  width: 4px;
+  height: 56px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.75);
+}
+
+.game-status-card .text-area {
+  flex: 1;
+  min-width: 0;
+  margin-left: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.game-status-card .persona-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  overflow: hidden;
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+
+.game-status-card .persona-name {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-status-card .group-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.game-status-card .subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+
+.game-status-card .game-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
+   获得成就卡：图标 + 名称 + 介绍 + 右侧解锁时间，逐条往下拼
+   背景与「查看」卡片同款，写在 steam_game_status.html 内联样式里
+   ============================================================ */
+
+.game-status-card .achievement-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 18px 12px;
+}
+
+/* 顶部用户信息区做磨砂：模糊卡片底图后再压一层暗色，保证文字可读 */
+.game-status-card.achievement-card .info-row {
+  background: rgba(9, 11, 16, 0.42);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.game-status-card .achievement-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.game-status-card .achievement-icon-box {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: rgba(23, 26, 33, 0.75);
+}
+
+.game-status-card .achievement-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-status-card .achievement-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.game-status-card .achievement-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #dfe3e8;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-status-card .achievement-desc {
+  font-size: 12px;
+  font-weight: 400;
+  color: #8f98a0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.game-status-card .achievement-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8f98a0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 成就过多时折叠成一行汇总 */
+.game-status-card .achievement-more {
+  padding: 9px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+  font-weight: 500;
+  color: #8f98a0;
+  text-align: center;
+}

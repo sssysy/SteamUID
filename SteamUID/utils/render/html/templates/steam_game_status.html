@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_regular_url }}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_medium_url }}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_bold_url }}') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+{{ styles }}
+body {
+  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+/* 容器宽度决定每行张数；单张时容器即卡片宽度 */
+.game-status-list {
+  width: {{ columns * card_width }}px;
+}
+.game-status-card {
+  width: {{ card_width }}px;
+  flex: 0 0 {{ card_width }}px;
+}
+/* 成就卡背景与「查看」卡片同款：压暗渐变 + 底图 */
+.game-status-card.achievement-card {
+  background-image: linear-gradient(180deg, rgba(13, 17, 24, 0.35) 0%, rgba(9, 11, 16, 0.72) 100%){% if card_bg_url %}, url('{{ card_bg_url }}'){% endif %};
+  background-size: cover;
+  background-position: center top;
+}
+</style>
+</head>
+<body>
+<div class="game-status-list" id="game-status-list">{{ cards }}</div>
+</body>
+</html>

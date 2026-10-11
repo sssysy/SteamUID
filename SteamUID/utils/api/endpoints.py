@@ -10,10 +10,8 @@ STEAMCMD_INFO_URL = "https://api.steamcmd.net/v1/info/{appid}"
 GRIDDB_API_BASE = "https://www.steamgriddb.com/api/v2"
 
 # IAuthenticationService / IWishlistService
-AUTH_GET_RSA_KEY = "/IAuthenticationService/GetPasswordRSAPublicKey/v1"
-AUTH_BEGIN_CREDENTIALS = "/IAuthenticationService/BeginAuthSessionViaCredentials/v1"
+AUTH_BEGIN_QR = "/IAuthenticationService/BeginAuthSessionViaQR/v1"
 AUTH_POLL_STATUS = "/IAuthenticationService/PollAuthSessionStatus/v1"
-AUTH_UPDATE_GUARD_CODE = "/IAuthenticationService/UpdateAuthSessionWithSteamGuardCode/v1"
 AUTH_GENERATE_ACCESS_TOKEN = "/IAuthenticationService/GenerateAccessTokenForApp/v1"
 WISHLIST_ADD = "/IWishlistService/AddToWishlist/v1"
 WISHLIST_REMOVE = "/IWishlistService/RemoveFromWishlist/v1"

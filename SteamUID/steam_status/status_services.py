@@ -1,0 +1,141 @@
+"""用户状态轮询：拉取摘要、比对、落库与通知的编排。"""
+
+import time
+from collections.abc import Sequence
+
+import httpx
+from gsuid_core.logger import logger
+
+from ..steam_config import (
+    get_api_keys,
+    get_key_cooldown,
+    get_notify_switch,
+    get_push_options,
+)
+from ..utils.database.model_bind import SteamBind
+from ..utils.database.model_play_record import SteamPlayRecord
+from ..utils.database.model_poll import SteamPoll
+from ..utils.render.push import dispatch_events
+from ..utils.helper.status import (
+    StatusSnapshot,
+    UserStatusEvent,
+    diff_status,
+    snapshot_from_json,
+    snapshot_to_json,
+    to_snapshot,
+)
+from ..utils.helper.steam_api import fetch_player_summaries
+
+_TAG = "[Steam·状态轮询]"
+TASK_NAME = "用户状态轮询"
+_BASELINE_PREFIX = "status:"
+
+
+def _baseline_key(steamid64: str) -> str:
+    return f"{_BASELINE_PREFIX}{steamid64}"
+
+
+async def _load_baselines() -> dict[str, StatusSnapshot]:
+    """一次取回全部基线；任务名下只认 status: 前缀的行。"""
+    rows = await SteamPoll.get_all(TASK_NAME)
+    baselines: dict[str, StatusSnapshot] = {}
+    for row in rows:
+        if not row.key.startswith(_BASELINE_PREFIX):
+            continue
+        baselines[row.key[len(_BASELINE_PREFIX) :]] = snapshot_from_json(row.value)
+    return baselines
+
+
+async def _save_baselines(changed: dict[str, StatusSnapshot]) -> None:
+    for steamid64, snapshot in changed.items():
+        await SteamPoll.upsert(
+            TASK_NAME, _baseline_key(steamid64), snapshot_to_json(snapshot)
+        )
+
+
+async def _prune_baselines(
+    steamids: set[str], baselines: dict[str, StatusSnapshot]
+) -> None:
+    """清理解绑账号的基线，避免表随历史绑定无限增长。"""
+    for steamid64 in baselines:
+        if steamid64 not in steamids:
+            await SteamPoll.delete_row(TASK_NAME, _baseline_key(steamid64))
+
+
+async def _record_play_sessions(
+    events: Sequence[UserStatusEvent],
+    seeds: Sequence[tuple[str, str]],
+    now: int,
+) -> None:
+    """按事件维护游玩会话；结束先于开始写入，切换游戏时区间不重叠。
+
+    seeds 是首次见到就已在游戏的账号，补一条开始记录，避免后续结束事件落空。
+    """
+    for steamid64, appid in seeds:
+        await SteamPlayRecord.start_record(steamid64, appid, now)
+    for event in events:
+        if event.kind == "开始游戏":
+            await SteamPlayRecord.start_record(event.steamid64, event.appid, now)
+        elif event.kind == "结束游戏":
+            await SteamPlayRecord.end_record(event.steamid64, event.appid, now)
+
+
+async def _poll_once() -> None:
+    baselines = await _load_baselines()
+    steamids = await SteamBind.get_all_steamids()
+    await _prune_baselines(set(steamids), baselines)
+    if not steamids:
+        return
+
+    keys = get_api_keys()
+    if not keys:
+        logger.warning(f"{_TAG} 未配置 Steam API Key，跳过本轮轮询")
+        return
+
+    players = await fetch_player_summaries(
+        steamids, keys=keys, cooldown=get_key_cooldown()
+    )
+
+    now = int(time.time())
+
+    events: list[UserStatusEvent] = []
+    current: dict[str, StatusSnapshot] = {}
+    for player in players:
+        if "steamid" not in player:
+            continue
+        steamid64 = player["steamid"]
+        snapshot = to_snapshot(player)
+        previous = baselines[steamid64] if steamid64 in baselines else None
+        events.extend(diff_status(steamid64, previous, snapshot, now))
+        current[steamid64] = snapshot
+
+    changed: dict[str, StatusSnapshot] = {}
+    for steamid64, snapshot in current.items():
+        if steamid64 not in baselines or baselines[steamid64] != snapshot:
+            changed[steamid64] = snapshot
+    await _save_baselines(changed)
+
+    seeds: list[tuple[str, str]] = []
+    for steamid64, snapshot in current.items():
+        if steamid64 in baselines:
+            continue
+        gameid = snapshot["gameid"] if "gameid" in snapshot else ""
+        if gameid:
+            seeds.append((steamid64, gameid))
+
+    await _record_play_sessions(events, seeds, now)
+
+    if get_notify_switch():
+        await dispatch_events(events, options=get_push_options())
+
+
+async def poll_status_once() -> None:
+    """单轮用户状态轮询；异常在此收口，避免打断调度器。"""
+    try:
+        await _poll_once()
+    except httpx.HTTPStatusError as error:
+        logger.warning(f"{_TAG} 接口请求失败: HTTP {error.response.status_code}")
+    except httpx.HTTPError as error:
+        logger.warning(f"{_TAG} 网络请求失败: {type(error).__name__}")
+    except Exception as error:
+        logger.exception(f"{_TAG} 轮询异常: {type(error).__name__}")

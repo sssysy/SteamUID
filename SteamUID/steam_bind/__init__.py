@@ -1,11 +1,11 @@
-"""Steam OpenID 绑定命令：绑定 / 解绑 / 查看。"""
+"""Steam 账号绑定命令：绑定 / 解绑 / 查看。"""
 
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from ..steam_config import get_allow_at
-from .openid_services import (
+from .bind_services import (
     bind_account,
     send_bind_card,
     unbind_account,
