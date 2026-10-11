@@ -5,14 +5,13 @@ from dataclasses import dataclass
 
 from .render import get_template, read_styles, render_html
 from .card_footer import footer_html
-from .static_assets import get_default_avatar_url, get_font_url, get_texture_url
+from .static_assets import get_default_avatar_url, get_font_url, get_bg_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
 _FONT_BOLD = "steam-Bold.ttf"
 
-# 无背景图时与「查看」卡片同款的底图
-_CARD_BG_NAME = "bind_bg.jpg"
+# 无玩家背景图时与「查看」卡片同款的底图（自定义背景优先）
 _CANVAS_WIDTH = 880
 # 估高只用于给浏览器留视口，实际截图按元素高度裁切
 _VIEWPORT_HEIGHT = 520
@@ -151,7 +150,7 @@ def render_info_card_html(card: InfoCard) -> str:
         font_bold_url=get_font_url(_FONT_BOLD),
         canvas_width=_CANVAS_WIDTH,
         bg_url=card.background_url,
-        card_bg_url=get_texture_url(_CARD_BG_NAME),
+        card_bg_url=get_bg_url(),
         header_html=_header_html(card),
         stats_html=_stats_html(card),
         id_html=_id_html(card),

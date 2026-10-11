@@ -75,6 +75,18 @@ async def clean_cache_files(cutoff_ts: int) -> int:
     return removed
 
 
+async def clear_cache_files(kind: ResourceKind) -> int:
+    """清空 kind 对应缓存目录下的全部文件，返回删除数。"""
+    directory = IMG_CACHE_DIR if kind == "image" else CACHE_DIR
+    removed = 0
+    for path in directory.iterdir():
+        if not path.is_file():
+            continue
+        path.unlink(missing_ok=True)
+        removed += 1
+    return removed
+
+
 def _new_client(timeout: float) -> httpx.AsyncClient:
     """框架 download 默认不跟随重定向，而 Steam 图床常见 302，需显式打开。"""
     return httpx.AsyncClient(timeout=timeout, follow_redirects=True)

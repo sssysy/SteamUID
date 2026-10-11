@@ -6,9 +6,8 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .account_pill import PillAccount, pill_html
 from .card_footer import footer_html
-from .static_assets import get_font_url, get_texture_url, get_default_avatar_url
+from .static_assets import get_font_url, get_bg_url, get_default_avatar_url
 
-_CARD_BG_NAME = "bind_bg.jpg"
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
 _FONT_BOLD = "steam-Bold.ttf"
@@ -40,7 +39,7 @@ def render_bind_list_html(
         font_regular_url=get_font_url(_FONT_REGULAR),
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
-        bg_url=get_texture_url(_CARD_BG_NAME),
+        bg_url=get_bg_url(),
         qq_avatar_url=qq_avatar_url or get_default_avatar_url(),
         user_name=html.escape(user_name),
         items_html=items_html,

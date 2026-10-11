@@ -1,0 +1,205 @@
+/* ============================================================
+   SteamUID 页面样式 - ranking；药丸与页脚为公共组件，见 common.css
+   ============================================================ */
+
+.ranking-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px 28px 18px;
+  background-color: #171a21;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #ffffff;
+}
+
+.ranking-header {
+  width: 100%;
+  padding-bottom: 12px;
+}
+
+.ranking-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 34px;
+}
+
+.ranking-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* 标题右侧的游戏徽标（群游戏玩家排行） */
+.game-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.badge-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #11141a;
+  flex-shrink: 0;
+  display: block;
+}
+
+.badge-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #67c1f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+/* 药丸本体是 common.css 的公共组件，这里只改右上角的宽度 */
+.ranking-header-top .pill-item {
+  width: 300px;
+  flex: none;
+}
+
+.ranking-cols {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.col-rank {
+  width: 70px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8f98a0;
+}
+
+.col-duration {
+  width: 100px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8f98a0;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ranking-item:nth-child(even) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding-right: 16px;
+}
+
+.thumb-box {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #11141a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 游戏封面是横板，按 460x215 居中裁切 */
+.thumb-cover {
+  width: 72px;
+  height: 34px;
+}
+
+.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.item-name {
+  margin-left: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #f3f3f3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.item-meta {
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.item-meta .item-name {
+  margin-left: 0;
+}
+
+.item-appid {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #8f98a0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.item-cols {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+/* 行内数值列比表头列更大更亮 */
+.ranking-item .col-rank {
+  font-size: 16px;
+  color: #5cbe32;
+}
+
+.ranking-item .col-duration {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* footer 本体是公共组件，这里只补下内边距 */
+.ranking-card .card-footer {
+  padding-top: 18px;
+}

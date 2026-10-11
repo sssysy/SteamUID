@@ -7,14 +7,13 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_font_url, get_texture_url
+from .static_assets import get_font_url, get_bg_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
 _FONT_BOLD = "steam-Bold.ttf"
 
-# 背景与「查看」卡片同款：压暗渐变 + bind_bg 底图
-_CARD_BG_NAME = "bind_bg.jpg"
+# 背景与「查看」卡片同款：压暗渐变 + 底图（自定义背景优先）
 _CANVAS_WIDTH = 880
 # 估高只用于给浏览器留视口，实际截图按元素高度裁切
 _HEADER_HEIGHT = 118
@@ -56,7 +55,7 @@ def render_game_recommend_html(user: PillAccount, games: Sequence[RecommendGame]
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
         canvas_width=_CANVAS_WIDTH,
-        bg_url=get_texture_url(_CARD_BG_NAME),
+        bg_url=get_bg_url(),
         account_pill_html=pill_html(user),
         cards_html=cards,
         footer_html=footer_html(),

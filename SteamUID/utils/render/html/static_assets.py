@@ -3,6 +3,8 @@
 from pathlib import Path
 
 from starlette.types import Scope
+from fastapi import HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 
@@ -10,16 +12,20 @@ from gsuid_core.config import CONFIG_DEFAULT, core_config
 from gsuid_core.app_life import app as fastapi_app
 from gsuid_core.data_store import get_res_path
 
+from ....steam_config import get_custom_bg_path
+
 _HTML_DIR = Path(__file__).resolve().parent
 TEXTURE2D_DIR = _HTML_DIR / "texture2d"
 FONTS_DIR = _HTML_DIR.parent / "fonts"
 IMG_CACHE_DIR = get_res_path("SteamUID/img_cache")
 
 DEFAULT_AVATAR_NAME = "default_icon.jpg"
+DEFAULT_BG_NAME = "bind_bg.jpg"
 
 _TEXTURE2D_ROUTE = "/steamuid/texture2d"
 _FONTS_ROUTE = "/steamuid/fonts"
 _IMG_CACHE_ROUTE = "/steamuid/img_cache"
+_CUSTOM_BG_ROUTE = "/steamuid/custom_bg"
 
 
 class _CORSStaticFiles(StaticFiles):
@@ -51,6 +57,8 @@ def _ensure_mounted() -> None:
         if route_path in mounted or not directory.is_dir():
             continue
         fastapi_app.mount(route_path, _CORSStaticFiles(directory=directory), name=name)
+    if _CUSTOM_BG_ROUTE not in mounted:
+        fastapi_app.add_api_route(_CUSTOM_BG_ROUTE, _serve_custom_bg, methods=["GET"])
 
 
 def get_texture_url(name: str) -> str:
@@ -75,6 +83,22 @@ def get_img_cache_url(name: str) -> str:
         return ""
     _ensure_mounted()
     return f"{_base_url()}{_IMG_CACHE_ROUTE}/{name}"
+
+
+async def _serve_custom_bg() -> FileResponse:
+    """自定义背景直链响应；配置已被清除时返回 404。"""
+    path = get_custom_bg_path()
+    if path is None:
+        raise HTTPException(status_code=404, detail="custom background not configured")
+    return FileResponse(path)
+
+
+def get_bg_url() -> str:
+    """卡片底图直链：配置了自定义背景时优先，否则回落插件自带底图。"""
+    if get_custom_bg_path() is not None:
+        _ensure_mounted()
+        return f"{_base_url()}{_CUSTOM_BG_ROUTE}"
+    return get_texture_url(DEFAULT_BG_NAME)
 
 
 def get_default_avatar_url() -> str:

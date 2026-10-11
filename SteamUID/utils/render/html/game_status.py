@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from collections.abc import Sequence
 
 from .render import get_template, read_styles, render_html
-from .static_assets import get_font_url, get_texture_url
+from .static_assets import get_font_url, get_bg_url
 from ...helper.status import ACHIEVEMENT_KIND, GAME_KINDS
 
 _CARD_WIDTH = 460
@@ -14,8 +14,7 @@ _COVER_HEIGHT = 215
 _ROW_HEIGHT = 84
 _MAX_COLUMNS = 5
 
-# 成就卡背景与「查看」卡片同款：压暗渐变 + bind_bg 底图
-_CARD_BG_NAME = "bind_bg.jpg"
+# 成就卡背景与「查看」卡片同款：压暗渐变 + 底图（自定义背景优先）
 
 # 成就卡估高参数：头部之外每条成就占一行，列表底部留一点内边距
 _ACHIEVEMENT_ROW_HEIGHT = 74
@@ -227,7 +226,7 @@ def render_game_status_html(items: Sequence[CardItem]) -> str:
         font_regular_url=get_font_url(_FONT_REGULAR),
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
-        card_bg_url=get_texture_url(_CARD_BG_NAME),
+        card_bg_url=get_bg_url(),
         cards=cards,
         card_width=_CARD_WIDTH,
         columns=_columns(len(items)),

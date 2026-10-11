@@ -112,6 +112,25 @@ class SteamBind(Bind, table=True):
 
     @classmethod
     @with_session
+    async def get_binds_by_group(
+        cls: type[T_SteamBind],
+        session: AsyncSession,
+        bot_id: str,
+        bot_self_id: str,
+        group_id: str,
+    ) -> list[T_SteamBind]:
+        """取该会话内该群的全部绑定。"""
+        result = await session.execute(
+            select(cls).where(
+                col(cls.bot_id) == bot_id,
+                col(cls.bot_self_id) == bot_self_id,
+                col(cls.group_id) == group_id,
+            )
+        )
+        return list(result.scalars().all())
+
+    @classmethod
+    @with_session
     async def get_main_bind(
         cls: type[T_SteamBind],
         session: AsyncSession,

@@ -1,5 +1,7 @@
 """SteamUID 插件配置项定义与注册。"""
 
+from pathlib import Path
+
 from gsuid_core.logger import logger
 from gsuid_core.data_store import get_res_path
 from gsuid_core.utils.plugins_config.models import (
@@ -7,6 +9,7 @@ from gsuid_core.utils.plugins_config.models import (
     GsStrConfig,
     GsBoolConfig,
     GsIntConfig,
+    GsImageConfig,
     GsListStrConfig,
 )
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
@@ -24,7 +27,8 @@ from ..utils.maps import (
     find_region,
 )
 
-CONFIG_PATH = get_res_path("SteamUID") / "config.json"
+DATA_DIR = get_res_path("SteamUID")
+CONFIG_PATH = DATA_DIR / "config.json"
 
 CONFIG_DEFAULT: dict[str, GSC] = {
     "GsCoreBaseURL": GsStrConfig(
@@ -36,6 +40,14 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "允许 @ 他人",
         "开启后可通过 @ 指定他人进行绑定 / 解绑 / 查看",
         False,
+    ),
+    "CustomBgPath": GsImageConfig(
+        "自定义背景",
+        "卡片底图使用的自定义背景图（查看 / 玩什么 / 推送状态卡 / 信息卡）；上传后自动生效，未上传时使用插件默认背景",
+        "",
+        str(DATA_DIR),
+        "bg",
+        "jpg",
     ),
     "Region": GsStrConfig(
         "steam 地区",
@@ -285,3 +297,21 @@ def get_push_options() -> PushOptions:
         # 总开关关闭时清空 key，等价于不查询 GridDB
         griddb_key=get_griddb_key() if get_allow_griddb_cover() else "",
     )
+
+
+def get_custom_bg_path() -> Path | None:
+    """配置声明的自定义背景文件；未上传、非上传目标文件或文件缺失时返回 None。"""
+    config = SteamConfig.get_config("CustomBgPath")
+    if not isinstance(config, GsImageConfig):
+        logger.error("[Steam·自定义背景] 配置项 CustomBgPath 类型异常")
+        return None
+    raw = config.data.strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    # 只认控制台上传的目标文件，避免把数据目录里的其它文件放出去
+    if path.parent != DATA_DIR or path.name != f"{config.filename}.{config.suffix}":
+        return None
+    if not path.is_file() or path.stat().st_size == 0:
+        return None
+    return path
