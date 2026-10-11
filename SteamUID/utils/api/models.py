@@ -425,14 +425,12 @@ class WishlistMutationResponse(TypedDict, total=False):
 
 
 class YearReviewImage(TypedDict, total=False):
+    name: str
     url_path: str
-    height: int
-    width: int
 
 
 class YearReviewPayload(TypedDict, total=False):
     images: list[YearReviewImage]
-    status: int
 
 
 class YearReviewResponse(TypedDict):

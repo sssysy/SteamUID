@@ -1,23 +1,27 @@
-"""Steam 用户状态轮询的定时任务注册。"""
+"""Steam 用户状态查询命令。"""
 
-import asyncio
+from gsuid_core.sv import SV
+from gsuid_core.bot import Bot
+from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 
-from gsuid_core.aps import scheduler
-from gsuid_core.logger import logger
+from ..steam_config import get_allow_at
+from ..utils.helper.bind import get_main_steamid64
+from ..utils.helper.command import command_guard, resolve_target
+from .status_services import build_status_image
 
-from ..steam_config import get_poll_interval
-from .status_services import poll_status_once
-
-_TAG = "[Steam·状态轮询]"
-
-# 上一轮未结束时跳过本轮，避免慢接口把轮询叠起来
-_poll_lock = asyncio.Lock()
+status_sv = SV("steam用户相关")
 
 
-@scheduler.scheduled_job("interval", seconds=get_poll_interval())
-async def poll_user_status_job() -> None:
-    if _poll_lock.locked():
-        logger.debug(f"{_TAG} 上一轮尚未结束，跳过本轮")
-        return
-    async with _poll_lock:
-        await poll_status_once()
+@status_sv.on_command("状态", block=True)
+@command_guard
+async def steam_status(bot: Bot, ev: Event) -> None:
+    """steam状态[@他人|steamid|好友码]：渲染目标账号的迷你资料卡。"""
+    user_id, steamid64 = resolve_target(ev, allow_at=get_allow_at())
+    if steamid64 is None:
+        steamid64 = await get_main_steamid64(ev, user_id)
+    if steamid64 is None:
+        raise ValueError("请先绑定 steam 账号")
+
+    await bot.send("正在查询状态......")
+    await bot.send(MessageSegment.image(await build_status_image(steamid64)))

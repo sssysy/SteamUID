@@ -17,6 +17,12 @@ from ..utils.helper.status import (
     NOTIFY_KINDS,
     DEFAULT_PUSH_MODE,
 )
+from ..utils.maps import (
+    DEFAULT_REGION,
+    SUPPORTED_REGIONS,
+    SteamRegion,
+    find_region,
+)
 
 CONFIG_PATH = get_res_path("SteamUID") / "config.json"
 
@@ -30,6 +36,12 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "允许 @ 他人",
         "开启后可通过 @ 指定他人进行绑定 / 解绑 / 查看",
         False,
+    ),
+    "Region": GsStrConfig(
+        "steam 地区",
+        "价格 / 商店搜索 / 封面等接口传递的地区，同时决定价格展示的货币符号",
+        DEFAULT_REGION.name,
+        options=SUPPORTED_REGIONS,
     ),
     "SteamAPIKey": GsListStrConfig(
         "Steam API Key",
@@ -122,6 +134,24 @@ def get_allow_at() -> bool:
         logger.error("[Steam·账户绑定] 配置项 AllowAt 类型异常")
         return False
     return config.data
+
+
+def get_region() -> SteamRegion:
+    """配置的 Steam 地区；类型异常或取值未收录时回落默认地区。"""
+    config = SteamConfig.get_config("Region")
+    if not isinstance(config, GsStrConfig):
+        logger.error("[Steam·地区配置] 配置项 Region 类型异常")
+        return DEFAULT_REGION
+    region = find_region(config.data)
+    if region is None:
+        logger.error(f"[Steam·地区配置] 配置项 Region 取值异常，已回落默认: {config.data}")
+        return DEFAULT_REGION
+    return region
+
+
+def get_region_cc() -> str:
+    """配置地区对应的 ISO 代码（大写），供商店相关接口的 cc 参数使用。"""
+    return get_region().cc.upper()
 
 
 def get_api_keys() -> list[str]:
@@ -251,6 +281,7 @@ def get_push_options() -> PushOptions:
         cd_seconds=get_notify_cd() * 60,
         mode=get_push_mode(),
         with_cover=get_push_image(),
+        region_cc=get_region_cc(),
         # 总开关关闭时清空 key，等价于不查询 GridDB
         griddb_key=get_griddb_key() if get_allow_griddb_cover() else "",
     )

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 import asyncio
+import shutil
+import tempfile
 from typing import TYPE_CHECKING
 from pathlib import Path
 
@@ -10,7 +12,7 @@ import jinja2
 from gsuid_core.logger import logger
 
 if TYPE_CHECKING:
-    from playwright.async_api import Browser, Playwright
+    from playwright.async_api import Browser, FloatRect, Page, Playwright
 
 _HTML_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = _HTML_DIR / "templates"
@@ -34,6 +36,10 @@ _IDLE_TTL = 120.0
 _REAP_INTERVAL = 30.0
 # 浏览器复用上限：chromium 长跑内存缓慢上涨，到量换新实例
 _MAX_BROWSER_USES = 200
+
+# GIF：暂停视频后逐帧 seek，单帧 seek 等待上限与最小时长
+_GIF_SEEK_TIMEOUT_MS = 2000
+_GIF_MIN_SECONDS = 1.0
 
 _ENV = jinja2.Environment(
     loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
@@ -205,3 +211,189 @@ async def render_html(
         except Exception as exc:
             logger.exception(f"{_TAG} 渲染失败: {exc!r}")
             raise RuntimeError("渲染图片时发生错误，请查看后台日志") from exc
+
+
+async def render_html_gif(
+    html_content: str,
+    selector: str,
+    *,
+    viewport_width: int = 800,
+    viewport_height: int = 600,
+    fps: int = 10,
+    max_seconds: float = 3.0,
+    timeout: float = 25.0,
+) -> bytes:
+    """渲染 HTML 并把目标元素的动画输出为 GIF。
+
+    复用常驻浏览器：暂停视频后逐帧 seek 截元素，省掉实时录屏与二次裁剪；
+    无 <video> 时按同一帧率采样，兼容 GIF / WebP 动态素材。
+    """
+    try:
+        from imageio_ffmpeg import get_ffmpeg_exe
+    except ImportError as exc:
+        raise RuntimeError("imageio-ffmpeg 未安装，无法渲染 GIF") from exc
+    try:
+        from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    except ImportError as exc:
+        raise RuntimeError("playwright 未安装，无法渲染图片") from exc
+
+    ffmpeg_exe = get_ffmpeg_exe()
+    timeout_ms = int(timeout * 1000)
+    global _last_used
+    _ensure_reaper()
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="steam_gif_"))
+    frames: list[bytes] = []
+    try:
+        async with _browser_lock:
+            _last_used = time.monotonic()
+            browser = await _get_browser()
+            page = await browser.new_page(
+                viewport={"width": viewport_width, "height": viewport_height},
+                device_scale_factor=1,
+            )
+            try:
+                page.set_default_timeout(timeout_ms)
+                page.set_default_navigation_timeout(timeout_ms)
+                await page.set_content(html_content, wait_until="load", timeout=timeout_ms)
+                # 图片直链走本地服务，等全部加载完再取帧，避免截到半张图
+                await page.wait_for_function(
+                    "() => Array.from(document.querySelectorAll('img'))"
+                    ".every((img) => img.complete)",
+                    timeout=timeout_ms,
+                )
+                element = page.locator(selector)
+                await element.wait_for(state="visible")
+                box = await element.bounding_box()
+                if box is None:
+                    raise RuntimeError(f"截取目标不可见: {selector}")
+                has_video = bool(
+                    await page.evaluate("() => !!document.querySelector('video')")
+                )
+                seconds = await _gif_seconds(page, has_video, max_seconds)
+                frame_count = max(1, int(round(seconds * fps)))
+                frames = await _capture_frames(page, box, has_video, frame_count, fps)
+            except (PlaywrightTimeoutError, TimeoutError) as exc:
+                logger.warning(f"{_TAG} 渲染 GIF 超时: {exc!r}")
+                raise RuntimeError("渲染超时，请稍后重试") from exc
+            except RuntimeError:
+                raise
+            except Exception as exc:
+                logger.exception(f"{_TAG} 渲染 GIF 失败: {exc!r}")
+                raise RuntimeError("渲染 GIF 时发生错误，请查看后台日志") from exc
+            finally:
+                await page.close()
+
+        return await _encode_gif(ffmpeg_exe, tmp_dir, frames, fps)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+async def _gif_seconds(page: Page, has_video: bool, max_seconds: float) -> float:
+    """GIF 时长：有视频取视频时长，否则按上限；钳制在最小与上限之间。"""
+    seconds = max_seconds
+    if has_video:
+        await page.wait_for_function(
+            "() => { const v = document.querySelector('video');"
+            " return !!v && v.readyState >= 2; }",
+            timeout=_GIF_SEEK_TIMEOUT_MS,
+        )
+        raw: object = await page.evaluate(
+            "() => { const v = document.querySelector('video');"
+            " return (v && isFinite(v.duration)) ? v.duration : 0; }"
+        )
+        if isinstance(raw, (int, float)) and raw > 0:
+            seconds = min(float(raw), max_seconds)
+    return max(_GIF_MIN_SECONDS, seconds)
+
+
+async def _capture_frames(
+    page: Page,
+    box: FloatRect,
+    has_video: bool,
+    frame_count: int,
+    fps: int,
+) -> list[bytes]:
+    """逐帧截取目标元素；有视频时先暂停再按帧 seek，保证帧可复现。"""
+    if has_video:
+        await page.evaluate(
+            "() => { const v = document.querySelector('video'); if (v) v.pause(); }"
+        )
+
+    frames: list[bytes] = []
+    for index in range(frame_count):
+        if has_video:
+            await _seek_video(page, index / fps)
+        else:
+            await page.wait_for_timeout(int(1000 / fps))
+        frames.append(
+            await page.screenshot(
+                clip={
+                    "x": box["x"],
+                    "y": box["y"],
+                    "width": box["width"],
+                    "height": box["height"],
+                },
+                type="png",
+            )
+        )
+    return frames
+
+
+async def _seek_video(page: Page, seconds: float) -> None:
+    """把视频 seek 到指定时间并等 seeked；未触发 seeked 时靠定时器兜底。"""
+    await page.evaluate(
+        "(t) => new Promise((resolve) => {"
+        " const v = document.querySelector('video');"
+        " if (!v) { resolve(true); return; }"
+        " let done = false;"
+        " const finish = () => {"
+        "   if (done) { return; }"
+        "   done = true;"
+        "   v.removeEventListener('seeked', finish);"
+        "   resolve(true);"
+        " };"
+        " v.addEventListener('seeked', finish);"
+        " v.currentTime = t;"
+        " setTimeout(finish, 300);"
+        "})",
+        seconds,
+    )
+
+
+async def _encode_gif(
+    ffmpeg_exe: str,
+    tmp_dir: Path,
+    frames: list[bytes],
+    fps: int,
+) -> bytes:
+    """把 PNG 帧序列交给 ffmpeg 合成 GIF，调色板优化以压体积。"""
+    for index, frame in enumerate(frames):
+        (tmp_dir / f"frame_{index:03d}.png").write_bytes(frame)
+
+    gif_path = tmp_dir / "output.gif"
+    filter_complex = (
+        "[0:v]split[s0][s1];"
+        "[s0]palettegen=stats_mode=diff[p];"
+        "[s1][p]paletteuse=dither=bayer:bayer_scale=5"
+    )
+    process = await asyncio.create_subprocess_exec(
+        ffmpeg_exe,
+        "-y",
+        "-framerate",
+        str(fps),
+        "-i",
+        str(tmp_dir / "frame_%03d.png"),
+        "-filter_complex",
+        filter_complex,
+        "-loop",
+        "0",
+        str(gif_path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await process.communicate()
+    if process.returncode != 0:
+        logger.error(f"{_TAG} ffmpeg 合成 GIF 失败: {stderr.decode(errors='replace')}")
+        raise RuntimeError("合成 GIF 时发生错误，请查看后台日志")
+    return gif_path.read_bytes()

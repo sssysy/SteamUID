@@ -32,6 +32,18 @@ def resolve_target(ev: Event, *, allow_at: bool) -> tuple[str, str | None]:
     return user_id, auto2steamid64(ev.text)
 
 
+def resolve_viewer(ev: Event, *, allow_at: bool) -> str:
+    """解析发起人：@ 他人（受开关约束）优先，否则取消息发送者。
+
+    与 resolve_target 的区别是不解析消息正文，供正文是游戏名等非账号参数的命令使用。
+    """
+    if ev.at:
+        if not allow_at:
+            raise ValueError("管理员未开放 @ 他人功能")
+        return ev.at
+    return ev.user_id
+
+
 def command_guard(
     func: Callable[[Bot, Event], Awaitable[None]],
 ) -> Callable[[Bot, Event], Awaitable[None]]:

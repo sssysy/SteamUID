@@ -3,6 +3,7 @@
 API_BASE_DEFAULT = "https://api.steampowered.com"
 STORE_BASE_DEFAULT = "https://store.steampowered.com"
 COMMUNITY_BASE_DEFAULT = "https://steamcommunity.com"
+COMMUNITY_CDN_BASE_DEFAULT = "https://community.fastly.steamstatic.com"
 HELP_BASE_DEFAULT = "https://help.steampowered.com"
 MEDIA_BASE_DEFAULT = "https://media.steampowered.com"
 SHARED_CDN_BASE_DEFAULT = "https://shared.fastly.steamstatic.com"
@@ -39,6 +40,11 @@ STORE_NEWS_VIEW = "/news/app/{appid}/view/{gid}"
 # 社区页面
 COMMUNITY_MINIPROFILE = "/miniprofile/{steamid32}/json"
 COMMUNITY_PROFILE_XML = "/profiles/{steamid64}/?xml=1"
+# 社区等级徽章精灵图（10 帧纵排，每帧 32px）
+COMMUNITY_LEVEL_SPRITE = "/public/shared/images/community/{name}"
+
+# 社区装扮素材（动画头像 / 迷你资料背景等）相对路径直链模板
+COMMUNITY_ASSETS_TEMPLATE = SHARED_CDN_BASE_DEFAULT + "/community_assets/images/{path}"
 
 # 官方封面 / 图标直链模板
 COVER_VARIANT_PATHS: dict[str, str] = {

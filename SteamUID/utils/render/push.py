@@ -35,7 +35,6 @@ _TAG = "[Steam·状态推送]"
 _PREFIX = "[Steam]"
 
 _Entry = tuple[UserStatusEvent, str]
-_CoverKey = tuple[str, str]
 _AchievementKey = tuple[str, str]
 # 一张卡与它涉及的事件；发图成功后就这些事件更新冷却
 _CardGroup = tuple[CardItem, tuple[_Entry, ...]]
@@ -101,7 +100,7 @@ def _partition(entries: Sequence[_Entry]) -> tuple[list[_Entry], list[_Entry]]:
 
 def _card_groups(
     cards: Sequence[_Entry],
-    covers: dict[_CoverKey, str],
+    covers: dict[str, str],
     avatars: dict[str, str],
     icons: dict[str, str],
     options: PushOptions,
@@ -184,7 +183,7 @@ def _events_of(entries: Sequence[_Entry]) -> list[UserStatusEvent]:
 def _card_item(
     event: UserStatusEvent,
     name: str,
-    covers: dict[_CoverKey, str],
+    covers: dict[str, str],
     avatars: dict[str, str],
     options: PushOptions,
 ) -> GameStatusItem:
@@ -192,9 +191,8 @@ def _card_item(
     if event.avatar in avatars:
         avatar_url = avatars[event.avatar]
     cover_url = ""
-    cover_key = (event.appid, event.country)
-    if options.with_cover and cover_key in covers:
-        cover_url = covers[cover_key]
+    if options.with_cover and event.appid in covers:
+        cover_url = covers[event.appid]
     return GameStatusItem(
         kind=event.kind,
         nickname=event.nickname or event.steamid64,
@@ -239,26 +237,28 @@ def _achievement_item(
 
 async def _resolve_covers(
     entries: Sequence[_Entry], options: PushOptions
-) -> dict[_CoverKey, str]:
-    """开关开启时，按 (appid, 国家码) 去重解析封面直链；关闭时不做任何请求。"""
+) -> dict[str, str]:
+    """开关开启时，按 appid 去重解析封面直链；关闭时不做任何请求。"""
     if not options.with_cover:
         return {}
-    wanted: set[_CoverKey] = set()
+    wanted: set[str] = set()
     for event, _ in entries:
         if event.kind in GAME_KINDS and event.appid:
-            wanted.add((event.appid, event.country))
+            wanted.add(event.appid)
     ordered = sorted(wanted)
     results = await asyncio.gather(
         *(
-            resolve_cover_name(appid, country=country, griddb_key=options.griddb_key)
-            for appid, country in ordered
+            resolve_cover_name(
+                appid, country=options.region_cc, griddb_key=options.griddb_key
+            )
+            for appid in ordered
         ),
         return_exceptions=True,
     )
-    covers: dict[_CoverKey, str] = {}
+    covers: dict[str, str] = {}
     for key, result in zip(ordered, results):
         if isinstance(result, BaseException):
-            logger.warning(f"{_TAG} 封面解析失败 appid={key[0]}: {type(result).__name__}")
+            logger.warning(f"{_TAG} 封面解析失败 appid={key}: {type(result).__name__}")
             continue
         if result:
             covers[key] = get_img_cache_url(result)

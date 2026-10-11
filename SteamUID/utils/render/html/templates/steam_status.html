@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_regular_url }}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_medium_url }}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_bold_url }}') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+{{ styles }}
+body {
+  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+</style>
+</head>
+<body>
+<div class="miniprofile_container" id="steam-status-card">
+  <div class="miniprofile_nameplatecontainer">
+    {{ background_html }}
+  </div>
+
+  <div class="miniprofile_playersection text_shadow">
+    {{ avatar_frame_html }}
+    <div class="playersection_avatar {{ border_color_class }}">
+      <img src="{{ avatar_url }}" alt="">
+    </div>
+    <div class="player_content">
+      <span class="persona {{ status_tone }}">{{ name }}</span>
+      <span class="friend_status_{{ status_tone }}">{{ status_text }}</span>
+    </div>
+  </div>
+
+  <div class="miniprofile_detailssection miniprofile_backdropblur not_in_game miniprofile_backdrop">
+    {{ featured_badge_html }}
+    {{ level_html }}
+  </div>
+</div>
+</body>
+</html>

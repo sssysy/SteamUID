@@ -1,0 +1,193 @@
+/* ============================================================
+   SteamUID 页面样式 - 状态卡（迷你资料卡）
+   参考 Steam 社区 miniprofile；等级图案改用本地精灵图
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: content-box;
+}
+
+body {
+  transform: scale(1.5);
+  transform-origin: top left;
+}
+
+/* 状态文案与头像下边框配色 */
+.persona.offline, .friend_status_offline { color: #898989; }
+.persona.online, .friend_status_online { color: #57cbde; }
+.persona.in-game, .friend_status_in-game { color: #90ba3c; }
+.border_color_offline { border-color: #898989; }
+.border_color_online { border-color: #57cbde; }
+.border_color_in-game { border-color: #90ba3c; }
+
+.text_shadow { text-shadow: 1px 1px 4px #000; }
+
+.miniprofile_container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  width: 328px;
+  background: radial-gradient(ellipse farthest-corner at 20% 30%, rgb(76, 80, 91) 0%, rgb(52, 55, 63) 50%, rgb(40, 44, 50) 100%);
+  isolation: isolate;
+}
+
+.miniprofile_playersection {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  z-index: 1;
+  height: 62px;
+  padding: 16px;
+}
+
+.miniprofile_playersection .playersection_avatar {
+  width: 90px;
+  height: 90px;
+  background: none;
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+}
+
+.miniprofile_playersection .playersection_avatar img {
+  width: 90px;
+  height: 90px;
+  box-sizing: border-box;
+  background: none;
+}
+
+.miniprofile_playersection .playersection_avatar_frame {
+  position: absolute;
+  z-index: 1;
+  width: 107px;
+  height: 107px;
+  top: 8px;
+  left: 8px;
+  pointer-events: none;
+}
+
+.miniprofile_playersection .playersection_avatar_frame > img {
+  width: 100%;
+  height: 100%;
+  background: none;
+}
+
+.miniprofile_playersection .player_content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 16px;
+  text-shadow: 1px 1px 4px #000;
+}
+
+.miniprofile_playersection .player_content .persona {
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 200px;
+}
+
+.miniprofile_playersection .player_content .friend_status_offline,
+.miniprofile_playersection .player_content .friend_status_online,
+.miniprofile_playersection .player_content .friend_status_in-game {
+  font-size: 10px;
+}
+
+.miniprofile_detailssection {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 8px 16px;
+}
+
+.miniprofile_detailssection.not_in_game {
+  padding-top: 24px;
+}
+
+.miniprofile_featuredcontainer {
+  display: flex;
+  flex-direction: row;
+  height: 34px;
+  padding-left: 16px;
+  margin-bottom: 8px;
+}
+
+.miniprofile_featuredcontainer .badge_icon {
+  width: 34px;
+  height: 34px;
+  position: relative;
+}
+
+.miniprofile_featuredcontainer .description {
+  margin-left: 12px;
+  margin-top: auto;
+  margin-bottom: auto;
+  font-size: 14px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.miniprofile_featuredcontainer .description .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #b1b1b1;
+}
+
+.miniprofile_featuredcontainer .description .xp {
+  font-size: 12px;
+  color: #6b6a6a;
+}
+
+.miniprofile_backdropblur {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.miniprofile_backdrop {
+  background: linear-gradient(to bottom, rgba(24, 26, 30, .7) 5%, rgba(24, 26, 30, .4) 95%);
+}
+
+.miniprofile_nameplatecontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+}
+
+.miniprofile_nameplate {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top right;
+}
+
+/* 等级徽章：官方图案精灵图 10 帧纵排，每帧 32px */
+.friendPlayerLevel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 1px 1px #1a1a1a;
+}
+
+.friendPlayerLevel.is-ring {
+  border: solid 2px #9b9b9b;
+}
+
+.friendPlayerLevel.is-pattern {
+  background-repeat: no-repeat;
+  background-size: 32px 320px;
+}
+
+.friendPlayerLevel .friendPlayerLevelNum {
+  color: #e5e5e5;
+}

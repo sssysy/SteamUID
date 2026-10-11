@@ -27,6 +27,8 @@ _VALID_EXTENSIONS: set[str] = {
     ".png",
     ".webp",
     ".gif",
+    ".webm",
+    ".mp4",
     ".svg",
     ".ttf",
     ".otf",

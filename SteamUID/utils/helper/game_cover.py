@@ -9,19 +9,18 @@ from collections.abc import Sequence
 
 import httpx
 import msgspec
+
 from gsuid_core.logger import logger
 
-from ..api.cover import fetch_griddb_grids, fetch_griddb_grids_batch, get_official_cover_url
-from ..api.models import AppDetailsEntry, GridDbBatchEntry, GridDbGrid, GridDbGridsResponse
-from ..api.public import get_game_details
-from ..database.model_cache import SteamCache
+from ..api.cover import fetch_griddb_grids, get_official_cover_url, fetch_griddb_grids_batch
+from ..api.models import GridDbGrid, GridDbBatchEntry, GridDbGridsResponse
 from ..downloader import download
+from .game_detail import load_store_detail
+from ..database.model_cache import SteamCache
 
 _TAG = "[Steam·游戏封面]"
 _CACHE_TYPE = "game_cover"
-_STORE_CACHE_TYPE = "store_detail"
 _GRIDDB_CACHE_TYPE = "griddb_cover"
-_LANG = "schinese"
 
 # 商店详情逐游戏请求，分批并发避免一次打太多
 _DETAIL_CHUNK = 10
@@ -43,24 +42,11 @@ async def _download_name(url: str) -> str:
 
 async def _store_header(appid: str, cc: str | None) -> str:
     """商店详情的 header_image 直链；接口异常、未成功或缺字段都返回空串。"""
-    cached = await SteamCache.get_value(_STORE_CACHE_TYPE, appid)
-    if cached:
-        entry = msgspec.json.decode(cached, type=AppDetailsEntry)
-        if "success" in entry and entry["success"] and "data" in entry:
-            data = entry["data"]
-            return data["header_image"] if "header_image" in data else ""
-
-    try:
-        entry = await get_game_details(appid, lang=_LANG, cc=cc)
-    except (httpx.HTTPError, ValueError) as error:
-        logger.warning(f"{_TAG} 商店详情查询失败 appid={appid} cc={cc}: {type(error).__name__}")
+    entry = await load_store_detail(appid, cc)
+    if entry is None:
         return ""
-    if "success" not in entry or not entry["success"]:
+    if "success" not in entry or not entry["success"] or "data" not in entry:
         return ""
-    if "data" not in entry:
-        return ""
-    encoded = msgspec.json.encode(entry).decode("utf-8")
-    await SteamCache.upsert(_STORE_CACHE_TYPE, appid, encoded, int(time.time()))
     data = entry["data"]
     return data["header_image"] if "header_image" in data else ""
 

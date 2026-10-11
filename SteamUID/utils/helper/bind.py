@@ -42,6 +42,32 @@ async def is_logged_in(steamid64: str) -> bool:
     return bool(account.access_token or account.refresh_token)
 
 
+async def is_subscribed(ev: Event, steamid64: str, kind: str) -> bool:
+    """该会话内该账号是否已订阅某类推送。"""
+    rows = await gs_subscribe.get_subscribe(
+        subscribe_task_name(kind),
+        user_id=ev.user_id,
+        bot_id=ev.bot_id,
+        user_type=ev.user_type,
+        uid=steamid64,
+    )
+    return bool(rows)
+
+
+async def subscribe_kind(ev: Event, steamid64: str, kind: str) -> None:
+    """按类型建立个人订阅，任务名与绑定默认订阅一致。"""
+    await gs_subscribe.add_subscribe(
+        "single", subscribe_task_name(kind), ev, uid=steamid64
+    )
+
+
+async def unsubscribe_kind(ev: Event, steamid64: str, kind: str) -> None:
+    """按类型取消个人订阅。"""
+    await gs_subscribe.delete_subscribe(
+        "single", subscribe_task_name(kind), ev, uid=steamid64
+    )
+
+
 async def add_bind(
     ev: Event,
     user_id: str,
@@ -60,9 +86,7 @@ async def add_bind(
         is_main_id=True,
     )
     for kind in default_kinds:
-        await gs_subscribe.add_subscribe(
-            "single", subscribe_task_name(kind), ev, uid=steamid64
-        )
+        await subscribe_kind(ev, steamid64, kind)
 
 
 async def remove_bind(ev: Event, user_id: str, steamid64: str) -> None:
@@ -70,6 +94,4 @@ async def remove_bind(ev: Event, user_id: str, steamid64: str) -> None:
     bot_id, bot_self_id, group_id = session_ids(ev)
     await SteamBind.delete_bind(user_id, bot_id, bot_self_id, group_id, steamid64)
     for kind in NOTIFY_KINDS:
-        await gs_subscribe.delete_subscribe(
-            "single", subscribe_task_name(kind), ev, uid=steamid64
-        )
+        await unsubscribe_kind(ev, steamid64, kind)

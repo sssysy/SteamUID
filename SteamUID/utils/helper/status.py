@@ -54,6 +54,7 @@ class PushOptions:
     cd_seconds: int
     mode: str
     with_cover: bool
+    region_cc: str
     griddb_key: str
 
 
@@ -79,7 +80,6 @@ class UserStatusEvent:
     game_name: str = ""
     achievement: AchievementUnlock = field(default_factory=AchievementUnlock)
     avatar: str = ""
-    country: str = ""
 
 
 class StatusSnapshot(TypedDict, total=False):
@@ -90,7 +90,6 @@ class StatusSnapshot(TypedDict, total=False):
     personastate: int
     personaname: str
     avatarfull: str
-    loccountrycode: str
 
 
 def to_snapshot(player: PlayerSummary) -> StatusSnapshot:
@@ -106,8 +105,6 @@ def to_snapshot(player: PlayerSummary) -> StatusSnapshot:
         snapshot["personastate"] = player["personastate"]
     if "avatarfull" in player:
         snapshot["avatarfull"] = player["avatarfull"]
-    if "loccountrycode" in player:
-        snapshot["loccountrycode"] = player["loccountrycode"]
     return snapshot
 
 
@@ -146,7 +143,6 @@ def diff_status(
     prev_name = prev["personaname"] if "personaname" in prev else ""
     nickname = cur_name or prev_name
     avatar = cur["avatarfull"] if "avatarfull" in cur else ""
-    country = cur["loccountrycode"] if "loccountrycode" in cur else ""
     events: list[UserStatusEvent] = []
 
     prev_game = prev["gameid"] if "gameid" in prev else ""
@@ -163,7 +159,6 @@ def diff_status(
                     appid=prev_game,
                     game_name=prev_title,
                     avatar=avatar,
-                    country=country,
                 )
             )
         if cur_game:
@@ -177,7 +172,6 @@ def diff_status(
                     appid=cur_game,
                     game_name=cur_title,
                     avatar=avatar,
-                    country=country,
                 )
             )
 
@@ -192,7 +186,6 @@ def diff_status(
                     ts=ts,
                     nickname=nickname,
                     avatar=avatar,
-                    country=country,
                 )
             )
     return events
