@@ -25,6 +25,15 @@ async def get_binds(ev: Event, user_id: str) -> list[SteamBind]:
     return await SteamBind.get_binds_by_session(user_id, bot_id, bot_self_id, group_id)
 
 
+async def get_main_steamid64(ev: Event, user_id: str) -> str | None:
+    """取该会话内 user_id 当前账号的 steamid64；未绑定返回 None。"""
+    bot_id, bot_self_id, group_id = session_ids(ev)
+    bind = await SteamBind.get_main_bind(user_id, bot_id, bot_self_id, group_id)
+    if bind is None:
+        return None
+    return bind.steamid64
+
+
 async def is_logged_in(steamid64: str) -> bool:
     """该 steamid 是否已存有可用令牌。"""
     account = await SteamAuth.get_account(steamid64)

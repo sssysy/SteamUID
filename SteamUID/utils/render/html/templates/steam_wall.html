@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_regular_url }}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_medium_url }}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_bold_url }}') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+{{ styles }}
+body {
+  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+/* 画布宽度与网格行高由 Python 侧常量注入，避免与 css 写死值漂移 */
+.steam-wall-card {
+  width: {{ canvas_width }}px;
+}
+.game-wall-grid {
+  grid-auto-rows: calc({{ canvas_width }}px / 8 * 215 / 460);
+}
+</style>
+</head>
+<body>
+<div class="steam-wall-card" id="steam-wall-card">
+  <div class="wall-header">
+    <div class="wall-title">steam游戏墙</div>
+    {{ account_pill_html }}
+  </div>
+
+  {{ grid_html }}
+
+  {{ footer_html }}
+</div>
+</body>
+</html>

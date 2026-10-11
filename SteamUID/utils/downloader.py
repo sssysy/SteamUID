@@ -60,6 +60,19 @@ def _cache_hit(target_path: Path) -> bool:
     return target_path.is_file() and target_path.stat().st_size > 0
 
 
+async def clean_cache_files(cutoff_ts: int) -> int:
+    """删除 cache 与 img_cache 下最后修改早于 cutoff_ts 的文件，返回删除数。"""
+    removed = 0
+    for directory in (CACHE_DIR, IMG_CACHE_DIR):
+        for path in directory.iterdir():
+            if not path.is_file():
+                continue
+            if int(path.stat().st_mtime) < cutoff_ts:
+                path.unlink(missing_ok=True)
+                removed += 1
+    return removed
+
+
 def _new_client(timeout: float) -> httpx.AsyncClient:
     """框架 download 默认不跟随重定向，而 Steam 图床常见 302，需显式打开。"""
     return httpx.AsyncClient(timeout=timeout, follow_redirects=True)

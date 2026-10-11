@@ -144,7 +144,6 @@ async def _poll_once() -> None:
     infos = await _load_players(steamids, keys=keys, cooldown=cooldown)
 
     now = int(time.time())
-    schema_cache: dict[str, dict[str, AchievementUnlock]] = {}
     events: list[UserStatusEvent] = []
 
     for record in records:
@@ -168,11 +167,7 @@ async def _poll_once() -> None:
         if not fresh:
             continue
 
-        if record.appid not in schema_cache:
-            schema_cache[record.appid] = await _load_unlocks(
-                record.appid, keys=keys, cooldown=cooldown
-            )
-        unlocks = schema_cache[record.appid]
+        unlocks = await _load_unlocks(record.appid, keys=keys, cooldown=cooldown)
         info = infos[record.steamid64] if record.steamid64 in infos else _PlayerInfo("", "", "")
         title = info.title or (payload["gameName"] if "gameName" in payload else "")
         times = _unlock_times(entries)

@@ -85,11 +85,21 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "关闭后卡片照常渲染，只是不请求游戏封面图",
         True,
     ),
+    "AllowGridDBCover": GsBoolConfig(
+        "允许备选 Grid DB 封面",
+        "官方封面均失败时改用 SteamGridDB 社区封面兜底",
+        False,
+    ),
     "GridDBApiKey": GsStrConfig(
         "SteamGridDB API Key",
         "官方封面均失败时用社区封面兜底；留空则不查询。申请：https://www.steamgriddb.com/profile/preferences",
         "",
         secret=True,
+    ),
+    "CacheCleanDays": GsIntConfig(
+        "全局缓存清理时间 (天)",
+        "定时清理超过该天数的 Steam 数据缓存，0 表示不清理，修改后需重启 GsCore 生效",
+        3,
     ),
 }
 
@@ -216,6 +226,24 @@ def get_griddb_key() -> str:
     return config.data.strip()
 
 
+def get_allow_griddb_cover() -> bool:
+    """是否允许用 SteamGridDB 社区封面兜底。"""
+    config = SteamConfig.get_config("AllowGridDBCover")
+    if not isinstance(config, GsBoolConfig):
+        logger.error("[Steam·状态轮询] 配置项 AllowGridDBCover 类型异常")
+        return False
+    return config.data
+
+
+def get_cache_clean_days() -> int:
+    """SteamCache 全局缓存清理天数；0 表示不清理。"""
+    config = SteamConfig.get_config("CacheCleanDays")
+    if not isinstance(config, GsIntConfig):
+        logger.error("[Steam·缓存清理] 配置项 CacheCleanDays 类型异常")
+        return 3
+    return config.data
+
+
 def get_push_options() -> PushOptions:
     """汇总一次推送所需的全部配置项。"""
     return PushOptions(
@@ -223,5 +251,6 @@ def get_push_options() -> PushOptions:
         cd_seconds=get_notify_cd() * 60,
         mode=get_push_mode(),
         with_cover=get_push_image(),
-        griddb_key=get_griddb_key(),
+        # 总开关关闭时清空 key，等价于不查询 GridDB
+        griddb_key=get_griddb_key() if get_allow_griddb_cover() else "",
     )
