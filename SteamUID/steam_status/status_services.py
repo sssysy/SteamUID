@@ -18,7 +18,7 @@ _LANG = "schinese"
 _VISIBILITY_PRIVATE = 1
 
 # personastate -> 文案；0 为离线，未知取值视为在线
-_PERSONA_TEXT: dict[int, str] = {
+PERSONA_TEXT: dict[int, str] = {
     0: "离线",
     1: "在线",
     2: "忙碌",
@@ -36,7 +36,7 @@ def _presence(player: PlayerSummary) -> tuple[str, str]:
         return (f"游戏中：{title}" if title else "游戏中"), "in-game"
 
     state = player["personastate"] if "personastate" in player else 0
-    text = _PERSONA_TEXT[state] if state in _PERSONA_TEXT else "在线"
+    text = PERSONA_TEXT[state] if state in PERSONA_TEXT else "在线"
     tone = "offline" if state == 0 else "online"
     return text, tone
 

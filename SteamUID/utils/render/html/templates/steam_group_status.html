@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_regular_url }}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_medium_url }}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_bold_url }}') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+{{ styles }}
+body {
+  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+/* 容器宽度由 Python 侧常量注入；背景与「查看」卡片同款：压暗渐变 + 底图 */
+.group-status-card {
+  width: {{ canvas_width }}px;
+  background-image: linear-gradient(180deg, rgba(13, 17, 24, 0.35) 0%, rgba(9, 11, 16, 0.72) 100%){% if bg_url %}, url('{{ bg_url }}'){% endif %};
+}
+</style>
+</head>
+<body>
+<div class="group-status-card" id="steam-group-status-card">
+  <div class="group-status-header">
+    <div class="group-status-title">steam群友状态</div>
+  </div>
+
+  <div class="pill-list">{{ items_html }}</div>
+
+  {% if has_more %}<div class="more-dots">...</div>{% endif %}
+
+  {{ footer_html }}
+</div>
+</body>
+</html>

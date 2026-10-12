@@ -8,6 +8,7 @@ import msgspec
 
 from ..key_pool import request_with_api_key
 from ..api.models import (
+    WishlistItem,
     PlayerSummary,
     OwnedGamesPayload,
     PlayerStatsPayload,
@@ -15,6 +16,7 @@ from ..api.models import (
 )
 from ..api.public import (
     get_owned_games,
+    get_user_wishlist,
     get_player_summaries,
     get_achievement_schema,
     get_player_achievements,
@@ -59,6 +61,24 @@ async def fetch_owned_games(
     """查询玩家游戏库，429 由密钥池换 Key 重试。"""
     return await request_with_api_key(
         partial(_request_owned_games, steamid64),
+        keys,
+        cooldown_seconds=cooldown,
+    )
+
+
+async def _request_wishlist(steamid64: str, key: str) -> list[WishlistItem]:
+    return await get_user_wishlist(steamid64, key=key)
+
+
+async def fetch_wishlist(
+    steamid64: str,
+    *,
+    keys: Sequence[str],
+    cooldown: int,
+) -> list[WishlistItem]:
+    """查询玩家愿望单，429 由密钥池换 Key 重试。"""
+    return await request_with_api_key(
+        partial(_request_wishlist, steamid64),
         keys,
         cooldown_seconds=cooldown,
     )

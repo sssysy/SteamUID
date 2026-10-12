@@ -99,7 +99,9 @@ async def request_openid_login(bot: Bot, ev: Event) -> str:
     session = _LoginSession(state=state, created_at=time.monotonic())
     _SESSIONS[state] = session
 
-    await bot.send(f"请在 {int(_OPENID_TTL)} 秒内打开链接完成 Steam 登录：\n{base}/steam/openid?state={state}")
+    await bot.send(
+        f"1. 请携带steam好友码进行绑定！如：steam绑定12345678\n2. 或在 {int(_OPENID_TTL)} 秒内打开链接通过Openid完成 Steam 绑定：\n{base}/steam/openid?state={state}"
+    )
 
     deadline = time.monotonic() + _OPENID_TTL
     try:

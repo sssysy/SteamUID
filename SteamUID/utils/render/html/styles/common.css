@@ -185,6 +185,27 @@ body {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
+/* 状态文案槽位：与 .steam-friend-code 共用副标题位置，色调由使用方给定 */
+.steam-status {
+  font-size: 13px;
+  font-weight: 500;
+  color: #98a2ad;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+.steam-status.ingame {
+  color: #90ba3c;
+}
+
+.steam-status.online {
+  color: #66c0f4;
+}
+
 /* ============================================================
    卡片页脚（署名行）：所有卡片共用，使用方只允许覆盖内外边距
    ============================================================ */

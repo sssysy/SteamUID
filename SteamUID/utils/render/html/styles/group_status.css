@@ -1,0 +1,54 @@
+/* ============================================================
+   SteamUID 页面样式 - group_status；药丸与页脚为公共组件，见 common.css
+   ============================================================ */
+
+.group-status-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  padding: 20px 24px 14px 24px;
+  overflow: hidden;
+  background-color: #171a21;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #ffffff;
+}
+
+/* 顶部表头 */
+.group-status-header {
+  display: flex;
+  align-items: center;
+  padding-bottom: 14px;
+}
+
+.group-status-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* 药丸列表容器 */
+.pill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 超过 10 人时列表下方的省略号 */
+.more-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  line-height: 1;
+  color: #8f98a0;
+  user-select: none;
+}
+
+/* footer 本体是公共组件，见 common.css 的 .card-footer 段 */

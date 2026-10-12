@@ -1,10 +1,11 @@
-"""库内游戏价值：按实时商店原价求和，不落盘、不留缓存。"""
+"""商店价格工具：实时批量取价求和与价格文案格式化，不落盘、不留缓存。"""
 
 import asyncio
 from collections.abc import Sequence
 
 from gsuid_core.logger import logger
 
+from ..api.models import PriceOverview
 from ..api.public import get_price_overview
 
 _TAG = "[Steam·信息卡片]"
@@ -53,3 +54,12 @@ async def sum_library_value(appids: Sequence[str], *, cc: str) -> int | None:
             return None
         total_cents += result
     return round(total_cents / 100)
+
+
+def format_price(overview: PriceOverview, currency: str) -> str:
+    """价格文案：优先接口下发的本币格式化串，缺失时按货币符号与分值拼。"""
+    formatted = overview["final_formatted"] if "final_formatted" in overview else ""
+    if formatted:
+        return formatted
+    final = overview["final"] if "final" in overview else 0
+    return f"{currency} {final / 100:.2f}"

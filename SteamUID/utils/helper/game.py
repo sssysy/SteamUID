@@ -1,4 +1,4 @@
-"""游戏标识解析：把用户输入的游戏名或 AppID 收敛成 appid。"""
+"""游戏标识解析：把用户输入的游戏名或 AppID 收敛成 appid，并给出确认文案。"""
 
 from dataclasses import dataclass
 
@@ -47,3 +47,10 @@ async def resolve_game_ref(query: str, *, cc: str) -> GameRef:
         raise ValueError(f"未找到与[{raw}]相关的游戏，请检查游戏名或改用 AppID")
     name = target["name"] if "name" in target else raw
     return GameRef(appid=str(target["id"]), name=name, exact=exact)
+
+
+def match_tip_text(ref: GameRef) -> str:
+    """解析结果的确认文案；回落首项时明确说明未精确命中本体游戏。"""
+    if ref.exact:
+        return f"猜你想找 {ref.name}({ref.appid})，如有错误请使用 AppID 精确匹配游戏"
+    return f"未精确匹配到本体游戏，已使用最接近的结果 {ref.name}({ref.appid})，如有错误请使用 AppID 精确匹配游戏"

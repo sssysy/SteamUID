@@ -21,6 +21,18 @@ class PillAccount:
     background_url: str
     is_main: bool = False
     is_login: bool = False
+    status_text: str = ""
+    status_tone: str = ""
+
+
+def _subtitle_html(account: PillAccount) -> str:
+    """副标题槽位：有状态文案时显示状态，否则显示好友码，两者共用一个位置。"""
+    if account.status_text:
+        tone = f" {html.escape(account.status_tone)}" if account.status_tone else ""
+        return f'<div class="steam-status{tone}">{html.escape(account.status_text)}</div>'
+    if account.friend_code:
+        return f'<div class="steam-friend-code">{html.escape(account.friend_code)}</div>'
+    return ""
 
 
 def pill_html(account: PillAccount) -> str:
@@ -59,7 +71,7 @@ def pill_html(account: PillAccount) -> str:
         f'<div class="steam-name">{html.escape(account.name)}</div>'
         f"{dots_html}"
         f"</div>"
-        f'<div class="steam-friend-code">{html.escape(account.friend_code)}</div>'
+        f"{_subtitle_html(account)}"
         f"</div>"
         f"</div>"
         f"</div>"

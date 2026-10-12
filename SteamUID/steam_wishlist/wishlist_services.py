@@ -1,0 +1,293 @@
+"""愿望单命令聚合：列表拉取与出图、增删校验与写入，凭据优先读取私密愿望单。"""
+
+import asyncio
+from functools import partial
+from collections.abc import Sequence
+
+import httpx
+
+from gsuid_core.bot import Bot
+from gsuid_core.logger import logger
+from gsuid_core.models import Event
+
+from ..steam_config import (
+    get_region,
+    get_api_keys,
+    get_region_cc,
+    get_griddb_key,
+    get_key_cooldown,
+    get_allow_griddb_cover,
+)
+from ..utils.api.models import (
+    WishlistItem,
+    PriceOverview,
+    AppDetailsData,
+    AppDetailsEntry,
+)
+from ..utils.api.public import get_price_overview
+from ..utils.helper.bind import is_logged_in, get_main_steamid64
+from ..utils.helper.game import GameRef, match_tip_text, resolve_game_ref
+from ..utils.api.wishlist import (
+    add_to_wishlist,
+    remove_from_wishlist,
+    get_wishlist_with_token,
+)
+from ..utils.helper.price import format_price
+from ..utils.helper.command import resolve_viewer
+from ..utils.helper.profile import SteamProfile, load_profile_assets
+from ..utils.helper.steam_api import fetch_wishlist
+from ..utils.helper.auth_token import run_with_token
+from ..utils.helper.game_cover import resolve_cover_names
+from ..utils.helper.game_detail import load_store_detail
+from ..utils.render.html.wishlist import (
+    PriceKind,
+    WishlistCard,
+    WishlistEntry,
+    render_wishlist_card,
+)
+from ..utils.render.html.account_pill import PillAccount
+from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+
+_TAG = "[Steam·愿望单]"
+
+_DEFAULT_LIMIT = 20
+_MAX_LIMIT = 100
+# 商店详情逐游戏请求，分批并发与封面解析保持一致
+_DETAIL_BATCH = 10
+_LIST_USAGE = "steam愿望单列表 [条数]"
+_WRITE_USAGE = "steam增加愿望单 730 或 steam删除愿望单 艾尔登法环"
+_NOT_LOGGED_IN = "未检测到该账号的登录授权，请先发送 steam登录 完成网页授权"
+_AUTH_EXPIRED = "Steam 登录授权已失效，请重新发送 steam登录 后再试"
+
+
+def parse_limit(words: Sequence[str]) -> int:
+    """条数实参：空参取默认，非数字、多于一个或超出 1-100 报用法错误。"""
+    if not words:
+        return _DEFAULT_LIMIT
+    if len(words) > 1 or not words[0].isdigit():
+        raise ValueError(f"参数错误，正确用法：{_LIST_USAGE}")
+    limit = int(words[0])
+    if limit < 1 or limit > _MAX_LIMIT:
+        raise ValueError(f"条数需在 1-{_MAX_LIMIT} 之间，正确用法：{_LIST_USAGE}")
+    return limit
+
+
+def _date_added_of(item: WishlistItem) -> int:
+    """排序键：愿望单添加时间戳，缺失视为最旧。"""
+    return item["date_added"] if "date_added" in item else 0
+
+
+def _entry_data(entry: AppDetailsEntry | None) -> AppDetailsData | None:
+    """成功响应里的 data；Steam 对无价条目会把 data 返回成 [] 或 null，先挡在字典访问前。"""
+    if entry is None or "success" not in entry or not entry["success"] or "data" not in entry:
+        return None
+    data = entry["data"]
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def _price_overview(entry: AppDetailsEntry | None) -> PriceOverview | None:
+    """实时批量价里的 price_overview；该 appid 没有价格数据时回落 None。"""
+    data = _entry_data(entry)
+    if data is None or "price_overview" not in data:
+        return None
+    return data["price_overview"]
+
+
+def _price_fields(
+    detail: AppDetailsData | None,
+    overview: PriceOverview | None,
+    *,
+    currency: str,
+) -> tuple[PriceKind, str, int]:
+    """售价形态：免费 -> 即将推出 -> 折扣或标价 -> 暂无定价。"""
+    if detail is not None and "is_free" in detail and detail["is_free"]:
+        return "free", "免费", 0
+    if detail is not None and "release_date" in detail:
+        release = detail["release_date"]
+        if "coming_soon" in release and release["coming_soon"]:
+            return "unreleased", "即将推出", 0
+    if overview is None:
+        return "unreleased", "暂无定价", 0
+
+    percent = overview["discount_percent"] if "discount_percent" in overview else 0
+    text = format_price(overview, currency)
+    if percent > 0:
+        return "discount", text, percent
+    return "price", text, 0
+
+
+def _build_entry(
+    appid: str,
+    added_ts: int,
+    detail: AppDetailsEntry | None,
+    live: AppDetailsEntry | None,
+    cover_url: str,
+    *,
+    currency: str,
+) -> WishlistEntry:
+    """单行数据：名称与免费 / 未发售取缓存详情，售价取实时批量价。"""
+    data = _entry_data(detail)
+    name = appid
+    if data is not None and "name" in data:
+        name = data["name"]
+
+    kind, text, percent = _price_fields(data, _price_overview(live), currency=currency)
+    return WishlistEntry(
+        appid=appid,
+        name=name,
+        cover_url=cover_url,
+        added_ts=added_ts,
+        price_text=text,
+        price_kind=kind,
+        discount_percent=percent,
+    )
+
+
+def _pill_account(profile: SteamProfile) -> PillAccount:
+    """资料 -> 胶囊数据，图片字段统一转 img_cache 直链。"""
+    return PillAccount(
+        name=profile.name,
+        friend_code=profile.friend_code,
+        avatar_url=get_img_cache_url(profile.avatar_name) or get_default_avatar_url(),
+        frame_url=get_img_cache_url(profile.frame_name),
+        background_url=get_img_cache_url(profile.background_name),
+    )
+
+
+async def _fetch_by_token(steamid64: str) -> list[WishlistItem] | None:
+    """用本人凭据查询愿望单（能读私密）；无凭据或凭据失效返回 None。"""
+
+    async def query(token: str) -> list[WishlistItem]:
+        return await get_wishlist_with_token(steamid64, access_token=token)
+
+    return await run_with_token(steamid64, query)
+
+
+async def _fetch_items(steamid64: str, *, own_account: bool) -> list[WishlistItem]:
+    """取愿望单：本人的凭据优先，查询失败回落公开 Key；他人只能走公开 Key。"""
+    if own_account:
+        try:
+            items = await _fetch_by_token(steamid64)
+        except (httpx.HTTPError, ValueError) as error:
+            logger.warning(f"{_TAG} 凭据查询愿望单失败，回落公开 Key: {type(error).__name__}")
+            items = None
+        if items is not None:
+            return items
+    return await fetch_wishlist(steamid64, keys=get_api_keys(), cooldown=get_key_cooldown())
+
+
+async def _load_details(appids: Sequence[str], *, cc: str) -> list[AppDetailsEntry | None]:
+    """逐游戏取商店详情（命中缓存直接复用），分批并发；单条失败回落 None。"""
+    sem = asyncio.Semaphore(_DETAIL_BATCH)
+
+    async def one(appid: str) -> AppDetailsEntry | None:
+        async with sem:
+            return await load_store_detail(appid, cc)
+
+    return list(await asyncio.gather(*(one(appid) for appid in appids)))
+
+
+async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
+    """steam愿望单列表[条数]：目标账号的愿望单与当前售价渲染成卡片。"""
+    if not get_api_keys():
+        raise ValueError("请先配置 Steam API Key")
+
+    user_id = resolve_viewer(ev, allow_at=allow_at)
+    steamid64 = await get_main_steamid64(ev, user_id)
+    if steamid64 is None:
+        if user_id == ev.user_id:
+            raise ValueError("您在当前群未绑定 Steam 账号，请先绑定")
+        raise ValueError("对方在当前群未绑定 Steam 账号")
+
+    limit = parse_limit(ev.text.split())
+    items = await _fetch_items(steamid64, own_account=user_id == ev.user_id)
+    if not items:
+        raise ValueError("该账号愿望单为空或未公开")
+
+    ordered = sorted(items, key=_date_added_of, reverse=True)
+    shown = ordered[:limit]
+    hidden = len(ordered) - len(shown)
+    appids = [str(item["appid"]) for item in shown]
+
+    cc = get_region_cc()
+    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    details, prices, covers, profile = await asyncio.gather(
+        _load_details(appids, cc=cc),
+        get_price_overview(appids, cc=cc),
+        resolve_cover_names(appids, country=cc, griddb_key=griddb_key),
+        load_profile_assets(steamid64),
+    )
+
+    currency = get_region().currency
+    entries = [
+        _build_entry(
+            appid,
+            _date_added_of(item),
+            details[index],
+            prices[appid] if appid in prices else None,
+            get_img_cache_url(covers[appid]) if appid in covers else "",
+            currency=currency,
+        )
+        for index, (item, appid) in enumerate(zip(shown, appids))
+    ]
+    return await render_wishlist_card(
+        _pill_account(profile),
+        WishlistCard(total=len(ordered), hidden=hidden, entries=entries),
+    )
+
+
+async def _checked_target(bot: Bot, ev: Event) -> tuple[str, GameRef]:
+    """增删公共前置：本人主账号 + 登录凭据 + 游戏解析与匹配提示。"""
+    steamid64 = await get_main_steamid64(ev, ev.user_id)
+    if steamid64 is None:
+        raise ValueError("请先绑定 steam 账号")
+    if not await is_logged_in(steamid64):
+        raise ValueError(_NOT_LOGGED_IN)
+
+    raw = ev.text.strip()
+    if not raw:
+        raise ValueError(f"请输入游戏名或 AppID，例如：{_WRITE_USAGE}")
+
+    ref = await resolve_game_ref(raw, cc=get_region_cc())
+    if not raw.isdigit():
+        await bot.send(match_tip_text(ref))
+    return steamid64, ref
+
+
+async def _load_own_items(steamid64: str) -> list[WishlistItem]:
+    """增删校验用本人凭据读愿望单；读取失败直接报错，不盲目写入。"""
+    items = await _fetch_by_token(steamid64)
+    if items is None:
+        raise ValueError(_AUTH_EXPIRED)
+    return items
+
+
+def _in_wishlist(items: Sequence[WishlistItem], appid: str) -> bool:
+    """愿望单里是否已有该 appid。"""
+    return any(str(item["appid"]) == appid for item in items)
+
+
+async def add_wishlist_game(bot: Bot, ev: Event) -> None:
+    """steam增加愿望单<游戏名/AppID>：把游戏加入自己账号的愿望单。"""
+    steamid64, ref = await _checked_target(bot, ev)
+    if _in_wishlist(await _load_own_items(steamid64), ref.appid):
+        await bot.send(f"该游戏已在愿望单中：{ref.name}({ref.appid})")
+        return
+
+    if await run_with_token(steamid64, partial(add_to_wishlist, appid=int(ref.appid))) is None:
+        raise ValueError(_AUTH_EXPIRED)
+    await bot.send(f"已将 {ref.name}({ref.appid}) 加入愿望单")
+
+
+async def remove_wishlist_game(bot: Bot, ev: Event) -> None:
+    """steam删除愿望单<游戏名/AppID>：把游戏移出自己账号的愿望单。"""
+    steamid64, ref = await _checked_target(bot, ev)
+    if not _in_wishlist(await _load_own_items(steamid64), ref.appid):
+        await bot.send(f"该游戏不在愿望单中：{ref.name}({ref.appid})")
+        return
+
+    if await run_with_token(steamid64, partial(remove_from_wishlist, appid=int(ref.appid))) is None:
+        raise ValueError(_AUTH_EXPIRED)
+    await bot.send(f"已将 {ref.name}({ref.appid}) 从愿望单移除")

@@ -182,6 +182,12 @@ async def load_profile_assets(steamid64: str) -> SteamProfile:
     )
 
 
+async def load_mini_background_name(steamid64: str) -> str:
+    """取迷你资料背景并落 img_cache，返回文件名；未装扮或下载失败返回空串。"""
+    deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG))
+    return await _download_name(deco.background_url)
+
+
 @dataclass(frozen=True)
 class StatusAssets:
     """状态卡素材：图片与视频字段为 img_cache 下的文件名，缺失为空串。"""
