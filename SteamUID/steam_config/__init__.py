@@ -86,6 +86,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "关闭后仍会轮询并记录价格，但不再推送降价提醒",
         True,
     ),
+    "AnnouncePollInterval": GsIntConfig(
+        "游戏公告轮询间隔 (小时)",
+        "公告订阅的轮询间隔，修改后需重启 GsCore 生效",
+        1,
+    ),
     "NotifyCD": GsIntConfig(
         "通知推送冷却 (分钟)",
         "同一账号在同一群聊的推送冷却，0 表示不启用；私聊不受冷却限制",

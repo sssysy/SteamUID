@@ -9,6 +9,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
+from ..steam_config import SteamConfig
 from .announce_services import (
     poll_announce_once,
     subscribe_announce,
@@ -18,9 +19,6 @@ from .announce_services import (
 from ..utils.helper.command import command_guard
 
 _TAG = "[Steam·公告轮询]"
-
-# 公告更新频率低，固定一小时一轮；需要可调再用配置项替换
-_POLL_HOURS = 1
 
 announce_sv = SV("Steam公告订阅")
 
@@ -52,7 +50,7 @@ async def steam_announce_unsubscribe(bot: Bot, ev: Event) -> None:
 _poll_lock = asyncio.Lock()
 
 
-@scheduler.scheduled_job("interval", hours=_POLL_HOURS)
+@scheduler.scheduled_job("interval", hours=SteamConfig.get_config("AnnouncePollInterval").data)
 async def poll_announce_job() -> None:
     if _poll_lock.locked():
         logger.debug(f"{_TAG} 上一轮尚未结束，跳过本轮")
