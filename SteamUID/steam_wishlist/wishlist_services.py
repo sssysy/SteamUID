@@ -28,7 +28,7 @@ from ..utils.helper.price import (
     price_fields,
     price_overview,
 )
-from ..utils.helper.config import region, region_cc, griddb_cover_key
+from ..utils.helper.config import region, api_base, region_cc, store_base, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
 from ..utils.helper.profile import SteamProfile, load_profile_assets
 from ..utils.helper.steam_api import fetch_wishlist
@@ -114,7 +114,7 @@ async def _fetch_by_token(steamid64: str) -> list[WishlistItem] | None:
     """用本人凭据查询愿望单（能读私密）；无凭据或凭据失效返回 None。"""
 
     async def query(token: str) -> list[WishlistItem]:
-        return await get_wishlist_with_token(steamid64, access_token=token)
+        return await get_wishlist_with_token(steamid64, access_token=token, base_url=api_base())
 
     return await run_with_token(steamid64, query)
 
@@ -173,7 +173,7 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
     griddb_key = griddb_cover_key()
     details, prices, covers, profile = await asyncio.gather(
         _load_details(appids, cc=cc),
-        get_price_overview(appids, cc=cc),
+        get_price_overview(appids, cc=cc, base_url=store_base()),
         resolve_cover_names(appids, country=cc, griddb_key=griddb_key),
         load_profile_assets(steamid64),
     )
@@ -234,7 +234,7 @@ async def add_wishlist_game(bot: Bot, ev: Event) -> None:
         await bot.send(f"该游戏已在愿望单中：{ref.name}({ref.appid})")
         return
 
-    if await run_with_token(steamid64, partial(add_to_wishlist, appid=int(ref.appid))) is None:
+    if await run_with_token(steamid64, partial(add_to_wishlist, appid=int(ref.appid), base_url=api_base())) is None:
         raise ValueError(_AUTH_EXPIRED)
     await bot.send(f"已将 {ref.name}({ref.appid}) 加入愿望单")
 
@@ -246,6 +246,9 @@ async def remove_wishlist_game(bot: Bot, ev: Event) -> None:
         await bot.send(f"该游戏不在愿望单中：{ref.name}({ref.appid})")
         return
 
-    if await run_with_token(steamid64, partial(remove_from_wishlist, appid=int(ref.appid))) is None:
+    if (
+        await run_with_token(steamid64, partial(remove_from_wishlist, appid=int(ref.appid), base_url=api_base()))
+        is None
+    ):
         raise ValueError(_AUTH_EXPIRED)
     await bot.send(f"已将 {ref.name}({ref.appid}) 从愿望单移除")

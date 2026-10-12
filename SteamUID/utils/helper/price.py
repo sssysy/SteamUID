@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from gsuid_core.logger import logger
 
+from .config import store_base
 from ..api.models import PriceOverview, AppDetailsData, AppDetailsEntry
 from ..api.public import get_price_overview
 
@@ -21,7 +22,7 @@ PriceKind = Literal["free", "discount", "price", "unreleased"]
 
 async def _chunk_value(appids: list[str], *, cc: str) -> int:
     """单批价格求和（分）；免费与无价条目没有 price_overview，直接不计入。"""
-    entries = await get_price_overview(appids, cc=cc)
+    entries = await get_price_overview(appids, cc=cc, base_url=store_base())
     total = 0
     for entry in entries.values():
         overview = price_overview(entry)
@@ -63,7 +64,7 @@ async def fetch_price_overviews(appids: Sequence[str], *, cc: str) -> dict[str, 
 
     async def _worker(chunk: list[str]) -> dict[str, AppDetailsEntry]:
         async with sem:
-            return await get_price_overview(chunk, cc=cc)
+            return await get_price_overview(chunk, cc=cc, base_url=store_base())
 
     results = await asyncio.gather(*(_worker(chunk) for chunk in chunks), return_exceptions=True)
     merged: dict[str, AppDetailsEntry] = {}

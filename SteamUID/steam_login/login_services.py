@@ -14,6 +14,7 @@ from ..utils.api.auth import generate_session_id
 from ..utils.api.models import QrReady
 from ..utils.helper.bind import add_bind, get_binds
 from ..utils.api.qr_login import SteamQrLogin
+from ..utils.helper.config import api_base
 from ..utils.render.bind_card import render_bind_card_image
 from ..utils.database.model_auth import SteamAuth
 from ..utils.render.pil.render_qr import render_qr_png
@@ -93,7 +94,7 @@ async def _complete_login(bot: Bot, ev: Event, ready: QrReady) -> None:
 
 async def start_qr_login(bot: Bot, ev: Event) -> None:
     """扫码登录主流程：二维码 → 轮询确认 → 落库绑定 → 回卡片。"""
-    async with SteamQrLogin() as session:
+    async with SteamQrLogin(api_base_url=api_base()) as session:
         challenge = await session.begin()
         image = await render_qr_png(challenge["challenge_url"])
         await bot.send(

@@ -11,6 +11,7 @@ from gsuid_core.models import Message
 from gsuid_core.segment import MessageSegment
 
 from ..downloader import download
+from ..helper.config import hide_id
 from ..helper.notify import Delivery, cd_mark, build_message, collect_deliveries
 from ..helper.status import (
     CARD_KINDS,
@@ -195,7 +196,7 @@ def _card_item(
         cover_url = covers[event.appid]
     return GameStatusItem(
         kind=event.kind,
-        nickname=event.nickname or event.steamid64,
+        nickname=hide_id(event.nickname or event.steamid64),
         group_name=name,
         game_name=event.game_name or event.appid,
         avatar_url=avatar_url,
@@ -227,7 +228,7 @@ def _achievement_item(
             )
         )
     return AchievementItem(
-        nickname=event.nickname or event.steamid64,
+        nickname=hide_id(event.nickname or event.steamid64),
         group_name=entries[0][1],
         game_name=event.game_name or event.appid,
         avatar_url=avatar_url,

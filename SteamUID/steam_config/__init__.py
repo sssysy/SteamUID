@@ -16,6 +16,11 @@ from ..utils.maps import (
     DEFAULT_REGION,
     SUPPORTED_REGIONS,
 )
+from ..utils.api.endpoints import (
+    API_BASE_DEFAULT,
+    STORE_BASE_DEFAULT,
+    COMMUNITY_BASE_DEFAULT,
+)
 from ..utils.helper.status import (
     PUSH_MODES,
     NOTIFY_KINDS,
@@ -31,9 +36,29 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "Steam OpenID 回调基址，需为外网可访问的 gsuid_core 地址（含协议）",
         "http://127.0.0.1:8765",
     ),
+    "APIBaseURL": GsStrConfig(
+        "Steam API 反代 URL",
+        "Steam Web API 基础 URL，用于反向代理；留空则直连官方地址",
+        API_BASE_DEFAULT,
+    ),
+    "StoreBaseURL": GsStrConfig(
+        "Steam 商店反代 URL",
+        "Steam 商店基础 URL，用于反向代理；留空则直连官方地址",
+        STORE_BASE_DEFAULT,
+    ),
+    "CommunityBaseURL": GsStrConfig(
+        "Steam 社区反代 URL",
+        "Steam 社区基础 URL，用于迷你资料等社区接口；留空则直连官方地址",
+        COMMUNITY_BASE_DEFAULT,
+    ),
     "AllowAt": GsBoolConfig(
         "允许 @ 他人",
         "开启后可通过 @ 指定他人进行绑定 / 解绑 / 查看",
+        False,
+    ),
+    "HideSteamID": GsBoolConfig(
+        "隐藏 steamid / 好友码",
+        "开启后在展示 steamid / 好友码 的位置隐藏中间数字",
         False,
     ),
     "CustomBgPath": GsImageConfig(

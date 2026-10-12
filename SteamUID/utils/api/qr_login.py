@@ -35,8 +35,15 @@ _WEBSITE_ID = "Community"
 class SteamQrLogin:
     """对接官方 IAuthenticationService 的扫码登录客户端。"""
 
-    def __init__(self, *, proxy: str | None = None, timeout: float = 15.0) -> None:
+    def __init__(
+        self,
+        *,
+        api_base_url: str = API_BASE_DEFAULT,
+        proxy: str | None = None,
+        timeout: float = 15.0,
+    ) -> None:
         self.timeout = timeout
+        self.api_base_url = api_base_url.rstrip("/")
         self.client_id = ""
         self.request_id = ""
         self.client = make_async_client(
@@ -68,7 +75,7 @@ class SteamQrLogin:
         resp = await request_ok_response(
             self.client,
             "POST",
-            f"{API_BASE_DEFAULT}{AUTH_BEGIN_QR}",
+            f"{self.api_base_url}{AUTH_BEGIN_QR}",
             tag=_TAG,
             data={
                 "device_friendly_name": DEFAULT_USER_AGENT,
@@ -104,7 +111,7 @@ class SteamQrLogin:
         resp = await request_ok_response(
             self.client,
             "POST",
-            f"{API_BASE_DEFAULT}{AUTH_POLL_STATUS}",
+            f"{self.api_base_url}{AUTH_POLL_STATUS}",
             tag=_TAG,
             data={"client_id": self.client_id, "request_id": self.request_id},
             timeout=self.timeout,

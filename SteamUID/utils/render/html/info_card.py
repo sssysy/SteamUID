@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .static_assets import get_bg_url, get_font_url, get_default_avatar_url
+from ...helper.config import hide_id
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
@@ -116,7 +117,7 @@ def _id_html(card: InfoCard) -> str:
     return (
         '<div class="glass id-row">'
         '<div class="id-label">好友码</div>'
-        f'<div class="id-value">{html.escape(card.friend_code)}</div>'
+        f'<div class="id-value">{html.escape(hide_id(card.friend_code))}</div>'
         "</div>"
     )
 

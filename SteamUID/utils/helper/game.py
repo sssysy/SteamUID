@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from .config import store_base
 from ..api.models import StoreSearchItem
 from ..api.public import search_store
 
@@ -35,7 +36,7 @@ async def resolve_game_ref(query: str, *, cc: str) -> GameRef:
     if raw.isdigit():
         return GameRef(appid=raw, name=raw, exact=True)
 
-    items: list[StoreSearchItem] = await search_store(raw, cc=cc, lang=_LANG)
+    items: list[StoreSearchItem] = await search_store(raw, cc=cc, lang=_LANG, base_url=store_base())
     if not items:
         raise ValueError(f"未找到与[{raw}]相关的游戏，请检查游戏名或改用 AppID")
 

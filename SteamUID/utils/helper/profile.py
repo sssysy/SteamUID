@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 from gsuid_core.logger import logger
 
+from .config import api_base, community_base
 from .steamid import steamid64_to_friend_code
 from ..key_pool import request_with_api_key
 from ..api.models import (
@@ -89,7 +90,7 @@ def _parse_profile_xml(xml: str) -> tuple[str, str, str]:
 
 
 async def _fetch_base_profile(steamid64: str) -> SteamProfile:
-    xml = await get_community_profile_xml(steamid64)
+    xml = await get_community_profile_xml(steamid64, base_url=community_base())
     name, avatar, summary = _parse_profile_xml(xml)
     return SteamProfile(
         steamid64=steamid64,
@@ -143,7 +144,7 @@ def _parse_miniprofile(payload: MiniprofilePayload) -> _MiniDeco:
 
 async def _fetch_decorations(steamid64: str) -> _Decorations:
     """取头像框 / 背景 / 等级 / 特色徽章，返回已落盘的 img_cache 文件名。"""
-    deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG))
+    deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG, base_url=community_base()))
     frame_name, background_name, badge_icon_name = await asyncio.gather(
         _download_name(deco.frame_url),
         _download_name(deco.background_url),
@@ -184,7 +185,7 @@ async def load_profile_assets(steamid64: str) -> SteamProfile:
 
 async def load_mini_background_name(steamid64: str) -> str:
     """取迷你资料背景并落 img_cache，返回文件名；未装扮或下载失败返回空串。"""
-    deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG))
+    deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG, base_url=community_base()))
     return await _download_name(deco.background_url)
 
 
@@ -211,7 +212,7 @@ def _community_asset_url(relative_path: str) -> str:
 
 
 async def _request_equipped(steamid64: str, lang: str, key: str) -> ProfileItemsEquippedPayload:
-    return await get_profile_items_equipped(steamid64, key=key, lang=lang)
+    return await get_profile_items_equipped(steamid64, key=key, lang=lang, base_url=api_base())
 
 
 async def load_status_assets(
@@ -227,7 +228,7 @@ async def load_status_assets(
     fallback_avatar_url 用于装扮全部缺失时兜底摘要头像。
     """
     mini_raw, equipped_raw = await asyncio.gather(
-        get_miniprofile(steamid64, lang=lang),
+        get_miniprofile(steamid64, lang=lang, base_url=community_base()),
         request_with_api_key(
             partial(_request_equipped, steamid64, lang),
             keys,

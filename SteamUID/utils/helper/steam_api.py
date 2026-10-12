@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 import msgspec
 
+from .config import api_base
 from ..key_pool import request_with_api_key
 from ..api.models import (
     WishlistItem,
@@ -30,7 +31,7 @@ _SCHEMA_CACHE_TYPE = "achievement_schema"
 
 
 async def _request_summaries(chunk: list[str], key: str) -> list[PlayerSummary]:
-    return await get_player_summaries(chunk, key=key)
+    return await get_player_summaries(chunk, key=key, base_url=api_base())
 
 
 async def fetch_player_summaries(
@@ -49,7 +50,7 @@ async def fetch_player_summaries(
 
 
 async def _request_owned_games(steamid64: str, key: str) -> OwnedGamesPayload:
-    return await get_owned_games(steamid64, key=key)
+    return await get_owned_games(steamid64, key=key, base_url=api_base())
 
 
 async def fetch_owned_games(
@@ -67,7 +68,7 @@ async def fetch_owned_games(
 
 
 async def _request_wishlist(steamid64: str, key: str) -> list[WishlistItem]:
-    return await get_user_wishlist(steamid64, key=key)
+    return await get_user_wishlist(steamid64, key=key, base_url=api_base())
 
 
 async def fetch_wishlist(
@@ -85,7 +86,7 @@ async def fetch_wishlist(
 
 
 async def _request_achievements(appid: str, steamid64: str, key: str) -> PlayerStatsPayload:
-    return await get_player_achievements(appid, steamid64, key=key, lang=_LANG)
+    return await get_player_achievements(appid, steamid64, key=key, lang=_LANG, base_url=api_base())
 
 
 async def fetch_player_achievements(
@@ -103,7 +104,7 @@ async def fetch_player_achievements(
 
 
 async def _request_schema(appid: str, key: str) -> list[AchievementSchemaEntry]:
-    return await get_achievement_schema(appid, key=key, lang=_LANG)
+    return await get_achievement_schema(appid, key=key, lang=_LANG, base_url=api_base())
 
 
 async def fetch_achievement_schema(

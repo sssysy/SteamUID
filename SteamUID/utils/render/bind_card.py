@@ -11,6 +11,7 @@ from gsuid_core.models import Event
 
 from ..downloader import download
 from ..helper.bind import get_binds, session_ids, is_logged_in
+from ..helper.config import hide_id
 from .html.bind_list import BindCardItem, render_bind_list
 from ..helper.command import sender_text
 from ..helper.profile import load_profile_assets
@@ -41,7 +42,7 @@ async def _load_card_item(bind: SteamBind, group_id: str) -> BindCardItem:
 
     if isinstance(profile, BaseException):
         logger.warning(f"{_TAG} 卡片资料获取失败 {bind.steamid64}: {profile!r}")
-        name = bind.steamid64
+        name = hide_id(bind.steamid64)
         friend_code = steamid64_to_friend_code(bind.steamid64)
         avatar_url = get_default_avatar_url()
         frame_url = ""

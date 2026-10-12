@@ -4,9 +4,11 @@
 """
 
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 import httpx
 
+from .config import store_base
 from ..api.client import apply_cookies, make_async_client
 from ..database.model_auth import SteamAuth
 
@@ -30,6 +32,12 @@ def has_store_credentials(account: SteamAuth) -> bool:
     return bool(account.session_id and account.access_token)
 
 
+def _store_domain() -> str:
+    """Store Cookie 需写在当前商店基址域名上，反代时随配置切换。"""
+    host = urlparse(store_base()).hostname
+    return host if host is not None else STORE_DOMAIN
+
+
 def make_store_session(account: SteamAuth) -> StoreSession:
     """按账号凭据组装商店会话；调用前应先用 has_store_credentials 判空。"""
     cookies = {
@@ -37,5 +45,5 @@ def make_store_session(account: SteamAuth) -> StoreSession:
         "steamLoginSecure": f"{account.steamid64}||{account.access_token}",
     }
     client = make_async_client(headers={"Accept": _ACCEPT}, timeout=_TIMEOUT)
-    apply_cookies(client, cookies, (STORE_DOMAIN,))
+    apply_cookies(client, cookies, (_store_domain(),))
     return StoreSession(client=client, session_id=account.session_id)

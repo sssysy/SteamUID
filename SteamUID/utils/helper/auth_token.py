@@ -8,6 +8,7 @@ import httpx
 
 from gsuid_core.logger import logger
 
+from .config import api_base
 from ..api.auth import generate_access_token_for_app
 from ..database.model_auth import SteamAuth
 
@@ -31,7 +32,7 @@ async def renew_access_token(steamid64: str) -> str | None:
         return None
 
     try:
-        token = await generate_access_token_for_app(account.refresh_token, steamid64)
+        token = await generate_access_token_for_app(account.refresh_token, steamid64, base_url=api_base())
     except (httpx.HTTPError, ValueError) as error:
         logger.warning(f"{_TAG} 刷新 access_token 失败 steamid={steamid64}: {type(error).__name__}")
         return None

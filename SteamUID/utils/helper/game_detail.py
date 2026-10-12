@@ -12,6 +12,7 @@ import msgspec
 
 from gsuid_core.logger import logger
 
+from .config import store_base
 from ..api.models import AppDetailsEntry
 from ..api.public import get_game_details
 from ..database.model_cache import SteamCache
@@ -33,7 +34,7 @@ async def load_store_detail(appid: str, cc: str | None) -> AppDetailsEntry | Non
         return msgspec.json.decode(cached, type=AppDetailsEntry)
 
     try:
-        entry = await get_game_details(appid, lang=_LANG, cc=cc)
+        entry = await get_game_details(appid, lang=_LANG, cc=cc, base_url=store_base())
     except (httpx.HTTPError, ValueError) as error:
         logger.warning(f"{_TAG} 商店详情查询失败 appid={appid} cc={cc}: {type(error).__name__}")
         return None

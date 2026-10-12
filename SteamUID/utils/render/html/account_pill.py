@@ -8,6 +8,7 @@ import html
 from dataclasses import dataclass
 
 from .static_assets import get_default_avatar_url
+from ...helper.config import hide_id
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,7 @@ def _subtitle_html(account: PillAccount) -> str:
         tone = f" {html.escape(account.status_tone)}" if account.status_tone else ""
         return f'<div class="steam-status{tone}">{html.escape(account.status_text)}</div>'
     if account.friend_code:
-        return f'<div class="steam-friend-code">{html.escape(account.friend_code)}</div>'
+        return f'<div class="steam-friend-code">{html.escape(hide_id(account.friend_code))}</div>'
     return ""
 
 

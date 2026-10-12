@@ -444,10 +444,6 @@ class ServerInfoPayload(TypedDict, total=False):
     servertimestring: str
 
 
-class ServerInfoResponse(TypedDict):
-    response: ServerInfoPayload
-
-
 class PurchaseReceiptLineItem(TypedDict, total=False):
     line_item_description: str
     line_item_type: int

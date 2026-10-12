@@ -19,7 +19,6 @@ from .models import (
     MiniprofilePayload,
     OwnedGamesResponse,
     PlayerStatsPayload,
-    ServerInfoResponse,
     YearReviewResponse,
     StoreSearchResponse,
     PartnerEventsResponse,
@@ -360,11 +359,11 @@ async def get_server_info(
     proxy: str | None = None,
     timeout: float = 5.0,
 ) -> ServerInfoPayload:
-    """启动自检用的接口连通性探测。"""
+    """启动自检用的接口连通性探测；官方响应直接是时间字段，无 response 包装层。"""
     url = f"{base_url.rstrip('/')}{API_GET_SERVER_INFO}"
 
     async with make_async_client(proxy=proxy, timeout=timeout) as client:
         resp = await request_ok_response(client, "GET", url, tag=_TAG, timeout=timeout)
 
-    payload: ServerInfoResponse = resp.json()
-    return payload["response"]
+    payload: ServerInfoPayload = resp.json()
+    return payload

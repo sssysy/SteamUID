@@ -14,7 +14,7 @@ from gsuid_core.utils.database.models import Subscribe
 
 from ..utils.api.public import get_game_announcements
 from ..utils.helper.game import GameRef, match_tip_text, resolve_game_ref
-from ..utils.helper.config import region_cc, griddb_cover_key
+from ..utils.helper.config import region_cc, store_base, griddb_cover_key
 from ..utils.helper.announce import (
     BASELINE_TASK,
     SUBSCRIBE_TASK,
@@ -111,7 +111,7 @@ async def _my_rows(ev: Event, appid: str) -> list[Subscribe]:
 
 async def _latest(appid: str) -> AnnounceItem | None:
     """取该游戏最新一条公告；一条都没有时返回 None。"""
-    events = await get_game_announcements(appid, lang=_LANG, count=1)
+    events = await get_game_announcements(appid, lang=_LANG, count=1, base_url=store_base())
     if not events:
         return None
     return to_item(appid, events[0])

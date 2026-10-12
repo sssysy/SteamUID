@@ -16,6 +16,7 @@ from gsuid_core.utils.database.models import Subscribe
 from ..steam_config import SteamConfig
 from ..utils.api.store import generate_discovery_queue, clear_discovery_queue_app
 from ..utils.helper.bind import get_binds
+from ..utils.helper.config import hide_id, store_base
 from ..utils.helper.auth_token import renew_access_token
 from ..utils.database.model_auth import SteamAuth
 from ..utils.database.model_bind import SteamBind
@@ -78,9 +79,9 @@ async def _run_rounds(session: StoreSession, *, rounds: int, interval: float) ->
     for index in range(rounds):
         if index:
             await asyncio.sleep(interval)
-        appids = await generate_discovery_queue(session.client, session_id=session.session_id)
+        appids = await generate_discovery_queue(session.client, session_id=session.session_id, base_url=store_base())
         for appid in appids:
-            await clear_discovery_queue_app(session.client, appid, session_id=session.session_id)
+            await clear_discovery_queue_app(session.client, appid, session_id=session.session_id, base_url=store_base())
             await asyncio.sleep(_CLEAR_INTERVAL)
         cleared += len(appids)
     return cleared
@@ -164,7 +165,7 @@ def _report_text(outcomes: Sequence[QueueOutcome]) -> str:
     if failed:
         lines.append(f"- 失败：{len(failed)} 个账号")
         lines.extend(
-            f"[{index}] {outcome.name}({outcome.steamid64}) - {outcome.reason}"
+            f"[{index}] {hide_id(outcome.name)}({hide_id(outcome.steamid64)}) - {outcome.reason}"
             for index, outcome in enumerate(failed, start=1)
         )
     return "\n".join(lines)

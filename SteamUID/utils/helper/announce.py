@@ -13,6 +13,7 @@ import msgspec
 
 from gsuid_core.logger import logger
 
+from .config import store_base
 from .game_cover import resolve_cover_name
 from ..api.models import StoreEvent
 from ..api.public import search_store
@@ -173,7 +174,7 @@ async def _download_name(url: str) -> str:
 
 async def _search_item(appid: str, *, cc: str) -> tuple[str, str]:
     """商店搜索命中项的名称与胶囊图直链；未收录返回 appid 与空串。"""
-    items = await search_store(appid, cc=cc, lang=_LANG)
+    items = await search_store(appid, cc=cc, lang=_LANG, base_url=store_base())
     for item in items:
         if "id" not in item or str(item["id"]) != appid:
             continue
