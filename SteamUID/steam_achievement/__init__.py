@@ -9,7 +9,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
-from ..steam_config import get_allow_at, get_achievement_interval
+from ..steam_config import SteamConfig
 from ..utils.helper.bind import get_main_steamid64
 from .achievement_services import build_achievement_card, poll_achievements_once
 from ..utils.helper.command import command_guard, resolve_viewer
@@ -23,7 +23,7 @@ achievement_sv = SV("steam成就相关")
 @command_guard
 async def steam_game_achievement(bot: Bot, ev: Event) -> None:
     """steam游戏成就<游戏名/AppID>：把当前账号的成就进度渲染成卡片。"""
-    user_id = resolve_viewer(ev, allow_at=get_allow_at())
+    user_id = resolve_viewer(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     steamid64 = await get_main_steamid64(ev, user_id)
     if steamid64 is None:
         raise ValueError("请先绑定 steam 账号")
@@ -39,7 +39,7 @@ async def steam_game_achievement(bot: Bot, ev: Event) -> None:
 _poll_lock = asyncio.Lock()
 
 
-@scheduler.scheduled_job("interval", seconds=get_achievement_interval())
+@scheduler.scheduled_job("interval", seconds=SteamConfig.get_config("AchievementInterval").data)
 async def poll_achievements_job() -> None:
     if _poll_lock.locked():
         logger.debug(f"{_TAG} 上一轮尚未结束，跳过本轮")

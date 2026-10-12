@@ -13,9 +13,10 @@ from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 from gsuid_core.web_app import app
 
-from ..steam_config import get_base_url, get_default_notify_types
+from ..steam_config import SteamConfig
 from ..utils.api.openid import build_login_url, verify_callback, extract_steamid64
 from ..utils.helper.bind import add_bind, get_binds, remove_bind
+from ..utils.helper.config import base_url
 from ..utils.helper.profile import load_profile_assets
 from ..utils.render.bind_card import render_bind_card_image
 
@@ -53,7 +54,7 @@ async def openid_entry(request: Request) -> Response:
         _SESSIONS.pop(state, None)
         return PlainTextResponse("登录会话已过期", status_code=400)
 
-    base = get_base_url()
+    base = base_url()
     if not base:
         return PlainTextResponse("未配置 GsCore 公网地址", status_code=500)
 
@@ -91,7 +92,7 @@ async def openid_callback(request: Request) -> Response:
 
 async def request_openid_login(bot: Bot, ev: Event) -> str:
     """发起网页登录并轮询结果，返回 steamid64；失败抛 ValueError。"""
-    base = get_base_url()
+    base = base_url()
     if not base:
         raise ValueError("未配置 GsCore 公网地址，无法发起 Steam 网页登录")
 
@@ -124,7 +125,7 @@ async def bind_account(ev: Event, user_id: str, steamid64: str) -> None:
     if any(bind.steamid64 == steamid64 for bind in binds):
         raise ValueError(f"该账户已绑定：[{profile.name}]")
 
-    await add_bind(ev, user_id, steamid64, get_default_notify_types())
+    await add_bind(ev, user_id, steamid64, SteamConfig.get_config("DefaultNotifyTypes").data)
 
 
 async def unbind_account(ev: Event, user_id: str, steamid64: str) -> None:

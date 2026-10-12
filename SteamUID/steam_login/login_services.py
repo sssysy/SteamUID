@@ -9,7 +9,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event, Message
 from gsuid_core.segment import MessageSegment
 
-from ..steam_config import get_default_notify_types
+from ..steam_config import SteamConfig
 from ..utils.api.auth import generate_session_id
 from ..utils.api.models import QrReady
 from ..utils.helper.bind import add_bind, get_binds
@@ -84,7 +84,7 @@ async def _complete_login(bot: Bot, ev: Event, ready: QrReady) -> None:
 
     binds = await get_binds(ev, ev.user_id)
     if not any(bind.steamid64 == steamid64 for bind in binds):
-        await add_bind(ev, ev.user_id, steamid64, get_default_notify_types())
+        await add_bind(ev, ev.user_id, steamid64, SteamConfig.get_config("DefaultNotifyTypes").data)
 
     image = await render_bind_card_image(ev, ev.user_id)
     await bot.send(MessageSegment.image(image))

@@ -2,7 +2,6 @@
 
 import html
 import datetime
-from typing import Literal
 from dataclasses import dataclass
 from collections.abc import Sequence
 
@@ -10,6 +9,7 @@ from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
 from .static_assets import get_bg_url, get_font_url
+from ...helper.price import PriceKind
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
@@ -23,9 +23,6 @@ _ROW_HEIGHT = 62
 _FOOTER_HEIGHT = 56
 
 _NO_DATE = "--"
-
-# 售价的四种形态：免费 / 折扣 / 标价 / 暂无（未发售或查不到价格）
-PriceKind = Literal["free", "discount", "price", "unreleased"]
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
-from ..steam_config import get_allow_at
+from ..steam_config import SteamConfig
 from .status_services import build_status_image
 from ..utils.helper.bind import get_main_steamid64
 from ..utils.helper.command import command_guard, resolve_target
@@ -18,7 +18,7 @@ status_sv = SV("steam用户相关")
 @command_guard
 async def steam_status(bot: Bot, ev: Event) -> None:
     """steam状态[@他人|steamid|好友码]：渲染目标账号的迷你资料卡。"""
-    user_id, steamid64 = resolve_target(ev, allow_at=get_allow_at())
+    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await get_main_steamid64(ev, user_id)
     if steamid64 is None:

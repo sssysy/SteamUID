@@ -256,7 +256,8 @@ async def search_store(
         return []
 
     url = f"{base_url.rstrip('/')}{STORE_SEARCH}"
-    params = {"term": keyword, "l": lang, "cc": cc}
+    # 商店搜索的 cc 必须小写：大写时中文关键词会直接返回 0 条
+    params = {"term": keyword, "l": lang, "cc": cc.lower()}
 
     async with make_async_client(proxy=proxy, timeout=timeout) as client:
         resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)

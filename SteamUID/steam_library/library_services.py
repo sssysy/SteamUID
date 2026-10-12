@@ -5,13 +5,8 @@ import asyncio
 from dataclasses import dataclass
 from collections.abc import Sequence
 
-from ..steam_config import (
-    get_api_keys,
-    get_region_cc,
-    get_griddb_key,
-    get_key_cooldown,
-    get_allow_griddb_cover,
-)
+from ..steam_config import SteamConfig
+from ..utils.helper.config import region_cc, griddb_cover_key
 from ..utils.helper.library import LibraryGame, visible_games
 from ..utils.helper.profile import SteamProfile, load_profile_assets
 from ..utils.helper.steam_api import fetch_owned_games
@@ -39,12 +34,12 @@ class _Candidate:
 
 async def _load_profile_library(steamid64: str) -> tuple[SteamProfile, list[LibraryGame]]:
     """拉取资料与游戏库；API Key 缺失或游戏库不可见直接抛 ValueError。"""
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         raise ValueError("请先配置 Steam API Key")
 
     profile = await load_profile_assets(steamid64)
-    payload = await fetch_owned_games(steamid64, keys=keys, cooldown=get_key_cooldown())
+    payload = await fetch_owned_games(steamid64, keys=keys, cooldown=SteamConfig.get_config("KeyPoolCooldown").data)
     if "games" not in payload:
         raise ValueError("未能获取该账号的游戏库，可能资料未公开或暂无游戏")
 
@@ -79,10 +74,10 @@ async def build_game_wall(steamid64: str) -> bytes:
     if not played:
         raise ValueError("该 steam 账号暂无可展示的游戏（需游玩时长 ≥ 10 分钟）")
 
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    griddb_key = griddb_cover_key()
     covers = await resolve_cover_names(
         [game.appid for game in played],
-        country=get_region_cc(),
+        country=region_cc(),
         griddb_key=griddb_key,
     )
 
@@ -145,10 +140,10 @@ async def build_recommend_pick(steamid64: str) -> bytes:
     if not picked:
         raise ValueError("未能在游戏库中找到可推荐的有效游戏")
 
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    griddb_key = griddb_cover_key()
     covers = await resolve_cover_names(
         [candidate.appid for candidate in picked],
-        country=get_region_cc(),
+        country=region_cc(),
         griddb_key=griddb_key,
     )
     games = [

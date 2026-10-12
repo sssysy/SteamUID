@@ -7,13 +7,9 @@ import httpx
 
 from gsuid_core.logger import logger
 
-from ..steam_config import (
-    get_api_keys,
-    get_key_cooldown,
-    get_push_options,
-    get_notify_switch,
-)
+from ..steam_config import SteamConfig
 from ..utils.render.push import dispatch_events
+from ..utils.helper.config import push_options
 from ..utils.helper.status import (
     StatusSnapshot,
     UserStatusEvent,
@@ -84,12 +80,12 @@ async def _poll_once() -> None:
     if not steamids:
         return
 
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         logger.warning(f"{_TAG} 未配置 Steam API Key，跳过本轮轮询")
         return
 
-    players = await fetch_player_summaries(steamids, keys=keys, cooldown=get_key_cooldown())
+    players = await fetch_player_summaries(steamids, keys=keys, cooldown=SteamConfig.get_config("KeyPoolCooldown").data)
 
     now = int(time.time())
 
@@ -120,8 +116,8 @@ async def _poll_once() -> None:
 
     await _record_play_sessions(events, seeds, now)
 
-    if get_notify_switch():
-        await dispatch_events(events, options=get_push_options())
+    if SteamConfig.get_config("NotifySwitch").data:
+        await dispatch_events(events, options=push_options())
 
 
 async def poll_status_once() -> None:

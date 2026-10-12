@@ -5,7 +5,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
-from ..steam_config import get_allow_at
+from ..steam_config import SteamConfig
 from .wishlist_services import (
     add_wishlist_game,
     build_wishlist_card,
@@ -21,7 +21,7 @@ wishlist_sv = SV("steam愿望单相关")
 async def steam_wishlist_list(bot: Bot, ev: Event) -> None:
     """steam愿望单列表[条数]：目标账号的愿望单与当前售价。"""
     await bot.send("正在生成愿望单卡片......")
-    await bot.send(MessageSegment.image(await build_wishlist_card(ev, allow_at=get_allow_at())))
+    await bot.send(MessageSegment.image(await build_wishlist_card(ev, allow_at=SteamConfig.get_config("AllowAt").data)))
 
 
 @wishlist_sv.on_prefix("增加愿望单", block=True)

@@ -4,15 +4,11 @@ import time
 import asyncio
 
 from ..utils.maps import flag_emoji
-from ..steam_config import (
-    get_region,
-    get_api_keys,
-    get_region_cc,
-    get_key_cooldown,
-)
+from ..steam_config import SteamConfig
 from ..utils.api.models import PlayerSummary, OwnedGamesPayload
 from ..utils.helper.level import load_level_badge
 from ..utils.helper.price import sum_library_value
+from ..utils.helper.config import region, region_cc
 from ..utils.helper.profile import load_profile_assets
 from ..utils.helper.steam_api import fetch_owned_games, fetch_player_summaries
 from ..utils.render.html.info_card import InfoCard, render_info_card
@@ -55,11 +51,11 @@ def _library_totals(payload: OwnedGamesPayload) -> tuple[int, int, list[str]]:
 
 async def build_steam_info(steamid64: str) -> bytes:
     """出图入口：资料 / 摘要 / 库存并发取回，再拼价格与等级后渲染。"""
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         raise ValueError("请先配置 Steam API Key")
 
-    cooldown = get_key_cooldown()
+    cooldown = SteamConfig.get_config("KeyPoolCooldown").data
     profile, players, library = await asyncio.gather(
         load_profile_assets(steamid64),
         fetch_player_summaries([steamid64], keys=keys, cooldown=cooldown),
@@ -71,7 +67,7 @@ async def build_steam_info(steamid64: str) -> bytes:
     player = players[0]
     game_count, total_minutes, appids = _library_totals(library)
     account_value, badge = await asyncio.gather(
-        sum_library_value(appids, cc=get_region_cc()),
+        sum_library_value(appids, cc=region_cc()),
         load_level_badge(profile.level),
     )
     status_text, status_tone = _presence(player)
@@ -95,7 +91,7 @@ async def build_steam_info(steamid64: str) -> bytes:
         region=flag_emoji(country),
         account_age=_account_age(created),
         account_value=account_value,
-        currency=get_region().currency,
+        currency=region().currency,
         playtime_hours=total_minutes // _MINUTES_PER_HOUR,
         game_count=game_count,
     )

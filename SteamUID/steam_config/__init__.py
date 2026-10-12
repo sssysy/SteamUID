@@ -1,8 +1,5 @@
 """SteamUID 插件配置项定义与注册。"""
 
-from pathlib import Path
-
-from gsuid_core.logger import logger
 from gsuid_core.data_store import get_res_path
 from gsuid_core.utils.plugins_config.models import (
     GSC,
@@ -10,6 +7,7 @@ from gsuid_core.utils.plugins_config.models import (
     GsStrConfig,
     GsBoolConfig,
     GsImageConfig,
+    GsTimeRConfig,
     GsListStrConfig,
 )
 from gsuid_core.utils.plugins_config.gs_config import StringConfig
@@ -17,14 +15,11 @@ from gsuid_core.utils.plugins_config.gs_config import StringConfig
 from ..utils.maps import (
     DEFAULT_REGION,
     SUPPORTED_REGIONS,
-    SteamRegion,
-    find_region,
 )
 from ..utils.helper.status import (
     PUSH_MODES,
     NOTIFY_KINDS,
     DEFAULT_PUSH_MODE,
-    PushOptions,
 )
 
 DATA_DIR = get_res_path("SteamUID")
@@ -81,6 +76,16 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "仅对正在游戏的账号查询成就，修改后需重启 GsCore 生效",
         300,
     ),
+    "PricePollInterval": GsIntConfig(
+        "游戏降价轮询间隔 (小时)",
+        "降价轮询间隔，修改后需重启 GsCore 生效",
+        2,
+    ),
+    "PriceNotifySwitch": GsBoolConfig(
+        "开启游戏降价通知",
+        "关闭后仍会轮询并记录价格，但不再推送降价提醒",
+        True,
+    ),
     "NotifyCD": GsIntConfig(
         "通知推送冷却 (分钟)",
         "同一账号在同一群聊的推送冷却，0 表示不启用；私聊不受冷却限制",
@@ -125,193 +130,32 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "定时清理超过该天数的 Steam 数据缓存，0 表示不清理，修改后需重启 GsCore 生效",
         3,
     ),
+    "QueueRounds": GsIntConfig(
+        "每次探索队列轮数",
+        "手动 / 自动探索时每个账号执行的轮数",
+        3,
+    ),
+    "QueueInterval": GsIntConfig(
+        "探索队列轮次间隔 (秒)",
+        "探索队列每轮之间的等待间隔",
+        15,
+    ),
+    "AutoQueueTime": GsTimeRConfig(
+        "自动探索队列时间",
+        "每日自动执行探索队列的时间 (时, 分)，修改后需重启 GsCore 生效",
+        (8, 0),
+    ),
+    "QueuePushGroup": GsBoolConfig(
+        "探索队列结果群聊推送",
+        "自动探索队列执行完毕后是否向开启所在的群聊推送结果",
+        True,
+    ),
+    "QueuePushPrivate": GsBoolConfig(
+        "探索队列结果私聊推送",
+        "自动探索队列执行完毕后是否私聊通知开启用户",
+        False,
+    ),
 }
 
+
 SteamConfig = StringConfig("SteamUID", CONFIG_PATH, CONFIG_DEFAULT)
-
-
-def get_base_url() -> str:
-    """OpenID 回调基址，去掉结尾斜杠。"""
-    config = SteamConfig.get_config("GsCoreBaseURL")
-    if not isinstance(config, GsStrConfig):
-        logger.error("[Steam·账户绑定] 配置项 GsCoreBaseURL 类型异常")
-        return ""
-    return config.data.strip().rstrip("/")
-
-
-def get_allow_at() -> bool:
-    """是否允许 @ 他人。"""
-    config = SteamConfig.get_config("AllowAt")
-    if not isinstance(config, GsBoolConfig):
-        logger.error("[Steam·账户绑定] 配置项 AllowAt 类型异常")
-        return False
-    return config.data
-
-
-def get_region() -> SteamRegion:
-    """配置的 Steam 地区；类型异常或取值未收录时回落默认地区。"""
-    config = SteamConfig.get_config("Region")
-    if not isinstance(config, GsStrConfig):
-        logger.error("[Steam·地区配置] 配置项 Region 类型异常")
-        return DEFAULT_REGION
-    region = find_region(config.data)
-    if region is None:
-        logger.error(f"[Steam·地区配置] 配置项 Region 取值异常，已回落默认: {config.data}")
-        return DEFAULT_REGION
-    return region
-
-
-def get_region_cc() -> str:
-    """配置地区对应的 ISO 代码（大写），供商店相关接口的 cc 参数使用。"""
-    return get_region().cc.upper()
-
-
-def get_api_keys() -> list[str]:
-    """配置的 Steam API Key 列表。"""
-    config = SteamConfig.get_config("SteamAPIKey")
-    if not isinstance(config, GsListStrConfig):
-        logger.error("[Steam·密钥池] 配置项 SteamAPIKey 类型异常")
-        return []
-    return list(config.data)
-
-
-def get_key_cooldown() -> int:
-    """单 Key 触发 429 后的冷却秒数。"""
-    config = SteamConfig.get_config("KeyPoolCooldown")
-    if not isinstance(config, GsIntConfig):
-        logger.error("[Steam·密钥池] 配置项 KeyPoolCooldown 类型异常")
-        return 600
-    return config.data
-
-
-def get_notify_switch() -> bool:
-    """是否开启用户状态变化通知。"""
-    config = SteamConfig.get_config("NotifySwitch")
-    if not isinstance(config, GsBoolConfig):
-        logger.error("[Steam·状态轮询] 配置项 NotifySwitch 类型异常")
-        return True
-    return config.data
-
-
-def get_poll_interval() -> int:
-    """用户状态轮询间隔 (秒)。"""
-    config = SteamConfig.get_config("PollInterval")
-    if not isinstance(config, GsIntConfig):
-        logger.error("[Steam·状态轮询] 配置项 PollInterval 类型异常")
-        return 20
-    return config.data
-
-
-def get_achievement_interval() -> int:
-    """成就轮询间隔 (秒)。"""
-    config = SteamConfig.get_config("AchievementInterval")
-    if not isinstance(config, GsIntConfig):
-        logger.error("[Steam·成就轮询] 配置项 AchievementInterval 类型异常")
-        return 300
-    return config.data
-
-
-def get_notify_cd() -> int:
-    """通知推送冷却 (分钟)。"""
-    config = SteamConfig.get_config("NotifyCD")
-    if not isinstance(config, GsIntConfig):
-        logger.error("[Steam·状态轮询] 配置项 NotifyCD 类型异常")
-        return 5
-    return config.data
-
-
-def get_notify_types() -> list[str]:
-    """全局开启的通知类型。"""
-    config = SteamConfig.get_config("NotifyTypes")
-    if not isinstance(config, GsListStrConfig):
-        logger.error("[Steam·状态轮询] 配置项 NotifyTypes 类型异常")
-        return list(NOTIFY_KINDS)
-    return list(config.data)
-
-
-def get_default_notify_types() -> list[str]:
-    """用户绑定后默认开启的通知类型。"""
-    config = SteamConfig.get_config("DefaultNotifyTypes")
-    if not isinstance(config, GsListStrConfig):
-        logger.error("[Steam·状态轮询] 配置项 DefaultNotifyTypes 类型异常")
-        return ["开始游戏"]
-    return list(config.data)
-
-
-def get_push_mode() -> str:
-    """状态变化推送方式；取值不在词表内时回落默认。"""
-    config = SteamConfig.get_config("PushMode")
-    if not isinstance(config, GsStrConfig):
-        logger.error("[Steam·状态轮询] 配置项 PushMode 类型异常")
-        return DEFAULT_PUSH_MODE
-    if config.data not in PUSH_MODES:
-        logger.error(f"[Steam·状态轮询] 配置项 PushMode 取值异常，已回落默认: {config.data}")
-        return DEFAULT_PUSH_MODE
-    return config.data
-
-
-def get_push_image() -> bool:
-    """是否获取游戏封面图。"""
-    config = SteamConfig.get_config("PushImage")
-    if not isinstance(config, GsBoolConfig):
-        logger.error("[Steam·状态轮询] 配置项 PushImage 类型异常")
-        return True
-    return config.data
-
-
-def get_griddb_key() -> str:
-    """SteamGridDB API Key；未配置返回空串。"""
-    config = SteamConfig.get_config("GridDBApiKey")
-    if not isinstance(config, GsStrConfig):
-        logger.error("[Steam·状态轮询] 配置项 GridDBApiKey 类型异常")
-        return ""
-    return config.data.strip()
-
-
-def get_allow_griddb_cover() -> bool:
-    """是否允许用 SteamGridDB 社区封面兜底。"""
-    config = SteamConfig.get_config("AllowGridDBCover")
-    if not isinstance(config, GsBoolConfig):
-        logger.error("[Steam·状态轮询] 配置项 AllowGridDBCover 类型异常")
-        return False
-    return config.data
-
-
-def get_cache_clean_days() -> int:
-    """SteamCache 全局缓存清理天数；0 表示不清理。"""
-    config = SteamConfig.get_config("CacheCleanDays")
-    if not isinstance(config, GsIntConfig):
-        logger.error("[Steam·缓存清理] 配置项 CacheCleanDays 类型异常")
-        return 3
-    return config.data
-
-
-def get_push_options() -> PushOptions:
-    """汇总一次推送所需的全部配置项。"""
-    return PushOptions(
-        kinds=frozenset(get_notify_types()),
-        cd_seconds=get_notify_cd() * 60,
-        mode=get_push_mode(),
-        with_cover=get_push_image(),
-        region_cc=get_region_cc(),
-        # 总开关关闭时清空 key，等价于不查询 GridDB
-        griddb_key=get_griddb_key() if get_allow_griddb_cover() else "",
-    )
-
-
-def get_custom_bg_path() -> Path | None:
-    """配置声明的自定义背景文件；未上传、非上传目标文件或文件缺失时返回 None。"""
-    config = SteamConfig.get_config("CustomBgPath")
-    if not isinstance(config, GsImageConfig):
-        logger.error("[Steam·自定义背景] 配置项 CustomBgPath 类型异常")
-        return None
-    raw = config.data.strip()
-    if not raw:
-        return None
-    path = Path(raw)
-    # 只认控制台上传的目标文件，避免把数据目录里的其它文件放出去
-    if path.parent != DATA_DIR or path.name != f"{config.filename}.{config.suffix}":
-        return None
-    if not path.is_file() or path.stat().st_size == 0:
-        return None
-    return path

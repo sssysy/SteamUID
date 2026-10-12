@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_regular_url }}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_medium_url }}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SteamFont';
+  src: url('{{ font_bold_url }}') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+{{ styles }}
+body {
+  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+/* 容器宽度由 Python 侧常量注入 */
+.announce-container {
+  width: {{ canvas_width }}px;
+}
+</style>
+</head>
+<body>
+<div class="announce-container" id="steam-announce-push-card">
+  <div class="announce-header">
+    <div class="announce-header-top">
+      <div class="announce-title-col">
+        <div class="announce-tag">{{ event_tag }}</div>
+        <div class="announce-title">{{ announce_title }}</div>
+      </div>
+      <div class="game-badge">
+        <img class="game-logo" src="{{ game_logo_url }}" alt="">
+        <div class="game-name" title="{{ game_name }}">{{ game_name }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="announce-content">{{ content_html }}</div>
+  {{ footer_html }}
+</div>
+</body>
+</html>

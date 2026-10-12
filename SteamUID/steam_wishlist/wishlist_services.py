@@ -10,18 +10,9 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..steam_config import (
-    get_region,
-    get_api_keys,
-    get_region_cc,
-    get_griddb_key,
-    get_key_cooldown,
-    get_allow_griddb_cover,
-)
+from ..steam_config import SteamConfig
 from ..utils.api.models import (
     WishlistItem,
-    PriceOverview,
-    AppDetailsData,
     AppDetailsEntry,
 )
 from ..utils.api.public import get_price_overview
@@ -32,7 +23,12 @@ from ..utils.api.wishlist import (
     remove_from_wishlist,
     get_wishlist_with_token,
 )
-from ..utils.helper.price import format_price
+from ..utils.helper.price import (
+    entry_data,
+    price_fields,
+    price_overview,
+)
+from ..utils.helper.config import region, region_cc, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
 from ..utils.helper.profile import SteamProfile, load_profile_assets
 from ..utils.helper.steam_api import fetch_wishlist
@@ -40,7 +36,6 @@ from ..utils.helper.auth_token import run_with_token
 from ..utils.helper.game_cover import resolve_cover_names
 from ..utils.helper.game_detail import load_store_detail
 from ..utils.render.html.wishlist import (
-    PriceKind,
     WishlistCard,
     WishlistEntry,
     render_wishlist_card,
@@ -77,47 +72,6 @@ def _date_added_of(item: WishlistItem) -> int:
     return item["date_added"] if "date_added" in item else 0
 
 
-def _entry_data(entry: AppDetailsEntry | None) -> AppDetailsData | None:
-    """成功响应里的 data；Steam 对无价条目会把 data 返回成 [] 或 null，先挡在字典访问前。"""
-    if entry is None or "success" not in entry or not entry["success"] or "data" not in entry:
-        return None
-    data = entry["data"]
-    if not isinstance(data, dict):
-        return None
-    return data
-
-
-def _price_overview(entry: AppDetailsEntry | None) -> PriceOverview | None:
-    """实时批量价里的 price_overview；该 appid 没有价格数据时回落 None。"""
-    data = _entry_data(entry)
-    if data is None or "price_overview" not in data:
-        return None
-    return data["price_overview"]
-
-
-def _price_fields(
-    detail: AppDetailsData | None,
-    overview: PriceOverview | None,
-    *,
-    currency: str,
-) -> tuple[PriceKind, str, int]:
-    """售价形态：免费 -> 即将推出 -> 折扣或标价 -> 暂无定价。"""
-    if detail is not None and "is_free" in detail and detail["is_free"]:
-        return "free", "免费", 0
-    if detail is not None and "release_date" in detail:
-        release = detail["release_date"]
-        if "coming_soon" in release and release["coming_soon"]:
-            return "unreleased", "即将推出", 0
-    if overview is None:
-        return "unreleased", "暂无定价", 0
-
-    percent = overview["discount_percent"] if "discount_percent" in overview else 0
-    text = format_price(overview, currency)
-    if percent > 0:
-        return "discount", text, percent
-    return "price", text, 0
-
-
 def _build_entry(
     appid: str,
     added_ts: int,
@@ -128,12 +82,12 @@ def _build_entry(
     currency: str,
 ) -> WishlistEntry:
     """单行数据：名称与免费 / 未发售取缓存详情，售价取实时批量价。"""
-    data = _entry_data(detail)
+    data = entry_data(detail)
     name = appid
     if data is not None and "name" in data:
         name = data["name"]
 
-    kind, text, percent = _price_fields(data, _price_overview(live), currency=currency)
+    kind, text, percent = price_fields(data, price_overview(live), currency=currency)
     return WishlistEntry(
         appid=appid,
         name=name,
@@ -175,7 +129,11 @@ async def _fetch_items(steamid64: str, *, own_account: bool) -> list[WishlistIte
             items = None
         if items is not None:
             return items
-    return await fetch_wishlist(steamid64, keys=get_api_keys(), cooldown=get_key_cooldown())
+    return await fetch_wishlist(
+        steamid64,
+        keys=SteamConfig.get_config("SteamAPIKey").data,
+        cooldown=SteamConfig.get_config("KeyPoolCooldown").data,
+    )
 
 
 async def _load_details(appids: Sequence[str], *, cc: str) -> list[AppDetailsEntry | None]:
@@ -191,7 +149,7 @@ async def _load_details(appids: Sequence[str], *, cc: str) -> list[AppDetailsEnt
 
 async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
     """steam愿望单列表[条数]：目标账号的愿望单与当前售价渲染成卡片。"""
-    if not get_api_keys():
+    if not SteamConfig.get_config("SteamAPIKey").data:
         raise ValueError("请先配置 Steam API Key")
 
     user_id = resolve_viewer(ev, allow_at=allow_at)
@@ -211,8 +169,8 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
     hidden = len(ordered) - len(shown)
     appids = [str(item["appid"]) for item in shown]
 
-    cc = get_region_cc()
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    cc = region_cc()
+    griddb_key = griddb_cover_key()
     details, prices, covers, profile = await asyncio.gather(
         _load_details(appids, cc=cc),
         get_price_overview(appids, cc=cc),
@@ -220,7 +178,7 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
         load_profile_assets(steamid64),
     )
 
-    currency = get_region().currency
+    currency = region().currency
     entries = [
         _build_entry(
             appid,
@@ -250,7 +208,7 @@ async def _checked_target(bot: Bot, ev: Event) -> tuple[str, GameRef]:
     if not raw:
         raise ValueError(f"请输入游戏名或 AppID，例如：{_WRITE_USAGE}")
 
-    ref = await resolve_game_ref(raw, cc=get_region_cc())
+    ref = await resolve_game_ref(raw, cc=region_cc())
     if not raw.isdigit():
         await bot.send(match_tip_text(ref))
     return steamid64, ref

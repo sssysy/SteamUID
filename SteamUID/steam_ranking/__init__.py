@@ -5,7 +5,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 
-from ..steam_config import get_allow_at
+from ..steam_config import SteamConfig
 from .ranking_services import (
     build_self_ranking,
     build_group_game_ranking,
@@ -22,7 +22,7 @@ ranking_sv = SV("steam排行相关")
 async def steam_ranking(bot: Bot, ev: Event) -> None:
     """steam排行[steamid/好友码] [条数]：目标在本群的游戏时长排行。"""
     await bot.send("正在生成排行卡片......")
-    await bot.send(MessageSegment.image(await build_self_ranking(ev, allow_at=get_allow_at())))
+    await bot.send(MessageSegment.image(await build_self_ranking(ev, allow_at=SteamConfig.get_config("AllowAt").data)))
 
 
 @ranking_sv.on_command(("群玩家排行", "群玩家排名", "群玩家统计"), block=True)

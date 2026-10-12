@@ -1,6 +1,6 @@
 """steam状态：汇总摘要 / 状态 / 装扮，渲染静态或动态迷你资料卡。"""
 
-from ..steam_config import get_api_keys, get_key_cooldown
+from ..steam_config import SteamConfig
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import is_logged_in
 from ..utils.helper.level import load_level_badge
@@ -50,10 +50,10 @@ def _is_private(player: PlayerSummary) -> bool:
 
 async def build_status_image(steamid64: str) -> bytes:
     """出图入口：摘要 → 私密校验 → 装扮素材 → 静态或动态渲染。"""
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         raise ValueError("请先配置 Steam API Key")
-    cooldown = get_key_cooldown()
+    cooldown = SteamConfig.get_config("KeyPoolCooldown").data
 
     players = await fetch_player_summaries([steamid64], keys=keys, cooldown=cooldown)
     if not players:

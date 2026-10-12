@@ -7,10 +7,10 @@ from collections.abc import Mapping, Sequence
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..steam_config import get_region_cc, get_griddb_key, get_allow_griddb_cover
 from ..utils.api.models import AppDetailsEntry
 from ..utils.helper.bind import get_binds, session_ids
 from ..utils.helper.game import resolve_game_ref
+from ..utils.helper.config import region_cc, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
 from ..utils.helper.profile import load_profile_assets
 from ..utils.helper.ranking import load_group_members
@@ -95,8 +95,8 @@ def _rank_desc(totals: Mapping[str, int], limit: int) -> list[tuple[str, int]]:
 async def _game_entries(seconds: Mapping[str, int]) -> list[GameRankingEntry]:
     """按传入映射顺序批量解析游戏名与封面，组装成排行行。"""
     appids = list(seconds)
-    country = get_region_cc()
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    country = region_cc()
+    griddb_key = griddb_cover_key()
     covers, details = await asyncio.gather(
         resolve_cover_names(appids, country=country, griddb_key=griddb_key),
         asyncio.gather(*(load_store_detail(appid, country) for appid in appids)),
@@ -115,8 +115,8 @@ async def _game_entries(seconds: Mapping[str, int]) -> list[GameRankingEntry]:
 
 async def _game_badge(appid: str, fallback_name: str) -> RankingBadge:
     """游戏徽标：名称优先商店详情，图标取封面首图。"""
-    country = get_region_cc()
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    country = region_cc()
+    griddb_key = griddb_cover_key()
     detail, covers = await asyncio.gather(
         load_store_detail(appid, country),
         resolve_cover_names([appid], country=country, griddb_key=griddb_key),
@@ -206,7 +206,7 @@ async def build_group_game_player_ranking(ev: Event) -> bytes:
     words = ev.text.split()
     if not words:
         raise ValueError("请输入游戏名或 AppID，例如：steam群游戏玩家排行 730")
-    ref = await resolve_game_ref(words[0], cc=get_region_cc())
+    ref = await resolve_game_ref(words[0], cc=region_cc())
 
     if not binds:
         raise ValueError(f"未找到 {ref.appid} 的相关游玩数据！")

@@ -12,7 +12,7 @@ from gsuid_core.config import CONFIG_DEFAULT, core_config
 from gsuid_core.app_life import app as fastapi_app
 from gsuid_core.data_store import get_res_path
 
-from ....steam_config import get_custom_bg_path
+from ...helper.config import custom_bg_path
 
 _HTML_DIR = Path(__file__).resolve().parent
 TEXTURE2D_DIR = _HTML_DIR / "texture2d"
@@ -87,7 +87,7 @@ def get_img_cache_url(name: str) -> str:
 
 async def _serve_custom_bg() -> FileResponse:
     """自定义背景直链响应；配置已被清除时返回 404。"""
-    path = get_custom_bg_path()
+    path = custom_bg_path()
     if path is None:
         raise HTTPException(status_code=404, detail="custom background not configured")
     return FileResponse(path)
@@ -95,7 +95,7 @@ async def _serve_custom_bg() -> FileResponse:
 
 def get_bg_url() -> str:
     """卡片底图直链：配置了自定义背景时优先，否则回落插件自带底图。"""
-    if get_custom_bg_path() is not None:
+    if custom_bg_path() is not None:
         _ensure_mounted()
         return f"{_base_url()}{_CUSTOM_BG_ROUTE}"
     return get_texture_url(DEFAULT_BG_NAME)

@@ -9,20 +9,17 @@ import httpx
 
 from gsuid_core.logger import logger
 
-from ..steam_config import (
-    get_api_keys,
-    get_region_cc,
-    get_griddb_key,
-    get_key_cooldown,
-    get_push_options,
-    get_notify_switch,
-    get_allow_griddb_cover,
-)
+from ..steam_config import SteamConfig
 from ..utils.api.cover import build_app_icon_url, get_official_cover_url
 from ..utils.api.models import PlayerAchievement, AchievementSchemaEntry
 from ..utils.downloader import download
 from ..utils.helper.game import resolve_game_ref
 from ..utils.render.push import dispatch_events
+from ..utils.helper.config import (
+    region_cc,
+    push_options,
+    griddb_cover_key,
+)
 from ..utils.helper.status import (
     UserStatusEvent,
     AchievementUnlock,
@@ -136,7 +133,7 @@ def _unlock_times(entries: list[PlayerAchievement]) -> dict[str, int]:
 
 async def _poll_once() -> None:
     # 成就只为推送存在，总开关关闭时整轮跳过
-    if not get_notify_switch():
+    if not SteamConfig.get_config("NotifySwitch").data:
         return
 
     baselines = await _load_baselines()
@@ -149,11 +146,11 @@ async def _poll_once() -> None:
     if not records:
         return
 
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         logger.warning(f"{_TAG} 未配置 Steam API Key，跳过本轮轮询")
         return
-    cooldown = get_key_cooldown()
+    cooldown = SteamConfig.get_config("KeyPoolCooldown").data
 
     steamids = sorted({record.steamid64 for record in records})
     infos = await _load_players(steamids, keys=keys, cooldown=cooldown)
@@ -200,7 +197,7 @@ async def _poll_once() -> None:
                 )
             )
 
-    await dispatch_events(events, options=get_push_options())
+    await dispatch_events(events, options=push_options())
 
 
 async def poll_achievements_once() -> None:
@@ -314,12 +311,12 @@ async def _image_links(urls: Sequence[str]) -> dict[str, str]:
 
 async def build_achievement_card(steamid64: str, query: str) -> AchievementCardResult:
     """出图入口：解析游戏 -> 拉成就与素材 -> 组装 -> 渲染。"""
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         raise ValueError("请先配置 Steam API Key")
-    cooldown = get_key_cooldown()
+    cooldown = SteamConfig.get_config("KeyPoolCooldown").data
 
-    ref = await resolve_game_ref(query, cc=get_region_cc())
+    ref = await resolve_game_ref(query, cc=region_cc())
     payload = await fetch_player_achievements(ref.appid, steamid64, keys=keys, cooldown=cooldown)
     if "success" in payload and not payload["success"]:
         raise ValueError("未获取到成就数据，可能该游戏无成就、steam 资料未公开或登录授权已失效")
@@ -327,12 +324,12 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
     if not entries:
         raise ValueError("该游戏暂无成就数据")
 
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    griddb_key = griddb_cover_key()
     schema, detail, profile, cover_name, icon_raw = await asyncio.gather(
         fetch_achievement_schema(ref.appid, keys=keys, cooldown=cooldown),
         load_store_detail(ref.appid, None),
         load_profile_assets(steamid64),
-        resolve_cover_name(ref.appid, country=get_region_cc(), griddb_key=griddb_key),
+        resolve_cover_name(ref.appid, country=region_cc(), griddb_key=griddb_key),
         _owned_icon_url(steamid64, ref.appid, keys=keys, cooldown=cooldown),
     )
 

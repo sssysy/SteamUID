@@ -232,7 +232,8 @@ class SupportInfo(TypedDict, total=False):
 
 class ContentDescriptors(TypedDict, total=False):
     ids: list[int]
-    notes: str
+    # 无内容描述时 notes 为 null，标注成 str 会让整条详情缓存反序列化失败
+    notes: str | None
 
 
 class Requirements(TypedDict, total=False):
@@ -282,7 +283,8 @@ class AppDetailsData(TypedDict, total=False):
     header_image: str
     capsule_image: str
     capsule_imagev5: str
-    website: str
+    # 商店详情里 website 允许为 null，标注成 str 会让整条缓存反序列化失败
+    website: str | None
     pc_requirements: Requirements
     mac_requirements: Requirements
     linux_requirements: Requirements

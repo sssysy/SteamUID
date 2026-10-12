@@ -8,7 +8,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..steam_config import get_cache_clean_days
+from ..steam_config import SteamConfig
 from .cache_services import clear_cache
 from ..utils.downloader import clean_cache_files
 from ..utils.helper.command import command_guard
@@ -29,7 +29,7 @@ async def steam_clear_cache(bot: Bot, ev: Event) -> None:
     await clear_cache(bot, ev.regex_dict["target"])
 
 
-_CLEAN_DAYS = get_cache_clean_days()
+_CLEAN_DAYS = SteamConfig.get_config("CacheCleanDays").data
 
 # 0 表示不清理，且 interval 的 days 不能为 0，直接不注册任务
 if _CLEAN_DAYS > 0:

@@ -5,7 +5,7 @@ import asyncio
 from gsuid_core.aps import scheduler
 from gsuid_core.logger import logger
 
-from ..steam_config import get_poll_interval
+from ..steam_config import SteamConfig
 from .status_services import poll_status_once
 
 _TAG = "[Steam·状态轮询]"
@@ -14,7 +14,7 @@ _TAG = "[Steam·状态轮询]"
 _poll_lock = asyncio.Lock()
 
 
-@scheduler.scheduled_job("interval", seconds=get_poll_interval())
+@scheduler.scheduled_job("interval", seconds=SteamConfig.get_config("PollInterval").data)
 async def poll_user_status_job() -> None:
     if _poll_lock.locked():
         logger.debug(f"{_TAG} 上一轮尚未结束，跳过本轮")

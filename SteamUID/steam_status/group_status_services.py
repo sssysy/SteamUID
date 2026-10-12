@@ -7,16 +7,11 @@ from collections.abc import Mapping, Sequence
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..steam_config import (
-    get_api_keys,
-    get_region_cc,
-    get_griddb_key,
-    get_key_cooldown,
-    get_allow_griddb_cover,
-)
+from ..steam_config import SteamConfig
 from .status_services import PERSONA_TEXT
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import session_ids
+from ..utils.helper.config import region_cc, griddb_cover_key
 from ..utils.helper.profile import load_mini_background_name
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steam_api import fetch_player_summaries
@@ -144,7 +139,7 @@ async def build_group_status_image(ev: Event) -> bytes:
     if not ev.group_id:
         raise ValueError("请在群聊中使用此功能")
 
-    keys = get_api_keys()
+    keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
         raise ValueError("请先配置 Steam API Key")
 
@@ -154,15 +149,15 @@ async def build_group_status_image(ev: Event) -> bytes:
         raise ValueError(_NO_MEMBER)
 
     steamids = list(dict.fromkeys(bind.steamid64 for bind in binds))
-    players = await fetch_player_summaries(steamids, keys=keys, cooldown=get_key_cooldown())
+    players = await fetch_player_summaries(steamids, keys=keys, cooldown=SteamConfig.get_config("KeyPoolCooldown").data)
     summaries = {player["steamid"]: player for player in players if "steamid" in player}
 
     actives = _active_accounts(binds, summaries)
     if not actives:
         raise ValueError(_NO_MEMBER)
 
-    country = get_region_cc()
-    griddb_key = get_griddb_key() if get_allow_griddb_cover() else ""
+    country = region_cc()
+    griddb_key = griddb_cover_key()
     shown = actives[:_MAX_MEMBERS]
     loaded = await asyncio.gather(
         *(_background_url(account, country=country, griddb_key=griddb_key) for account in shown),
