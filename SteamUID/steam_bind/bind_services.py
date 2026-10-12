@@ -4,6 +4,7 @@ import time
 import asyncio
 import secrets
 from dataclasses import dataclass
+from collections.abc import Sequence
 
 from fastapi import Request
 from starlette.responses import Response, RedirectResponse, PlainTextResponse
@@ -15,10 +16,12 @@ from gsuid_core.web_app import app
 
 from ..steam_config import SteamConfig
 from ..utils.api.openid import build_login_url, verify_callback, extract_steamid64
-from ..utils.helper.bind import add_bind, get_binds, remove_bind
-from ..utils.helper.config import base_url
+from ..utils.helper.bind import add_bind, get_binds, remove_bind, session_ids
+from ..utils.helper.config import hide_id, base_url
 from ..utils.helper.profile import load_profile_assets
+from ..utils.helper.steamid import auto2steamid64, steamid64_to_friend_code
 from ..utils.render.bind_card import render_bind_card_image
+from ..utils.database.model_bind import SteamBind
 
 _OPENID_TTL = 300.0
 _POLL_INTERVAL = 2.0
@@ -137,7 +140,61 @@ async def unbind_account(ev: Event, user_id: str, steamid64: str) -> None:
     await remove_bind(ev, user_id, steamid64)
 
 
-async def send_bind_card(bot: Bot, ev: Event, user_id: str) -> None:
-    """渲染并发送绑定列表卡片。"""
-    image = await render_bind_card_image(ev, user_id)
+async def send_bind_card(bot: Bot, ev: Event, user_id: str, *, force: bool = False) -> None:
+    """渲染并发送绑定列表卡片；force 为真时重下资料图片。"""
+    image = await render_bind_card_image(ev, user_id, force=force)
     await bot.send(MessageSegment.image(image))
+
+
+def _bind_order(bind: SteamBind) -> int:
+    """绑定顺序即主键顺序，与 steam查看 的卡片展示顺序一致。"""
+    return bind.id
+
+
+def _next_bind(binds: Sequence[SteamBind]) -> SteamBind:
+    """当前主账号的下一位，末尾回绕首位；未设主账号时取第一位。"""
+    for index, bind in enumerate(binds):
+        if bind.is_main_id:
+            return binds[(index + 1) % len(binds)]
+    return binds[0]
+
+
+def _resolve_bind(binds: Sequence[SteamBind], arg: str) -> SteamBind:
+    """1-3 位纯数字按序号，其余按好友码 / steamid64。"""
+    if arg.isdigit() and len(arg) <= 3:
+        index = int(arg)
+        if not 1 <= index <= len(binds):
+            raise ValueError(f"没有第 {index} 个绑定账号")
+        return binds[index - 1]
+
+    steamid64 = auto2steamid64(arg)
+    if steamid64 is None:
+        raise ValueError("请传入好友码或账号序号")
+    for bind in binds:
+        if bind.steamid64 == steamid64:
+            return bind
+    raise ValueError("该账号不在当前绑定中")
+
+
+async def switch_account(ev: Event, user_id: str, raw_arg: str) -> str:
+    """切换当前会话主账号：按序号或好友码；无参数切到下一位。"""
+    binds = sorted(await get_binds(ev, user_id), key=_bind_order)
+    if not binds:
+        raise ValueError("请先绑定 steam 账号")
+
+    arg = raw_arg.strip()
+    target = _resolve_bind(binds, arg) if arg else _next_bind(binds)
+
+    bot_id, bot_self_id, group_id = session_ids(ev)
+    switched = await SteamBind.set_main_id(user_id, bot_id, bot_self_id, group_id, target.steamid64)
+    if not switched:
+        raise ValueError("切换失败，请稍后重试")
+
+    return f"已切换当前账号：{hide_id(steamid64_to_friend_code(target.steamid64))}"
+
+
+async def refresh_bind_card(bot: Bot, ev: Event, user_id: str) -> None:
+    """强制重下该会话绑定账号的资料图片并重发绑定卡片。"""
+    if not await get_binds(ev, user_id):
+        raise ValueError("请先绑定 steam 账号")
+    await send_bind_card(bot, ev, user_id, force=True)

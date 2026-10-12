@@ -1,4 +1,4 @@
-"""Steam 账号绑定命令：绑定 / 解绑 / 查看。"""
+"""Steam 账号绑定命令：绑定 / 解绑 / 查看 / 切换 / 刷新用户。"""
 
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
@@ -8,7 +8,9 @@ from ..steam_config import SteamConfig
 from .bind_services import (
     bind_account,
     send_bind_card,
+    switch_account,
     unbind_account,
+    refresh_bind_card,
     request_openid_login,
 )
 from ..utils.helper.command import command_guard, resolve_target
@@ -41,3 +43,17 @@ async def steam_unbind(bot: Bot, ev: Event) -> None:
 async def steam_view(bot: Bot, ev: Event) -> None:
     user_id, _ = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     await send_bind_card(bot, ev, user_id)
+
+
+@bind_sv.on_command("切换", block=True)
+@command_guard
+async def steam_switch(bot: Bot, ev: Event) -> None:
+    """steam切换[好友码|序号]：切换当前账号；无参数则切到下一位。"""
+    await bot.send(await switch_account(ev, ev.user_id, ev.text))
+
+
+@bind_sv.on_fullmatch("刷新用户", block=True)
+@command_guard
+async def steam_refresh_user(bot: Bot, ev: Event) -> None:
+    """steam刷新用户：重拉当前会话绑定账号的资料并重发卡片。"""
+    await refresh_bind_card(bot, ev, ev.user_id)

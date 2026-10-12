@@ -32,10 +32,10 @@ async def _resolve_qq_avatar(ev: Event) -> str:
     return get_default_avatar_url()
 
 
-async def _load_card_item(bind: SteamBind, group_id: str) -> BindCardItem:
+async def _load_card_item(bind: SteamBind, group_id: str, *, force: bool = False) -> BindCardItem:
     """组装单个药丸数据；资料抓取失败时回落默认昵称与头像，不影响其它账户。"""
     profile, logged_in = await asyncio.gather(
-        load_profile_assets(bind.steamid64),
+        load_profile_assets(bind.steamid64, force=force),
         is_logged_in(bind.steamid64),
         return_exceptions=True,
     )
@@ -71,14 +71,14 @@ async def _load_card_item(bind: SteamBind, group_id: str) -> BindCardItem:
     )
 
 
-async def _build_card_items(binds: Sequence[SteamBind], group_id: str) -> list[BindCardItem]:
-    return list(await asyncio.gather(*(_load_card_item(bind, group_id) for bind in binds)))
+async def _build_card_items(binds: Sequence[SteamBind], group_id: str, *, force: bool = False) -> list[BindCardItem]:
+    return list(await asyncio.gather(*(_load_card_item(bind, group_id, force=force) for bind in binds)))
 
 
-async def render_bind_card_image(ev: Event, user_id: str) -> bytes:
-    """渲染该会话内 user_id 的绑定列表卡片（与 steam查看 同款）。"""
+async def render_bind_card_image(ev: Event, user_id: str, *, force: bool = False) -> bytes:
+    """渲染该会话内 user_id 的绑定列表卡片（与 steam查看 同款）；force 为真时重下资料图片。"""
     binds = await get_binds(ev, user_id)
-    items = await _build_card_items(binds, session_ids(ev)[2])
+    items = await _build_card_items(binds, session_ids(ev)[2], force=force)
     user_name = sender_text(ev, "nickname") or user_id
     qq_avatar_url = await _resolve_qq_avatar(ev)
     return await render_bind_list(items, user_name=user_name, qq_avatar_url=qq_avatar_url)

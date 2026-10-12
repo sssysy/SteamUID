@@ -61,14 +61,14 @@ class _Decorations:
     badge_icon_name: str
 
 
-async def _download_name(url: str) -> str:
+async def _download_name(url: str, *, force: bool = False) -> str:
     """下载素材到 img_cache，返回文件名；空 URL 或下载失败返回空串。
 
     视频背景同样落 img_cache，模板需以挂载直链引用。
     """
     if not url.strip():
         return ""
-    path = await download(url, kind="image")
+    path = await download(url, kind="image", force=force)
     return path.name if path is not None else ""
 
 
@@ -89,14 +89,14 @@ def _parse_profile_xml(xml: str) -> tuple[str, str, str]:
     return name, avatar, clean_description(root.findtext("summary") or "")
 
 
-async def _fetch_base_profile(steamid64: str) -> SteamProfile:
+async def _fetch_base_profile(steamid64: str, *, force: bool = False) -> SteamProfile:
     xml = await get_community_profile_xml(steamid64, base_url=community_base())
     name, avatar, summary = _parse_profile_xml(xml)
     return SteamProfile(
         steamid64=steamid64,
         name=name,
         friend_code=steamid64_to_friend_code(steamid64),
-        avatar_name=await _download_name(avatar),
+        avatar_name=await _download_name(avatar, force=force),
         frame_name="",
         background_name="",
         summary=summary,
@@ -142,13 +142,13 @@ def _parse_miniprofile(payload: MiniprofilePayload) -> _MiniDeco:
     )
 
 
-async def _fetch_decorations(steamid64: str) -> _Decorations:
+async def _fetch_decorations(steamid64: str, *, force: bool = False) -> _Decorations:
     """取头像框 / 背景 / 等级 / 特色徽章，返回已落盘的 img_cache 文件名。"""
     deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG, base_url=community_base()))
     frame_name, background_name, badge_icon_name = await asyncio.gather(
-        _download_name(deco.frame_url),
-        _download_name(deco.background_url),
-        _download_name(deco.badge_icon_url),
+        _download_name(deco.frame_url, force=force),
+        _download_name(deco.background_url, force=force),
+        _download_name(deco.badge_icon_url, force=force),
     )
     return _Decorations(
         frame_name=frame_name,
@@ -159,11 +159,14 @@ async def _fetch_decorations(steamid64: str) -> _Decorations:
     )
 
 
-async def load_profile_assets(steamid64: str) -> SteamProfile:
-    """抓取完整资料；迷你资料失败时只缺省装扮与等级，不影响昵称与头像。"""
+async def load_profile_assets(steamid64: str, *, force: bool = False) -> SteamProfile:
+    """抓取完整资料；迷你资料失败时只缺省装扮与等级，不影响昵称与头像。
+
+    force 为真时重下图片，忽略 img_cache 命中。
+    """
     base, decorations = await asyncio.gather(
-        _fetch_base_profile(steamid64),
-        _fetch_decorations(steamid64),
+        _fetch_base_profile(steamid64, force=force),
+        _fetch_decorations(steamid64, force=force),
         return_exceptions=True,
     )
     if isinstance(base, BaseException):
