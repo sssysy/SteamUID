@@ -37,6 +37,11 @@ def build_app_icon_url(appid: str | int, icon_hash: str) -> str:
     return APP_ICON_TEMPLATE.format(appid=str(appid).strip(), icon_hash=icon_hash)
 
 
+def build_store_asset_url(appid: str | int, path: str) -> str:
+    """按 PICS 给的相对路径拼官方资源直链；路径可含哈希目录与本地化文件名。"""
+    return COVER_ASSET_TEMPLATE.format(appid=str(appid).strip(), variant=path.strip())
+
+
 def _griddb_headers(api_key: str) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {api_key.strip()}",

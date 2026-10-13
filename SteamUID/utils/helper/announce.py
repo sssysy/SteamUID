@@ -1,6 +1,6 @@
 """公告订阅的领域逻辑：订阅任务名、公告基线编解码、事件类型文案与卡片字段解析。
 
-只碰 api / downloader 与缓存，卡片拼装与渲染交给 render 层。
+只碰 api 与缓存，卡片拼装与渲染交给 render 层。
 """
 
 import time
@@ -8,17 +8,11 @@ import datetime
 from typing import TypedDict
 from dataclasses import dataclass
 
-import httpx
 import msgspec
 
-from gsuid_core.logger import logger
-
-from .config import store_base
-from .game_cover import resolve_cover_name
+from .game_cover import resolve_cover_name, download_image_name
 from ..api.models import StoreEvent
-from ..api.public import search_store
-from ..downloader import download
-from .game_detail import load_store_detail
+from .game_detail import pics_game_meta, resolve_game_name
 
 _TAG = "[Steam·公告订阅]"
 _LANG = "schinese"
@@ -160,54 +154,19 @@ def subscribe_ts(extra_data: str | None) -> int:
     return payload["ts"] if "ts" in payload else 0
 
 
-async def _download_name(url: str) -> str:
-    """落地一张图并返回 img_cache 文件名；空地址或下载失败返回空串。"""
-    if not url.strip():
-        return ""
-    try:
-        path = await download(url, kind="image")
-    except httpx.HTTPError as error:
-        logger.warning(f"{_TAG} 图片下载失败: {type(error).__name__}")
-        return ""
-    return path.name if path is not None else ""
+async def resolve_pics_badge(appid: str, *, lang: str) -> tuple[str, str]:
+    """PICS 里的游戏名与已落盘封面文件名；未收录返回 appid 与空串。"""
+    meta = await pics_game_meta(appid, lang=lang)
+    name = meta["name"] if "name" in meta else appid
+    cover_url = meta["cover_url"] if "cover_url" in meta else ""
+    return name, await download_image_name(cover_url)
 
 
-async def _search_item(appid: str, *, cc: str) -> tuple[str, str]:
-    """商店搜索命中项的名称与胶囊图直链；未收录返回 appid 与空串。"""
-    items = await search_store(appid, cc=cc, lang=_LANG, base_url=store_base())
-    for item in items:
-        if "id" not in item or str(item["id"]) != appid:
-            continue
-        name = item["name"] if "name" in item else appid
-        return name, (item["tiny_image"] if "tiny_image" in item else "")
-    return appid, ""
-
-
-async def resolve_game_name(appid: str, *, cc: str) -> str:
-    """游戏名：商店详情优先，未收录时用商店搜索的名称，都取不到回落 appid。"""
-    detail = await load_store_detail(appid, cc)
-    if detail is not None and "success" in detail and detail["success"] and "data" in detail:
-        data = detail["data"]
-        if "name" in data:
-            return data["name"]
-    name, _ = await _search_item(appid, cc=cc)
-    return name
-
-
-async def resolve_search_cover_name(appid: str, *, cc: str) -> tuple[str, str]:
-    """商店搜索里的游戏名与已落盘胶囊图文件名；未收录返回 appid 与空串。"""
-    name, tiny_image = await _search_item(appid, cc=cc)
-    return name, await _download_name(tiny_image)
-
-
-async def resolve_game_badge(appid: str, *, cc: str, griddb_key: str) -> tuple[str, str]:
-    """卡片右上角的游戏名与封面文件名：详情与官方封面优先，未收录再走商店搜索。"""
-    name = await resolve_game_name(appid, cc=cc)
-
-    cover = await resolve_cover_name(appid, country=cc, griddb_key=griddb_key)
-    if cover:
-        return name, cover
-
-    # 只有社区公告、商店未收录的游戏拿不到官方封面，用搜索里的胶囊图兜底
-    search_name, search_cover = await resolve_search_cover_name(appid, cc=cc)
-    return (search_name if search_name != appid else name), search_cover
+async def resolve_game_badge(appid: str, *, cc: str, lang: str, griddb_key: str) -> tuple[str, str]:
+    """卡片顶部的游戏名与方形 logo 文件名：PICS 方形图标优先，取不到回落官方封面。"""
+    name = await resolve_game_name(appid, cc=cc, lang=lang) or appid
+    meta = await pics_game_meta(appid, lang=lang)
+    icon = await download_image_name(meta["icon_url"]) if "icon_url" in meta else ""
+    if icon:
+        return name, icon
+    return name, await resolve_cover_name(appid, country=cc, griddb_key=griddb_key)

@@ -17,7 +17,7 @@ from ..utils.helper.price import (
     price_overview,
     fetch_price_overviews,
 )
-from ..utils.helper.config import region, region_cc, griddb_cover_key
+from ..utils.helper.config import region, region_cc, region_lang, griddb_cover_key
 from ..utils.helper.game_cover import resolve_cover_names
 from ..utils.helper.price_drop import (
     BASELINE_TASK,
@@ -26,7 +26,7 @@ from ..utils.helper.price_drop import (
     baseline_key,
     baseline_to_json,
 )
-from ..utils.helper.game_detail import load_store_detail
+from ..utils.helper.game_detail import load_store_detail, resolve_game_names
 from ..utils.database.model_poll import SteamPoll
 from ..utils.render.html.price_list import (
     PriceEntry,
@@ -99,15 +99,12 @@ def _entry(
     detail: AppDetailsEntry | None,
     live: AppDetailsEntry | None,
     cover_url: str,
+    name: str,
     *,
     currency: str,
 ) -> PriceEntry:
-    """单行数据：名称与免费 / 未发售取缓存详情，售价取实时批量价。"""
+    """单行数据：名称由调用方解析，免费 / 未发售取缓存详情，售价取实时批量价。"""
     data = entry_data(detail)
-    name = appid
-    if data is not None and "name" in data:
-        name = data["name"]
-
     kind, text, percent = price_fields(data, price_overview(live), currency=currency)
     return PriceEntry(
         appid=appid,
@@ -170,6 +167,7 @@ async def build_price_list_card(ev: Event) -> bytes:
         resolve_cover_names(appids, country=cc, griddb_key=griddb_cover_key()),
         _load_details(appids, cc),
     )
+    names = await resolve_game_names(appids, cc=cc, lang=region_lang(), details=dict(zip(appids, details)))
     currency = region().currency
     entries = [
         _entry(
@@ -177,6 +175,7 @@ async def build_price_list_card(ev: Event) -> bytes:
             details[index],
             prices[appid] if appid in prices else None,
             get_img_cache_url(covers[appid]) if appid in covers else "",
+            names[appid] if appid in names else appid,
             currency=currency,
         )
         for index, appid in enumerate(appids)

@@ -59,6 +59,11 @@ def region_cc() -> str:
     return region().cc.upper()
 
 
+def region_lang() -> str:
+    """配置地区对应的 Steam 语言代码，供本地化游戏名等使用。"""
+    return region().lang
+
+
 def griddb_cover_key() -> str:
     """社区封面用 SteamGridDB API Key；总开关关闭或未配置时返回空串。"""
     if not SteamConfig.get_config("AllowGridDBCover").data:

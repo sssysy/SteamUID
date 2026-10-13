@@ -28,13 +28,13 @@ from ..utils.helper.price import (
     price_fields,
     price_overview,
 )
-from ..utils.helper.config import region, api_base, region_cc, store_base, griddb_cover_key
+from ..utils.helper.config import region, api_base, region_cc, store_base, region_lang, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
 from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_wishlist
 from ..utils.helper.auth_token import run_with_token
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import load_store_detail
+from ..utils.helper.game_detail import load_store_detail, resolve_game_names
 from ..utils.render.html.wishlist import (
     WishlistCard,
     WishlistEntry,
@@ -78,15 +78,12 @@ def _build_entry(
     detail: AppDetailsEntry | None,
     live: AppDetailsEntry | None,
     cover_url: str,
+    name: str,
     *,
     currency: str,
 ) -> WishlistEntry:
-    """单行数据：名称与免费 / 未发售取缓存详情，售价取实时批量价。"""
+    """单行数据：名称由调用方解析，免费 / 未发售取缓存详情，售价取实时批量价。"""
     data = entry_data(detail)
-    name = appid
-    if data is not None and "name" in data:
-        name = data["name"]
-
     kind, text, percent = price_fields(data, price_overview(live), currency=currency)
     return WishlistEntry(
         appid=appid,
@@ -178,6 +175,7 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
         load_profile_assets(steamid64),
         load_card_background_name(steamid64),
     )
+    names = await resolve_game_names(appids, cc=cc, lang=region_lang(), details=dict(zip(appids, details)))
 
     currency = region().currency
     entries = [
@@ -187,6 +185,7 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
             details[index],
             prices[appid] if appid in prices else None,
             get_img_cache_url(covers[appid]) if appid in covers else "",
+            names[appid] if appid in names else appid,
             currency=currency,
         )
         for index, (item, appid) in enumerate(zip(shown, appids))

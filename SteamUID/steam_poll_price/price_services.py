@@ -12,7 +12,7 @@ from gsuid_core.utils.database.models import Subscribe
 
 from ..steam_config import SteamConfig
 from ..utils.helper.price import price_overview, fetch_price_overviews
-from ..utils.helper.config import region_cc, griddb_cover_key
+from ..utils.helper.config import region_cc, region_lang, griddb_cover_key
 from ..utils.helper.game_cover import resolve_cover_name
 from ..utils.helper.price_drop import (
     BASELINE_TASK,
@@ -26,7 +26,12 @@ from ..utils.helper.price_drop import (
     baseline_to_json,
     baseline_from_json,
 )
-from ..utils.helper.game_detail import clean_description, load_store_detail
+from ..utils.helper.game_detail import (
+    pics_game_name,
+    clean_description,
+    load_store_detail,
+    store_detail_name,
+)
 from ..utils.database.model_poll import SteamPoll
 from ..utils.render.html.price_drop import PriceDropCard, render_price_drop_card
 from ..utils.render.html.static_assets import get_img_cache_url
@@ -109,15 +114,14 @@ async def _collect(
 
 
 async def _drop_card(drop: _Drop) -> PriceDropCard:
-    """降价项出卡：名称与简介取缓存详情，封面经三级回退落 img_cache。"""
+    """降价项出卡：名称与简介取缓存详情，名字缺失时补搜；封面经三级回退落 img_cache。"""
     cc = region_cc()
     detail = await load_store_detail(drop.appid, cc)
-    name = drop.appid
     desc = ""
     if detail is not None and "success" in detail and detail["success"] and "data" in detail:
         data = detail["data"]
-        name = data["name"] if "name" in data else drop.appid
         desc = clean_description(data["short_description"] if "short_description" in data else "")
+    name = store_detail_name(detail) or await pics_game_name(drop.appid, lang=region_lang()) or drop.appid
 
     cover_name = await resolve_cover_name(
         drop.appid,

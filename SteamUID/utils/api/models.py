@@ -537,6 +537,9 @@ class PicsDepot(TypedDict, total=False):
 
 class PicsCommon(TypedDict, total=False):
     name: str
+    name_localized: dict[str, str]
+    icon: str
+    header_image: dict[str, str]
     type: str
     oslist: str
     gameid: str

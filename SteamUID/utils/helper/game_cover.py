@@ -28,14 +28,14 @@ _DETAIL_CHUNK = 10
 _GRIDDB_BATCH_SIZE = 50
 
 
-async def _download_name(url: str) -> str:
-    """落地封面图，返回 img_cache 文件名；空 URL 或下载失败返回空串。"""
+async def download_image_name(url: str) -> str:
+    """落地单张图片并返回 img_cache 文件名；空地址或下载失败返回空串。"""
     if not url.strip():
         return ""
     try:
         path = await download(url, kind="image")
     except httpx.HTTPError as error:
-        logger.warning(f"{_TAG} 封面下载失败: {type(error).__name__}")
+        logger.warning(f"{_TAG} 图片下载失败: {type(error).__name__}")
         return ""
     return path.name if path is not None else ""
 
@@ -90,7 +90,7 @@ async def resolve_cover_name(appid: str, *, country: str, griddb_key: str) -> st
 
     cached = await SteamCache.get_value(_CACHE_TYPE, appid)
     if cached:
-        name = await _download_name(cached)
+        name = await download_image_name(cached)
         if name:
             return name
 
@@ -104,7 +104,7 @@ async def resolve_cover_name(appid: str, *, country: str, griddb_key: str) -> st
     for url in candidates:
         if not url:
             continue
-        name = await _download_name(url)
+        name = await download_image_name(url)
         if not name:
             continue
         await SteamCache.upsert(_CACHE_TYPE, appid, url, int(time.time()))

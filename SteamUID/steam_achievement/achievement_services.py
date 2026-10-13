@@ -17,6 +17,7 @@ from ..utils.helper.game import resolve_game_ref
 from ..utils.render.push import dispatch_events
 from ..utils.helper.config import (
     region_cc,
+    region_lang,
     push_options,
     griddb_cover_key,
 )
@@ -36,7 +37,7 @@ from ..utils.helper.steam_api import (
     fetch_player_achievements,
 )
 from ..utils.helper.game_cover import resolve_cover_name
-from ..utils.helper.game_detail import load_store_detail
+from ..utils.helper.game_detail import pics_game_meta, pics_game_name, load_store_detail, store_detail_name
 from ..utils.database.model_bind import SteamBind
 from ..utils.database.model_poll import SteamPoll
 from ..utils.render.html.account_pill import PillAccount
@@ -220,8 +221,12 @@ class AchievementCardResult:
     hint: str
 
 
-async def _owned_icon_url(steamid64: str, appid: str, *, keys: Sequence[str], cooldown: int) -> str:
-    """库内这款游戏的客户端小图标直链；库接口失败或未收录时回落官方小胶囊图。"""
+async def _game_icon_url(steamid64: str, appid: str, *, keys: Sequence[str], cooldown: int, lang: str) -> str:
+    """游戏方形图标直链：PICS 优先，取不到回落库内图标，再回落官方小胶囊图。"""
+    meta = await pics_game_meta(appid, lang=lang)
+    if "icon_url" in meta:
+        return meta["icon_url"]
+
     try:
         payload = await fetch_owned_games(steamid64, keys=keys, cooldown=cooldown)
     except (httpx.HTTPError, ValueError) as error:
@@ -325,12 +330,13 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
         raise ValueError("该游戏暂无成就数据")
 
     griddb_key = griddb_cover_key()
+    lang = region_lang()
     schema, detail, profile, cover_name, icon_raw = await asyncio.gather(
         fetch_achievement_schema(ref.appid, keys=keys, cooldown=cooldown),
         load_store_detail(ref.appid, None),
         load_profile_assets(steamid64),
         resolve_cover_name(ref.appid, country=region_cc(), griddb_key=griddb_key),
-        _owned_icon_url(steamid64, ref.appid, keys=keys, cooldown=cooldown),
+        _game_icon_url(steamid64, ref.appid, keys=keys, cooldown=cooldown, lang=lang),
     )
 
     slots = _achievement_slots(entries, schema)
@@ -339,13 +345,13 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
         replace(slot, icon_url=links[slot.icon_url] if slot.icon_url in links else "") for slot in slots
     )
 
-    # 游戏名优先取商店详情，其次玩家成就接口返回的游戏名
+    # 游戏名优先取商店详情，其次玩家成就接口返回的游戏名，仍只是 appid 时补搜
     game_name = payload["gameName"] if "gameName" in payload and payload["gameName"] else ref.name
-    store_name = ""
-    if detail is not None and "data" in detail and "name" in detail["data"]:
-        store_name = detail["data"]["name"]
+    store_name = store_detail_name(detail)
     if store_name:
         game_name = store_name
+    elif game_name == ref.appid:
+        game_name = await pics_game_name(ref.appid, lang=lang) or ref.appid
 
     card = AchievementCard(
         game_name=game_name,

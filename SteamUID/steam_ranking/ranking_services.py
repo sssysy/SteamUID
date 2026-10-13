@@ -7,16 +7,15 @@ from collections.abc import Mapping, Sequence
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..utils.api.models import AppDetailsEntry
 from ..utils.helper.bind import get_binds, session_ids
 from ..utils.helper.game import resolve_game_ref
-from ..utils.helper.config import region_cc, griddb_cover_key
+from ..utils.helper.config import region_cc, region_lang, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
 from ..utils.helper.profile import load_profile_assets, load_card_background_name, load_initiator_card_background_name
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steamid import auto2steamid64
-from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import load_store_detail
+from ..utils.helper.game_cover import download_image_name, resolve_cover_names
+from ..utils.helper.game_detail import pics_game_meta, resolve_game_name, resolve_game_names
 from ..utils.database.model_bind import SteamBind
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.game_ranking import GameRankingEntry, render_game_ranking
@@ -45,13 +44,6 @@ def _limit_of(words: Sequence[str]) -> int:
     if words and words[0].isdigit() and int(words[0]) > 0:
         return int(words[0])
     return _DEFAULT_LIMIT
-
-
-def _detail_name(detail: AppDetailsEntry | None) -> str:
-    """商店详情里的游戏名；缺失返回空串。"""
-    if detail is None or "data" not in detail or "name" not in detail["data"]:
-        return ""
-    return detail["data"]["name"]
 
 
 def _steamid_user_map(binds: Sequence[SteamBind]) -> dict[str, str]:
@@ -97,33 +89,37 @@ async def _game_entries(seconds: Mapping[str, int]) -> list[GameRankingEntry]:
     appids = list(seconds)
     country = region_cc()
     griddb_key = griddb_cover_key()
-    covers, details = await asyncio.gather(
+    covers, names = await asyncio.gather(
         resolve_cover_names(appids, country=country, griddb_key=griddb_key),
-        asyncio.gather(*(load_store_detail(appid, country) for appid in appids)),
+        resolve_game_names(appids, cc=country, lang=region_lang()),
     )
 
     return [
         GameRankingEntry(
             appid=appid,
-            name=_detail_name(detail) or appid,
+            name=names[appid] if appid in names else appid,
             cover_url=get_img_cache_url(covers[appid]) if appid in covers else "",
             duration_seconds=seconds[appid],
         )
-        for appid, detail in zip(appids, details)
+        for appid in appids
     ]
 
 
 async def _game_badge(appid: str, fallback_name: str) -> RankingBadge:
-    """游戏徽标：名称优先商店详情，图标取封面首图。"""
+    """游戏徽标：名称优先商店详情，缺失时补搜；方形图标优先 PICS，取不到回落封面首图。"""
     country = region_cc()
+    lang = region_lang()
     griddb_key = griddb_cover_key()
-    detail, covers = await asyncio.gather(
-        load_store_detail(appid, country),
+    name, meta, covers = await asyncio.gather(
+        resolve_game_name(appid, cc=country, lang=lang),
+        pics_game_meta(appid, lang=lang),
         resolve_cover_names([appid], country=country, griddb_key=griddb_key),
     )
+    icon_name = await download_image_name(meta["icon_url"]) if "icon_url" in meta else ""
+    logo_name = icon_name or (covers[appid] if appid in covers else "")
     return RankingBadge(
-        name=_detail_name(detail) or fallback_name,
-        logo_url=get_img_cache_url(covers[appid]) if appid in covers else "",
+        name=name or fallback_name,
+        logo_url=get_img_cache_url(logo_name),
     )
 
 

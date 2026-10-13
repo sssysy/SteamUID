@@ -14,7 +14,7 @@ from gsuid_core.utils.database.models import Subscribe
 
 from ..utils.api.public import get_game_announcements
 from ..utils.helper.game import GameRef, match_tip_text, resolve_game_ref
-from ..utils.helper.config import region_cc, store_base, griddb_cover_key
+from ..utils.helper.config import region_cc, store_base, region_lang, griddb_cover_key
 from ..utils.helper.announce import (
     BASELINE_TASK,
     SUBSCRIBE_TASK,
@@ -27,13 +27,13 @@ from ..utils.helper.announce import (
     subscribe_ts,
     baseline_to_json,
     subscribe_fields,
-    resolve_game_name,
     baseline_from_json,
     resolve_game_badge,
+    resolve_pics_badge,
     is_new_announcement,
-    resolve_search_cover_name,
 )
 from ..utils.helper.game_cover import resolve_cover_names
+from ..utils.helper.game_detail import resolve_game_name
 from ..utils.database.model_poll import SteamPoll
 from ..utils.render.html.announce_list import (
     AnnounceEntry,
@@ -131,7 +131,9 @@ async def _resolve_ref(bot: Bot, ev: Event) -> GameRef:
 
 async def _build_card(item: AnnounceItem) -> AnnouncePushCard:
     """公告出卡：徽标与正文各自解析，正文为空时回落标题。"""
-    name, cover_name = await resolve_game_badge(item.appid, cc=region_cc(), griddb_key=_griddb_key())
+    name, cover_name = await resolve_game_badge(
+        item.appid, cc=region_cc(), lang=region_lang(), griddb_key=_griddb_key()
+    )
     content_html = await build_content_html(item.raw_body)
     if not content_html.strip():
         content_html = f"<p>{html.escape(item.title)}</p>" if item.title else "<p>暂无正文内容</p>"
@@ -157,7 +159,7 @@ async def subscribe_announce(bot: Bot, ev: Event) -> None:
     if latest is None:
         raise ValueError(_NO_ANNOUNCE)
 
-    name = await resolve_game_name(ref.appid, cc=region_cc())
+    name = await resolve_game_name(ref.appid, cc=region_cc(), lang=region_lang()) or ref.appid
     extra_message, extra_data = subscribe_fields(name)
     await gs_subscribe.add_subscribe(
         "single",
@@ -202,16 +204,17 @@ async def build_announce_list_card(ev: Event) -> bytes:
         raise ValueError(_NO_SUBSCRIBE)
 
     cc = region_cc()
+    lang = region_lang()
     covers = await resolve_cover_names(appids, country=cc, griddb_key=_griddb_key())
     entries: list[AnnounceEntry] = []
     for appid in appids:
         name = _name_of(rows, appid)
         cover_url = get_img_cache_url(covers[appid]) if appid in covers else ""
         if not cover_url:
-            # 商店未收录的游戏官方封面必然取不到，退回商店搜索的胶囊图
-            search_name, cover_name = await resolve_search_cover_name(appid, cc=cc)
-            if name == appid and search_name != appid:
-                name = search_name
+            # 未发售 / 商店未收录的游戏官方封面必然取不到，退回 PICS 的官方图
+            pics_name, cover_name = await resolve_pics_badge(appid, lang=lang)
+            if name == appid and pics_name != appid:
+                name = pics_name
             cover_url = get_img_cache_url(cover_name) if cover_name else ""
         entries.append(
             AnnounceEntry(
