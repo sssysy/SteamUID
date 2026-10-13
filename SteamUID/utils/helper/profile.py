@@ -197,6 +197,7 @@ class StatusAssets:
     """状态卡素材：图片与视频字段为 img_cache 下的文件名，缺失为空串。"""
 
     avatar_name: str
+    animated_avatar_name: str
     frame_name: str
     background_name: str
     background_webm_name: str
@@ -270,6 +271,8 @@ async def load_status_assets(
     )
     return StatusAssets(
         avatar_name=avatar_name,
+        # 装扮动图头像命中时 avatar_name 即动态素材，判定是否出 GIF 用
+        animated_avatar_name=avatar_name if animated_url else "",
         frame_name=frame_name,
         background_name=background_name,
         background_webm_name=webm_name,
