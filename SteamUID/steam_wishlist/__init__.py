@@ -20,7 +20,6 @@ wishlist_sv = SV("steam愿望单相关")
 @command_guard
 async def steam_wishlist_list(bot: Bot, ev: Event) -> None:
     """steam愿望单列表[条数]：目标账号的愿望单与当前售价。"""
-    await bot.send("正在生成愿望单卡片......")
     await bot.send(MessageSegment.image(await build_wishlist_card(ev, allow_at=SteamConfig.get_config("AllowAt").data)))
 
 

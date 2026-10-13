@@ -24,7 +24,6 @@ async def steam_status(bot: Bot, ev: Event) -> None:
     if steamid64 is None:
         raise ValueError("请先绑定 steam 账号")
 
-    await bot.send("正在查询状态......")
     await bot.send(MessageSegment.image(await build_status_image(steamid64)))
 
 

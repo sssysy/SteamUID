@@ -28,7 +28,6 @@ async def steam_game_achievement(bot: Bot, ev: Event) -> None:
     if steamid64 is None:
         raise ValueError("请先绑定 steam 账号")
 
-    await bot.send("正在查询成就......")
     result = await build_achievement_card(steamid64, ev.text)
     if result.hint:
         await bot.send(result.hint)

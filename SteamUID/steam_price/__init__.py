@@ -17,7 +17,6 @@ price_sv = SV("Steam降价订阅")
 
 async def _send_price_list(bot: Bot, ev: Event) -> None:
     """出降价订阅列表卡片。"""
-    await bot.send("正在生成降价订阅列表......")
     await bot.send(MessageSegment.image(await build_price_list_card(ev)))
 
 

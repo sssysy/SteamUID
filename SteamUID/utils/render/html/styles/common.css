@@ -45,7 +45,10 @@ body {
   padding: 0 20px;
   box-sizing: border-box;
   border: none;
-  background: linear-gradient(135deg, #2a475e 0%, #1e364a 50%, #1b2838 100%);
+  /* 毛玻璃底：半透明压暗 + 高斯模糊，让卡片底图透上来，不再是一块纯色 */
+  background: rgba(14, 18, 26, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .pill-item.is-main {

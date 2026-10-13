@@ -25,7 +25,6 @@ announce_sv = SV("Steam公告订阅")
 
 async def _send_announce_list(bot: Bot, ev: Event) -> None:
     """出公告订阅列表卡片。"""
-    await bot.send("正在生成公告订阅列表......")
     await bot.send(MessageSegment.image(await build_announce_list_card(ev)))
 
 

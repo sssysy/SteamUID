@@ -21,7 +21,6 @@ ranking_sv = SV("steam排行相关")
 @command_guard
 async def steam_ranking(bot: Bot, ev: Event) -> None:
     """steam排行[steamid/好友码] [条数]：目标在本群的游戏时长排行。"""
-    await bot.send("正在生成排行卡片......")
     await bot.send(MessageSegment.image(await build_self_ranking(ev, allow_at=SteamConfig.get_config("AllowAt").data)))
 
 
@@ -29,7 +28,6 @@ async def steam_ranking(bot: Bot, ev: Event) -> None:
 @command_guard
 async def steam_group_player_ranking(bot: Bot, ev: Event) -> None:
     """steam群玩家排行[条数]：按群内用户累计游玩时长排行。"""
-    await bot.send("正在生成排行卡片......")
     await bot.send(MessageSegment.image(await build_group_player_ranking(ev)))
 
 
@@ -37,7 +35,6 @@ async def steam_group_player_ranking(bot: Bot, ev: Event) -> None:
 @command_guard
 async def steam_group_game_ranking(bot: Bot, ev: Event) -> None:
     """steam群游戏排行[条数]：按群内所有游戏累计时长排行。"""
-    await bot.send("正在生成排行卡片......")
     await bot.send(MessageSegment.image(await build_group_game_ranking(ev)))
 
 
@@ -45,5 +42,4 @@ async def steam_group_game_ranking(bot: Bot, ev: Event) -> None:
 @command_guard
 async def steam_group_game_player_ranking(bot: Bot, ev: Event) -> None:
     """steam群游戏玩家排行<游戏名/AppID> [条数]：按该游戏群内玩家时长排行。"""
-    await bot.send("正在生成排行卡片......")
     await bot.send(MessageSegment.image(await build_group_game_player_ranking(ev)))

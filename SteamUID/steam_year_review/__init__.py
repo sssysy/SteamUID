@@ -23,7 +23,6 @@ async def steam_year_review(bot: Bot, ev: Event) -> None:
     if steamid64 is None:
         raise ValueError("请先绑定 steam 账号")
 
-    await bot.send(f"正在获取 {year} 年年度回顾......")
     images = await fetch_year_review_images(steamid64, year)
     if not images:
         await bot.send(f"未找到该账号 {year} 年的公开年度回顾")

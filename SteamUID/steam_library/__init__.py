@@ -37,5 +37,4 @@ async def steam_play_what(bot: Bot, ev: Event) -> None:
     if steamid64 is None:
         raise ValueError("请先绑定 steam 账号")
 
-    await bot.send("正在挑选游戏......")
     await bot.send(MessageSegment.image(await build_recommend_pick(steamid64)))

@@ -23,5 +23,4 @@ async def steam_info(bot: Bot, ev: Event) -> None:
     if steamid64 is None:
         raise ValueError("请先绑定 steam 账号")
 
-    await bot.send("正在生成信息卡片......")
     await bot.send(MessageSegment.image(await build_steam_info(steamid64)))
