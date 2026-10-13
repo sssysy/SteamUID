@@ -241,6 +241,10 @@ class Requirements(TypedDict, total=False):
     recommended: str
 
 
+# 商店接口对不支持的平台返回空数组 []，故字段需同时承接对象与数组
+PlatformRequirements = Requirements | list[Requirements]
+
+
 class PackageGroupSub(TypedDict, total=False):
     text: str
     description: str
@@ -253,7 +257,8 @@ class PackageGroup(TypedDict, total=False):
     description: str
     selection_text: str
     save_text: str
-    display_type: int
+    # 商店对部分条目下发的 display_type 是字符串而非整数
+    display_type: int | str
     is_recurring_subscription: str
     subs: list[PackageGroupSub]
 
@@ -272,7 +277,8 @@ class AppDetailsData(TypedDict, total=False):
     type: str
     name: str
     steam_appid: int
-    required_age: int
+    # 受年龄限制的部分条目下发的 required_age 是字符串
+    required_age: int | str
     is_free: bool
     controller_support: str
     dlc: list[int]
@@ -285,9 +291,9 @@ class AppDetailsData(TypedDict, total=False):
     capsule_imagev5: str
     # 商店详情里 website 允许为 null，标注成 str 会让整条缓存反序列化失败
     website: str | None
-    pc_requirements: Requirements
-    mac_requirements: Requirements
-    linux_requirements: Requirements
+    pc_requirements: PlatformRequirements
+    mac_requirements: PlatformRequirements
+    linux_requirements: PlatformRequirements
     developers: list[str]
     publishers: list[str]
     price_overview: PriceOverview
