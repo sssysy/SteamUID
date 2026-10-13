@@ -154,6 +154,8 @@ class SteamBind(Bind, table=True):
 
     WS_BOT_ID: Optional[str] = Field(default=None, title="WS机器人ID")
     bot_self_id: str = Field(default="", title="机器人自身ID")
+    # 复用 1.0 遗留表时该列 NOT NULL，新建行必须给值
+    user_type: str = Field(default="", title="用户类型")
     steamid64: str = Field(default="", index=True, title="SteamID64")
     is_main_id: bool = Field(default=False, title="是否主ID")
 
@@ -166,6 +168,7 @@ class SteamBind(Bind, table=True):
         bot_id: str,
         bot_self_id: str,
         group_id: str,
+        user_type: str,
         steamid64: str,
         WS_BOT_ID: Optional[str] = None,
         is_main_id: bool = False,
@@ -201,6 +204,7 @@ class SteamBind(Bind, table=True):
                     bot_id=bot_id,
                     bot_self_id=bot_self_id,
                     group_id=group_id,
+                    user_type=user_type,
                     steamid64=steamid64,
                     WS_BOT_ID=WS_BOT_ID,
                     is_main_id=is_main_id,

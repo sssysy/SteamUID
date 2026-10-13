@@ -77,6 +77,7 @@ async def add_bind(
         bot_id=bot_id,
         bot_self_id=bot_self_id,
         group_id=group_id,
+        user_type=ev.user_type,
         steamid64=steamid64,
         WS_BOT_ID=ev.WS_BOT_ID,
         is_main_id=True,
