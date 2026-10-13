@@ -26,7 +26,7 @@ ICON_PATH = _HELP_DIR / "icon_path"
 ICON = _HELP_DIR.parent.parent / "ICON.png"
 
 # 帮助图 banner 副标题，一句话概括插件能力
-_BANNER_SUB_TEXT = "库存 · 成就 · 愿望单 · 状态 · 排行"
+_BANNER_SUB_TEXT = "全功能 Steam 插件"
 
 PREFIX = get_plugin_available_prefix("SteamUID")
 
@@ -50,15 +50,21 @@ class _Textures(NamedTuple):
     footer: Image.Image
 
 
+# 超管 pm 阈值：与旧分类 pm 一致，pm 越小可见范围越大
+_ADMIN_PM = 1
+
+
 @to_thread
 def _load_help_data(pm: int) -> dict[str, PluginHelp]:
-    """读 help.json 并滤掉当前用户看不到的分类；pm 越小可见的分类越多。"""
+    """读 help.json，滤掉当前用户看不到的分类与需要超管的条目。"""
     categories = msgspec.json.decode(_HELP_DATA.read_bytes(), type=dict[str, _Category])
     visible: dict[str, PluginHelp] = {}
     for name, category in categories.items():
         if "pm" in category and pm > category["pm"]:
             continue
-        visible[name] = category
+        # 框架只按分类级 pm 过滤，条目级超管标记只能在这里剔除
+        data = [item for item in category["data"] if pm <= _ADMIN_PM or not item["need_admin"]]
+        visible[name] = {"desc": category["desc"], "data": data}
     return visible
 
 

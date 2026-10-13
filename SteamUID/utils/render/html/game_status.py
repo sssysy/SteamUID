@@ -67,23 +67,25 @@ CardItem = GameStatusItem | AchievementItem
 
 @dataclass(frozen=True)
 class _Theme:
-    """一份配色：状态条 / 昵称 / 群名 / 副标题 / 游戏名。"""
+    """一份配色：状态条 / 副标题 / 游戏名。"""
 
     bar: str
-    persona: str
-    group: str
     subtitle: str
     game: str
 
 
+# 昵称恒白、群名恒中性灰，只有游戏名与上/下线副标题随状态变色
+_NAME_COLOR = "#ffffff"
+_GROUP_COLOR = "#8f98a0"
+
 # 解锁成就说明玩家正在游戏中，成就卡沿用「开始游戏」的在线绿色
-_ONLINE_THEME = _Theme("#5cbe32", "#e1e1e1", "#8f98a0", "#808a94", "#90ba3c")
+_ONLINE_THEME = _Theme("#5cbe32", "#808a94", "#90ba3c")
 
 _THEMES: dict[str, _Theme] = {
     "开始游戏": _ONLINE_THEME,
-    "结束游戏": _Theme("#57cbde", "#57cbde", "#4c91ac", "#808a94", "#57cbde"),
-    "用户上线": _Theme("#57cbde", "#57cbde", "#4c91ac", "#808a94", ""),
-    "用户离线": _Theme("#6b7280", "#c7ccd1", "#8f98a0", "#8b929c", ""),
+    "结束游戏": _Theme("#57cbde", "#808a94", "#57cbde"),
+    "用户上线": _Theme("#57cbde", "#57cbde", ""),
+    "用户离线": _Theme("#6b7280", "#898989", ""),
     ACHIEVEMENT_KIND: _ONLINE_THEME,
 }
 
@@ -111,11 +113,11 @@ def _avatar_box(avatar_url: str, bar_color: str) -> str:
     )
 
 
-def _persona_row(nickname: str, group_name: str, theme: _Theme) -> str:
+def _persona_row(nickname: str, group_name: str) -> str:
     return (
         '<div class="persona-row">'
-        f'<span class="persona-name" style="color: {theme.persona};">{html.escape(nickname)}</span>'
-        f'<span class="group-name" style="color: {theme.group};">({html.escape(group_name)})</span>'
+        f'<span class="persona-name" style="color: {_NAME_COLOR};">{html.escape(nickname)}</span>'
+        f'<span class="group-name" style="color: {_GROUP_COLOR};">({html.escape(group_name)})</span>'
         "</div>"
     )
 
@@ -132,7 +134,7 @@ def _status_html(item: GameStatusItem) -> str:
         '<div class="info-row">'
         f"{_avatar_box(item.avatar_url, theme.bar)}"
         '<div class="text-area">'
-        f"{_persona_row(item.nickname, item.group_name, theme)}"
+        f"{_persona_row(item.nickname, item.group_name)}"
         f'<div class="subtitle" style="color: {theme.subtitle};">{_SUBTITLES[item.kind]}</div>'
         f"{game_html}"
         "</div>"
@@ -174,7 +176,7 @@ def _achievement_html(item: AchievementItem) -> str:
         '<div class="info-row">'
         f"{_avatar_box(item.avatar_url, theme.bar)}"
         '<div class="text-area">'
-        f"{_persona_row(item.nickname, item.group_name, theme)}"
+        f"{_persona_row(item.nickname, item.group_name)}"
         f'<div class="subtitle" style="color: {theme.subtitle};">{subtitle}</div>'
         "</div>"
         "</div>"

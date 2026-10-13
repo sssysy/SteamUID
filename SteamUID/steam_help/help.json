@@ -1,5 +1,5 @@
 {
-  "账号绑定": {
+  "绑定登录": {
     "desc": "使用查询前请先绑定 Steam 账号",
     "data": [
       {
@@ -15,6 +15,15 @@
         "name": "解绑账号",
         "desc": "解绑当前会话选中的 Steam 账号",
         "eg": "解绑",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "扫码登录",
+        "desc": "扫码登录 Steam 账号",
+        "eg": "登录",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,
@@ -49,8 +58,8 @@
       }
     ]
   },
-  "个人资料": {
-    "desc": "查看个人账号资料",
+  "账号信息": {
+    "desc": "绑定后可用的功能",
     "data": [
       {
         "name": "用户状态",
@@ -71,15 +80,6 @@
         "need_admin": false
       },
       {
-        "name": "群友状态",
-        "desc": "本群已绑定群友的实时在线与游戏状态",
-        "eg": "群友状态",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
         "name": "年度回顾",
         "desc": "获取该账号指定年份的官方回顾分享图",
         "eg": "年度回顾 2024",
@@ -87,12 +87,7 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      }
-    ]
-  },
-  "库存与成就": {
-    "desc": "游戏库与成就进度",
-    "data": [
+      },
       {
         "name": "游戏墙",
         "desc": "把账号游戏库渲染成封面墙",
@@ -160,10 +155,19 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "群友状态",
+        "desc": "本群已绑定群友的实时在线与游戏状态",
+        "eg": "群友状态",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
-  "商店订阅": {
+  "订阅相关": {
     "desc": "降价与公告订阅",
     "data": [
       {
@@ -222,67 +226,13 @@
       }
     ]
   },
-  "推送通知": {
+  "推送设置": {
     "desc": "游戏状态变化推送",
     "data": [
       {
-        "name": "推送总开关",
-        "desc": "一次性开启全部推送类型",
-        "eg": "订阅推送",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "关闭推送开关",
-        "desc": "一次性关闭全部推送类型",
-        "eg": "取消订阅推送",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "开始游戏推送",
-        "desc": "账号开始游戏时推送",
+        "name": "推送开关",
+        "desc": "订阅 / 取消各类推送，总开关为 订阅推送 / 取消订阅推送",
         "eg": "订阅开始游戏推送",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "结束游戏推送",
-        "desc": "账号结束游戏时推送",
-        "eg": "订阅结束游戏推送",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "获得成就推送",
-        "desc": "解锁新成就时推送",
-        "eg": "订阅获得成就推送",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "用户上线推送",
-        "desc": "账号上线时推送",
-        "eg": "订阅用户上线推送",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
-        "name": "用户离线推送",
-        "desc": "账号离线时推送",
-        "eg": "订阅用户离线推送",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,
@@ -290,18 +240,9 @@
       }
     ]
   },
-  "登录功能": {
+  "登录解锁": {
     "desc": "登录后才可用！仅绑定无法使用",
     "data": [
-      {
-        "name": "扫码登录",
-        "desc": "扫码登录 Steam 账号",
-        "eg": "登录",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
       {
         "name": "激活CDKey (私聊)",
         "desc": "私聊内激活一枚或多枚 CDKey",
@@ -335,15 +276,6 @@
     "desc": "文件与维护命令",
     "data": [
       {
-        "name": "更新ACF",
-        "desc": "把上传的 appmanifest 伪造为最新版本，别名 更新manifest。",
-        "eg": "更新acf",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      },
-      {
         "name": "帮助",
         "desc": "获取帮助图",
         "eg": "帮助",
@@ -351,54 +283,25 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
-      }
-    ]
-  },
-  "缓存管理": {
-    "desc": "",
-    "data": [
+      },
       {
-        "name": "清除接口缓存",
-        "desc": "清空数据库接口缓存",
-        "eg": "清除接口缓存",
+        "name": "更新 manifest",
+        "desc": "把上传的 appmanifest 伪造为最新版本",
+        "eg": "更新acf",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,
-        "need_admin": true
+        "need_admin": false
       },
       {
-        "name": "清除图片缓存",
-        "desc": "清空 img_cache 图片缓存",
-        "eg": "清除图片缓存",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": true
-      },
-      {
-        "name": "清除文件缓存",
-        "desc": "清空 cache 文件缓存",
-        "eg": "清除文件缓存",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": true
-      },
-      {
-        "name": "清除全部缓存",
+        "name": "清除缓存",
         "desc": "清空接口 / 图片 / 文件全部缓存",
         "eg": "清除全部缓存",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,
         "need_admin": true
-      }
-    ],
-    "pm": 1
-  },
-  "数据迁移": {
-    "desc": "把 1.0 版本数据库内的订阅状态迁移到框架订阅",
-    "data": [
+      },
       {
         "name": "迁移订阅状态",
         "desc": "迁移 1.0 遗留的推送开关与降价 / 公告订阅任务名",
@@ -408,7 +311,6 @@
         "need_sk": false,
         "need_admin": true
       }
-    ],
-    "pm": 1
+    ]
   }
 }
