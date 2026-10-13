@@ -14,6 +14,7 @@ from ..api.models import (
     OwnedGamesPayload,
     PlayerStatsPayload,
     AchievementSchemaEntry,
+    RecentlyPlayedGamesPayload,
 )
 from ..api.public import (
     get_owned_games,
@@ -21,6 +22,7 @@ from ..api.public import (
     get_player_summaries,
     get_achievement_schema,
     get_player_achievements,
+    get_recently_played_games,
 )
 from ..database.model_cache import SteamCache
 
@@ -62,6 +64,24 @@ async def fetch_owned_games(
     """查询玩家游戏库，429 由密钥池换 Key 重试。"""
     return await request_with_api_key(
         partial(_request_owned_games, steamid64),
+        keys,
+        cooldown_seconds=cooldown,
+    )
+
+
+async def _request_recently_played(steamid64: str, key: str) -> RecentlyPlayedGamesPayload:
+    return await get_recently_played_games(steamid64, key=key, base_url=api_base())
+
+
+async def fetch_recently_played_games(
+    steamid64: str,
+    *,
+    keys: Sequence[str],
+    cooldown: int,
+) -> RecentlyPlayedGamesPayload:
+    """查询玩家近两周游玩记录，429 由密钥池换 Key 重试。"""
+    return await request_with_api_key(
+        partial(_request_recently_played, steamid64),
         keys,
         cooldown_seconds=cooldown,
     )

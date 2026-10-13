@@ -26,7 +26,9 @@ from .models import (
     AchievementSchemaEntry,
     PlayerSummariesResponse,
     PlayerAchievementsResponse,
+    RecentlyPlayedGamesPayload,
     ProfileItemsEquippedPayload,
+    RecentlyPlayedGamesResponse,
     ProfileItemsEquippedResponse,
 )
 from .endpoints import (
@@ -43,6 +45,7 @@ from .endpoints import (
     API_GET_SCHEMA_FOR_GAME,
     API_GET_PLAYER_SUMMARIES,
     API_GET_PLAYER_ACHIEVEMENTS,
+    API_GET_RECENTLY_PLAYED_GAMES,
     STORE_EVENTS_PARTNER_PAGEABLE,
     API_GET_PROFILE_ITEMS_EQUIPPED,
     API_GET_USER_YEAR_IN_REVIEW_SHARE_IMAGE,
@@ -153,6 +156,28 @@ async def get_owned_games(
         resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
 
     payload: OwnedGamesResponse = resp.json()
+    return payload["response"]
+
+
+async def get_recently_played_games(
+    steamid: str,
+    *,
+    key: str,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> RecentlyPlayedGamesPayload:
+    """查询玩家近两周玩过的游戏，不传 count 以取回全部记录。"""
+    url = f"{base_url.rstrip('/')}{API_GET_RECENTLY_PLAYED_GAMES}"
+    params = {
+        "key": key,
+        "steamid": steamid,
+    }
+
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+
+    payload: RecentlyPlayedGamesResponse = resp.json()
     return payload["response"]
 
 

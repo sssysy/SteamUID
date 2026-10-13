@@ -124,6 +124,27 @@ class OwnedGamesResponse(TypedDict):
     response: OwnedGamesPayload
 
 
+class RecentlyPlayedGame(TypedDict, total=False):
+    appid: int
+    name: str
+    playtime_2weeks: int
+    playtime_forever: int
+    img_icon_url: str
+    playtime_windows_forever: int
+    playtime_mac_forever: int
+    playtime_linux_forever: int
+    playtime_deck_forever: int
+
+
+class RecentlyPlayedGamesPayload(TypedDict, total=False):
+    total_count: int
+    games: list[RecentlyPlayedGame]
+
+
+class RecentlyPlayedGamesResponse(TypedDict):
+    response: RecentlyPlayedGamesPayload
+
+
 class PlayerAchievement(TypedDict, total=False):
     apiname: str
     achieved: int

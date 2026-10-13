@@ -20,6 +20,7 @@ WISHLIST_REMOVE = "/IWishlistService/RemoveFromWishlist/v1"
 # ISteamUser / IPlayerService / ISteamUserStats
 API_GET_PLAYER_SUMMARIES = "/ISteamUser/GetPlayerSummaries/v2/"
 API_GET_OWNED_GAMES = "/IPlayerService/GetOwnedGames/v1/"
+API_GET_RECENTLY_PLAYED_GAMES = "/IPlayerService/GetRecentlyPlayedGames/v1/"
 API_GET_PLAYER_ACHIEVEMENTS = "/ISteamUserStats/GetPlayerAchievements/v1/"
 API_GET_SCHEMA_FOR_GAME = "/ISteamUserStats/GetSchemaForGame/v2/"
 API_GET_PROFILE_ITEMS_EQUIPPED = "/IPlayerService/GetProfileItemsEquipped/v1/"

@@ -107,6 +107,15 @@
         "need_admin": false
       },
       {
+        "name": "最近游玩",
+        "desc": "最近两周玩过的游戏，按游玩时长排序",
+        "eg": "最近游玩",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "游戏成就",
         "desc": "渲染指定游戏的成就进度卡片",
         "eg": "游戏成就 游戏名",
@@ -263,8 +272,35 @@
       },
       {
         "name": "自动探索队列",
-        "desc": "开启每日自动探索",
+        "desc": "开启 / 关闭每日自动探索",
         "eg": "开启自动探索队列",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "愿望单列表",
+        "desc": "查看目标账号的愿望单与当前售价",
+        "eg": "愿望单列表",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "增加愿望单",
+        "desc": "把游戏加入自己账号的愿望单",
+        "eg": "增加愿望单 艾尔登法环",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "删除愿望单",
+        "desc": "把游戏移出自己账号的愿望单",
+        "eg": "删除愿望单 730",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,

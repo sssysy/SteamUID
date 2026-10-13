@@ -21,6 +21,9 @@ _HEADER_HEIGHT = 128
 _ROW_HEIGHT = 58
 _FOOTER_HEIGHT = 48
 
+# 时长列表头默认文案，命令侧可覆盖（如最近游玩传「近两周时长」）
+_DEFAULT_DURATION_HEADER = "群累计时长"
+
 
 @dataclass(frozen=True)
 class GameRankingEntry:
@@ -63,6 +66,7 @@ def render_game_ranking_html(
     account: PillAccount | None = None,
     *,
     card_bg_url: str,
+    duration_header: str = _DEFAULT_DURATION_HEADER,
 ) -> str:
     """拼装游戏排行榜卡片 HTML。"""
     template = get_template("steam_game_ranking.html")
@@ -75,6 +79,7 @@ def render_game_ranking_html(
         canvas_width=_CANVAS_WIDTH,
         bg_url=card_bg_url,
         title=html.escape(title),
+        duration_header=html.escape(duration_header),
         account_pill_html=pill_html(account) if account is not None else "",
         items_html=items_html,
         footer_html=footer_html(),
@@ -87,9 +92,16 @@ async def render_game_ranking(
     account: PillAccount | None = None,
     *,
     card_bg_url: str,
+    duration_header: str = _DEFAULT_DURATION_HEADER,
 ) -> bytes:
     """渲染游戏排行榜卡片为 JPEG 字节。"""
-    html_content = render_game_ranking_html(title, entries, account, card_bg_url=card_bg_url)
+    html_content = render_game_ranking_html(
+        title,
+        entries,
+        account,
+        card_bg_url=card_bg_url,
+        duration_header=duration_header,
+    )
     viewport_height = _HEADER_HEIGHT + len(entries) * _ROW_HEIGHT + _FOOTER_HEIGHT
     return await render_html(
         html_content,
