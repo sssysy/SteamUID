@@ -1,0 +1,399 @@
+{
+  "账号绑定": {
+    "desc": "使用查询前请先绑定 Steam 账号",
+    "data": [
+      {
+        "name": "绑定账号",
+        "desc": "OpenID 或手动传参绑定 Steam",
+        "eg": "绑定",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "解绑账号",
+        "desc": "解绑当前会话选中的 Steam 账号",
+        "eg": "解绑",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "查看账号",
+        "desc": "查看会话内已绑定的 Steam 账号",
+        "eg": "查看",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "切换账号",
+        "desc": "在已绑定账号间切换",
+        "eg": "切换",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "刷新用户",
+        "desc": "重拉当前账号资料",
+        "eg": "刷新用户",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "个人资料": {
+    "desc": "查看个人账号资料",
+    "data": [
+      {
+        "name": "用户状态",
+        "desc": "查询账号的在线状态与当前游戏",
+        "eg": "状态",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "用户信息",
+        "desc": "渲染账号资料与统计信息卡片",
+        "eg": "信息",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群友状态",
+        "desc": "本群已绑定群友的实时在线与游戏状态",
+        "eg": "群友状态",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "年度回顾",
+        "desc": "获取该账号指定年份的官方回顾分享图",
+        "eg": "年度回顾 2024",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "库存与成就": {
+    "desc": "游戏库与成就进度",
+    "data": [
+      {
+        "name": "游戏墙",
+        "desc": "把账号游戏库渲染成封面墙",
+        "eg": "游戏墙",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "玩什么",
+        "desc": "从游戏库随机挑三款游戏",
+        "eg": "玩什么",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "游戏成就",
+        "desc": "渲染指定游戏的成就进度卡片",
+        "eg": "游戏成就 游戏名",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "排行统计": {
+    "desc": "各种排行",
+    "data": [
+      {
+        "name": "个人排行",
+        "desc": "自己在本群的游戏时长排行",
+        "eg": "排行",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群玩家排行",
+        "desc": "按群内用户累计游玩时长排行",
+        "eg": "群玩家排行",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群游戏排行",
+        "desc": "按群内所有游戏累计时长排行",
+        "eg": "群游戏排行",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群游戏玩家排行",
+        "desc": "指定游戏在本群内玩家的时长排行",
+        "eg": "群游戏玩家排行 游戏",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "商店订阅": {
+    "desc": "降价与公告订阅",
+    "data": [
+      {
+        "name": "订阅降价",
+        "desc": "订阅指定游戏的降价提醒",
+        "eg": "订阅降价黑神话",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅降价",
+        "desc": "取消该游戏的降价提醒",
+        "eg": "取消订阅降价黑神话",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅降价查看",
+        "desc": "查看本人订阅的降价与当前售价",
+        "eg": "订阅降价查看",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅公告",
+        "desc": "订阅指定游戏的新公告推送",
+        "eg": "订阅公告 游戏名",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅公告",
+        "desc": "取消该游戏的公告推送",
+        "eg": "取消订阅公告apex",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "订阅公告列表",
+        "desc": "查看本人订阅的游戏公告列表",
+        "eg": "订阅公告列表",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "推送通知": {
+    "desc": "游戏状态变化推送",
+    "data": [
+      {
+        "name": "推送总开关",
+        "desc": "一次性开启全部推送类型",
+        "eg": "订阅推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭推送开关",
+        "desc": "一次性关闭全部推送类型",
+        "eg": "取消订阅推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "开始游戏推送",
+        "desc": "账号开始游戏时推送",
+        "eg": "订阅开始游戏推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "结束游戏推送",
+        "desc": "账号结束游戏时推送",
+        "eg": "订阅结束游戏推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "获得成就推送",
+        "desc": "解锁新成就时推送",
+        "eg": "订阅获得成就推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "用户上线推送",
+        "desc": "账号上线时推送",
+        "eg": "订阅用户上线推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "用户离线推送",
+        "desc": "账号离线时推送",
+        "eg": "订阅用户离线推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "登录功能": {
+    "desc": "登录后才可用！仅绑定无法使用",
+    "data": [
+      {
+        "name": "扫码登录",
+        "desc": "扫码登录 Steam 账号",
+        "eg": "登录",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "激活CDKey (私聊)",
+        "desc": "私聊内激活一枚或多枚 CDKey",
+        "eg": "激活 CDKey",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "探索队列",
+        "desc": "立即对名下账号执行探索队列任务",
+        "eg": "探索队列",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "自动探索队列",
+        "desc": "开启每日自动探索",
+        "eg": "开启自动探索队列",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "其他": {
+    "desc": "文件与维护命令",
+    "data": [
+      {
+        "name": "更新ACF",
+        "desc": "把上传的 appmanifest 伪造为最新版本，别名 更新manifest。",
+        "eg": "更新acf",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "帮助",
+        "desc": "获取帮助图",
+        "eg": "帮助",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "缓存管理": {
+    "desc": "",
+    "data": [
+      {
+        "name": "清除接口缓存",
+        "desc": "清空数据库接口缓存",
+        "eg": "清除接口缓存",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "清除图片缓存",
+        "desc": "清空 img_cache 图片缓存",
+        "eg": "清除图片缓存",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "清除文件缓存",
+        "desc": "清空 cache 文件缓存",
+        "eg": "清除文件缓存",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "清除全部缓存",
+        "desc": "清空接口 / 图片 / 文件全部缓存",
+        "eg": "清除全部缓存",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      }
+    ],
+    "pm": 1
+  }
+}
