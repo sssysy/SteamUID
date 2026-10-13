@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import HTTPException
 from starlette.types import Scope
 from fastapi.responses import FileResponse
+from starlette.routing import Mount, Route
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 
@@ -48,7 +49,8 @@ def _base_url() -> str:
 
 def _ensure_mounted() -> None:
     """把自带图 / 字体 / 数据图缓存挂到核心 FastAPI；按路由去重，重复调用不重挂。"""
-    mounted = {route.path for route in fastapi_app.routes}
+    # 新版 fastapi 把 include_router 收成无 path 的容器对象，按类型取路径
+    mounted: set[str] = {route.path for route in fastapi_app.routes if isinstance(route, (Route, Mount))}
     for route_path, directory, name in (
         (_TEXTURE2D_ROUTE, TEXTURE2D_DIR, "steamuid_texture2d"),
         (_FONTS_ROUTE, FONTS_DIR, "steamuid_fonts"),
