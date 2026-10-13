@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_bg_url, get_font_url
+from .static_assets import get_font_url
 from ...helper.price import PriceKind
 
 _FONT_REGULAR = "steam-Regular.ttf"
@@ -91,7 +91,7 @@ def _row_html(entry: WishlistEntry) -> str:
     )
 
 
-def render_wishlist_html(user: PillAccount, card: WishlistCard) -> str:
+def render_wishlist_html(user: PillAccount, card: WishlistCard, *, card_bg_url: str) -> str:
     """拼装愿望单卡片 HTML。"""
     rows = [_row_html(entry) for entry in card.entries]
     if card.hidden > 0:
@@ -104,7 +104,7 @@ def render_wishlist_html(user: PillAccount, card: WishlistCard) -> str:
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
         canvas_width=_CANVAS_WIDTH,
-        bg_url=get_bg_url(),
+        bg_url=card_bg_url,
         title=html.escape(f"steam愿望单列表 共{card.total}款"),
         account_pill_html=pill_html(user),
         items_html="\n".join(rows),
@@ -112,14 +112,14 @@ def render_wishlist_html(user: PillAccount, card: WishlistCard) -> str:
     )
 
 
-async def render_wishlist_card(user: PillAccount, card: WishlistCard) -> bytes:
+async def render_wishlist_card(user: PillAccount, card: WishlistCard, *, card_bg_url: str) -> bytes:
     """渲染愿望单卡片为 JPEG 字节。"""
     if not card.entries:
         raise ValueError("没有可展示的愿望单游戏")
 
     viewport_height = _HEADER_HEIGHT + len(card.entries) * _ROW_HEIGHT + _FOOTER_HEIGHT
     return await render_html(
-        render_wishlist_html(user, card),
+        render_wishlist_html(user, card, card_bg_url=card_bg_url),
         "#steam-wishlist-card",
         viewport_width=_CANVAS_WIDTH + 40,
         viewport_height=viewport_height,

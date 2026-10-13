@@ -91,3 +91,8 @@ def custom_bg_path() -> Path | None:
     if not path.is_file() or path.stat().st_size == 0:
         return None
     return path
+
+
+def use_profile_card_bg() -> bool:
+    """卡片底图是否优先使用账号个人资料背景。"""
+    return bool(SteamConfig.get_config("CardUseProfileBg").data)

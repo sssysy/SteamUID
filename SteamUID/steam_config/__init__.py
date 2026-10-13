@@ -69,6 +69,12 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "bg",
         "jpg",
     ),
+    "CardUseProfileBg": GsBoolConfig(
+        "卡片使用用户个人资料背景",
+        "开启后卡片底图优先用目标账号的个人资料背景，顺序：个人资料背景 -> 自定义背景 -> 默认背景；"
+        "多账号卡片（查看 / 群状态 / 排行）取指令发起人的主账号",
+        False,
+    ),
     "Region": GsStrConfig(
         "steam 地区",
         "价格 / 商店搜索 / 封面等接口传递的地区，同时决定价格展示的货币符号",

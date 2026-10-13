@@ -8,13 +8,13 @@ from collections.abc import Sequence
 from ..steam_config import SteamConfig
 from ..utils.helper.config import region_cc, griddb_cover_key
 from ..utils.helper.library import LibraryGame, visible_games
-from ..utils.helper.profile import SteamProfile, load_profile_assets
+from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_owned_games
 from ..utils.render.html.wall import WallGame, render_game_wall
 from ..utils.helper.game_cover import resolve_cover_names
 from ..utils.helper.game_detail import clean_description, load_store_detail
 from ..utils.render.html.account_pill import PillAccount
-from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
 from ..utils.render.html.game_recommend import RecommendGame, render_game_recommend
 
 # 固定出 3 张；扫描上限与并发批避免大库无上限翻查商店详情
@@ -141,10 +141,13 @@ async def build_recommend_pick(steamid64: str) -> bytes:
         raise ValueError("未能在游戏库中找到可推荐的有效游戏")
 
     griddb_key = griddb_cover_key()
-    covers = await resolve_cover_names(
-        [candidate.appid for candidate in picked],
-        country=region_cc(),
-        griddb_key=griddb_key,
+    covers, card_bg_name = await asyncio.gather(
+        resolve_cover_names(
+            [candidate.appid for candidate in picked],
+            country=region_cc(),
+            griddb_key=griddb_key,
+        ),
+        load_card_background_name(steamid64),
     )
     games = [
         RecommendGame(
@@ -154,4 +157,8 @@ async def build_recommend_pick(steamid64: str) -> bytes:
         )
         for candidate in picked
     ]
-    return await render_game_recommend(_pill_account(profile), games)
+    return await render_game_recommend(
+        _pill_account(profile),
+        games,
+        card_bg_url=resolve_card_bg_url(card_bg_name),
+    )

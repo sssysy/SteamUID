@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_bg_url, get_font_url
+from .static_assets import get_font_url
 
 _FONT_REGULAR = "steam-Regular.ttf"
 _FONT_MEDIUM = "steam-Medium.ttf"
@@ -45,7 +45,7 @@ def _game_html(game: RecommendGame) -> str:
     )
 
 
-def render_game_recommend_html(user: PillAccount, games: Sequence[RecommendGame]) -> str:
+def render_game_recommend_html(user: PillAccount, games: Sequence[RecommendGame], *, card_bg_url: str) -> str:
     """拼装游戏推荐卡片 HTML。"""
     cards = "\n".join(_game_html(game) for game in games)
     template = get_template("steam_recommend.html")
@@ -55,19 +55,19 @@ def render_game_recommend_html(user: PillAccount, games: Sequence[RecommendGame]
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
         canvas_width=_CANVAS_WIDTH,
-        bg_url=get_bg_url(),
+        bg_url=card_bg_url,
         account_pill_html=pill_html(user),
         cards_html=cards,
         footer_html=footer_html(),
     )
 
 
-async def render_game_recommend(user: PillAccount, games: Sequence[RecommendGame]) -> bytes:
+async def render_game_recommend(user: PillAccount, games: Sequence[RecommendGame], *, card_bg_url: str) -> bytes:
     """渲染游戏推荐卡片为 JPEG 字节。"""
     if not games:
         raise ValueError("没有可推荐的游戏")
 
-    html_content = render_game_recommend_html(user, games)
+    html_content = render_game_recommend_html(user, games, card_bg_url=card_bg_url)
     return await render_html(
         html_content,
         "#recommend-card",

@@ -103,6 +103,14 @@ def get_bg_url() -> str:
     return get_texture_url(DEFAULT_BG_NAME)
 
 
+def resolve_card_bg_url(profile_background_name: str) -> str:
+    """卡片底图直链：该账号有个人资料背景时用它，否则回落自定义 / 默认底图。"""
+    url = get_img_cache_url(profile_background_name)
+    if url:
+        return url
+    return get_bg_url()
+
+
 def get_default_avatar_url() -> str:
     """默认头像直链；缺失时回落空串（模板侧再兜底）。"""
     return get_texture_url(DEFAULT_AVATAR_NAME)

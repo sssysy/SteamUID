@@ -30,7 +30,7 @@ from ..utils.helper.price import (
 )
 from ..utils.helper.config import region, api_base, region_cc, store_base, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
-from ..utils.helper.profile import SteamProfile, load_profile_assets
+from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_wishlist
 from ..utils.helper.auth_token import run_with_token
 from ..utils.helper.game_cover import resolve_cover_names
@@ -41,7 +41,7 @@ from ..utils.render.html.wishlist import (
     render_wishlist_card,
 )
 from ..utils.render.html.account_pill import PillAccount
-from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
 
 _TAG = "[Steam·愿望单]"
 
@@ -171,11 +171,12 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
 
     cc = region_cc()
     griddb_key = griddb_cover_key()
-    details, prices, covers, profile = await asyncio.gather(
+    details, prices, covers, profile, card_bg_name = await asyncio.gather(
         _load_details(appids, cc=cc),
         get_price_overview(appids, cc=cc, base_url=store_base()),
         resolve_cover_names(appids, country=cc, griddb_key=griddb_key),
         load_profile_assets(steamid64),
+        load_card_background_name(steamid64),
     )
 
     currency = region().currency
@@ -193,6 +194,7 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
     return await render_wishlist_card(
         _pill_account(profile),
         WishlistCard(total=len(ordered), hidden=hidden, entries=entries),
+        card_bg_url=resolve_card_bg_url(card_bg_name),
     )
 
 

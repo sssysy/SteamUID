@@ -12,14 +12,14 @@ from .status_services import PERSONA_TEXT
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import session_ids
 from ..utils.helper.config import region_cc, griddb_cover_key
-from ..utils.helper.profile import load_profile_background_name
+from ..utils.helper.profile import load_mini_background_name, load_initiator_card_background_name
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steam_api import fetch_player_summaries
 from ..utils.helper.game_cover import resolve_cover_name
 from ..utils.database.model_bind import SteamBind
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.group_status import render_group_status
-from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
 
 _TAG = "[Steam·群友状态]"
 
@@ -100,11 +100,11 @@ def _active_accounts(binds: Sequence[SteamBind], summaries: Mapping[str, PlayerS
 
 
 async def _background_url(account: _ActiveAccount, *, country: str, griddb_key: str) -> str:
-    """背景直链：游戏中用游戏封面，在线用个人资料背景；取不到留空串。"""
+    """背景直链：游戏中用游戏封面，在线用迷你资料背景；取不到留空串。"""
     if account.appid:
         name = await resolve_cover_name(account.appid, country=country, griddb_key=griddb_key)
     else:
-        name = await load_profile_background_name(account.steamid64)
+        name = await load_mini_background_name(account.steamid64)
     return get_img_cache_url(name)
 
 
@@ -159,12 +159,19 @@ async def build_group_status_image(ev: Event) -> bytes:
     country = region_cc()
     griddb_key = griddb_cover_key()
     shown = actives[:_MAX_MEMBERS]
-    loaded = await asyncio.gather(
-        *(_background_url(account, country=country, griddb_key=griddb_key) for account in shown),
-        return_exceptions=True,
+    loaded, card_bg_name = await asyncio.gather(
+        asyncio.gather(
+            *(_background_url(account, country=country, griddb_key=griddb_key) for account in shown),
+            return_exceptions=True,
+        ),
+        load_initiator_card_background_name(ev),
     )
     backgrounds = [_safe_background(account, item) for account, item in zip(shown, loaded)]
     pills = await asyncio.gather(
         *(_member_pill(account, group_id, background) for account, background in zip(shown, backgrounds))
     )
-    return await render_group_status(list(pills), has_more=len(actives) > _MAX_MEMBERS)
+    return await render_group_status(
+        list(pills),
+        has_more=len(actives) > _MAX_MEMBERS,
+        card_bg_url=resolve_card_bg_url(card_bg_name),
+    )

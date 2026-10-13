@@ -11,8 +11,10 @@ from dataclasses import replace, dataclass
 from collections.abc import Sequence
 
 from gsuid_core.logger import logger
+from gsuid_core.models import Event
 
-from .config import api_base, community_base
+from .bind import get_main_steamid64
+from .config import api_base, community_base, use_profile_card_bg
 from .steamid import steamid64_to_friend_code
 from ..key_pool import has_api_key, request_with_api_key
 from ..api.models import (
@@ -162,7 +164,7 @@ async def _fetch_decorations(steamid64: str, *, force: bool = False) -> _Decorat
 
 
 async def load_profile_assets(steamid64: str, *, force: bool = False) -> SteamProfile:
-    """抓取完整资料：昵称头像来自社区 XML，装扮来自迷你资料，背景优先装配项。
+    """抓取完整资料：昵称头像来自社区 XML，装扮与背景来自迷你资料。
 
     任一来源失败只缺省对应字段，不影响昵称与头像；force 为真时重下图片。
     """
@@ -192,7 +194,7 @@ async def load_profile_assets(steamid64: str, *, force: bool = False) -> SteamPr
     return replace(
         base,
         frame_name=decorations.frame_name,
-        # 个人资料背景优先，取不到时回落到迷你资料背景
+        # 装配项迷你背景优先，取不到时回落到迷你资料卡背景
         background_name=background_name or decorations.background_name,
         level=decorations.level,
         badge_name=decorations.badge_name,
@@ -200,8 +202,8 @@ async def load_profile_assets(steamid64: str, *, force: bool = False) -> SteamPr
     )
 
 
-async def load_profile_background_name(steamid64: str) -> str:
-    """取个人资料背景并落 img_cache；未装备时回落迷你资料背景，取不到返回空串。"""
+async def load_mini_background_name(steamid64: str) -> str:
+    """取迷你资料背景并落 img_cache；装配项取不到时回落迷你资料卡背景，仍无则空串。"""
     name = await _fetch_equipped_background(steamid64)
     if name:
         return name
@@ -240,10 +242,7 @@ async def _request_equipped(steamid64: str, lang: str, key: str) -> ProfileItems
 _EquippedKey = Literal["profile_background", "mini_profile_background"]
 
 
-def _pick_equipped_item(
-    payload: ProfileItemsEquippedPayload,
-    key: _EquippedKey,
-) -> ProfileItemEntry:
+def _equipped_item(payload: ProfileItemsEquippedPayload, key: _EquippedKey) -> ProfileItemEntry:
     """取装备项；未装备时返回空条目。"""
     if key in payload:
         return payload[key]
@@ -255,25 +254,52 @@ def _item_large_url(item: ProfileItemEntry) -> str:
     return _community_asset_url(item["image_large"] if "image_large" in item else "")
 
 
-def _equipped_background_url(payload: ProfileItemsEquippedPayload) -> str:
-    """个人资料背景直链；未装备时回落迷你资料背景，都没有返回空串。"""
-    profile_bg = _item_large_url(_pick_equipped_item(payload, "profile_background"))
-    if profile_bg:
-        return profile_bg
-    return _item_large_url(_pick_equipped_item(payload, "mini_profile_background"))
+def _mini_background_url(payload: ProfileItemsEquippedPayload) -> str:
+    """装配项迷你资料背景直链；未装备返回空串。"""
+    return _item_large_url(_equipped_item(payload, "mini_profile_background"))
 
 
-async def _fetch_equipped_background(steamid64: str, *, force: bool = False) -> str:
-    """个人资料背景静态图落 img_cache；未配置 API Key 时返回空串。"""
+def _profile_background_url(payload: ProfileItemsEquippedPayload) -> str:
+    """装配项个人资料背景直链；未装备返回空串。"""
+    return _item_large_url(_equipped_item(payload, "profile_background"))
+
+
+async def _fetch_equipped_payload(steamid64: str) -> ProfileItemsEquippedPayload | None:
+    """取装备项响应；未配置 API Key 时返回 None。"""
     keys = SteamConfig.get_config("SteamAPIKey").data
     if not has_api_key(keys):
-        return ""
-    payload = await request_with_api_key(
+        return None
+    return await request_with_api_key(
         partial(_request_equipped, steamid64, _LANG),
         keys,
         cooldown_seconds=SteamConfig.get_config("KeyPoolCooldown").data,
     )
-    return await _download_name(_equipped_background_url(payload), force=force)
+
+
+async def _fetch_equipped_background(steamid64: str, *, force: bool = False) -> str:
+    """装配项迷你资料背景静态图落 img_cache；未配置 API Key 时返回空串。"""
+    payload = await _fetch_equipped_payload(steamid64)
+    if payload is None:
+        return ""
+    return await _download_name(_mini_background_url(payload), force=force)
+
+
+async def load_card_background_name(steamid64: str, *, force: bool = False) -> str:
+    """取账号个人资料背景文件名供卡片底图使用；开关关闭或取不到时返回空串。"""
+    if not use_profile_card_bg():
+        return ""
+    payload = await _fetch_equipped_payload(steamid64)
+    if payload is None:
+        return ""
+    return await _download_name(_profile_background_url(payload), force=force)
+
+
+async def load_initiator_card_background_name(ev: Event) -> str:
+    """指令发起人主账号的个人资料背景文件名；未绑定主账号时返回空串。"""
+    steamid64 = await get_main_steamid64(ev, ev.user_id)
+    if steamid64 is None:
+        return ""
+    return await load_card_background_name(steamid64)
 
 
 async def load_status_assets(
@@ -313,7 +339,7 @@ async def load_status_assets(
     frame_item = equipped["avatar_frame"] if "avatar_frame" in equipped else ProfileItemEntry()
 
     animated_url = _community_asset_url(animated["image_small"] if "image_small" in animated else "")
-    background_url = _equipped_background_url(equipped)
+    background_url = _mini_background_url(equipped)
     frame_url = _community_asset_url(frame_item["image_small"] if "image_small" in frame_item else "") or deco.frame_url
     mini_avatar_url = mini["avatar_url"] if "avatar_url" in mini else ""
 

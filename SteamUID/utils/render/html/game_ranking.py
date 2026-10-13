@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_bg_url, get_font_url
+from .static_assets import get_font_url
 from ...helper.ranking import format_duration
 
 _FONT_REGULAR = "steam-Regular.ttf"
@@ -61,6 +61,8 @@ def render_game_ranking_html(
     title: str,
     entries: Sequence[GameRankingEntry],
     account: PillAccount | None = None,
+    *,
+    card_bg_url: str,
 ) -> str:
     """拼装游戏排行榜卡片 HTML。"""
     template = get_template("steam_game_ranking.html")
@@ -71,7 +73,7 @@ def render_game_ranking_html(
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
         canvas_width=_CANVAS_WIDTH,
-        bg_url=get_bg_url(),
+        bg_url=card_bg_url,
         title=html.escape(title),
         account_pill_html=pill_html(account) if account is not None else "",
         items_html=items_html,
@@ -83,9 +85,11 @@ async def render_game_ranking(
     title: str,
     entries: Sequence[GameRankingEntry],
     account: PillAccount | None = None,
+    *,
+    card_bg_url: str,
 ) -> bytes:
     """渲染游戏排行榜卡片为 JPEG 字节。"""
-    html_content = render_game_ranking_html(title, entries, account)
+    html_content = render_game_ranking_html(title, entries, account, card_bg_url=card_bg_url)
     viewport_height = _HEADER_HEIGHT + len(entries) * _ROW_HEIGHT + _FOOTER_HEIGHT
     return await render_html(
         html_content,

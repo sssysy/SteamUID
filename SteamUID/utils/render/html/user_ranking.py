@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import get_bg_url, get_font_url, get_default_avatar_url
+from .static_assets import get_font_url, get_default_avatar_url
 from ...helper.ranking import format_duration
 
 _FONT_REGULAR = "steam-Regular.ttf"
@@ -71,6 +71,8 @@ def render_user_ranking_html(
     title: str,
     entries: Sequence[UserRankingEntry],
     badge: RankingBadge | None = None,
+    *,
+    card_bg_url: str,
 ) -> str:
     """拼装玩家排行榜卡片 HTML。"""
     template = get_template("steam_user_ranking.html")
@@ -81,7 +83,7 @@ def render_user_ranking_html(
         font_medium_url=get_font_url(_FONT_MEDIUM),
         font_bold_url=get_font_url(_FONT_BOLD),
         canvas_width=_CANVAS_WIDTH,
-        bg_url=get_bg_url(),
+        bg_url=card_bg_url,
         title=html.escape(title),
         badge_html=_badge_html(badge),
         items_html=items_html,
@@ -93,9 +95,11 @@ async def render_user_ranking(
     title: str,
     entries: Sequence[UserRankingEntry],
     badge: RankingBadge | None = None,
+    *,
+    card_bg_url: str,
 ) -> bytes:
     """渲染玩家排行榜卡片为 JPEG 字节。"""
-    html_content = render_user_ranking_html(title, entries, badge)
+    html_content = render_user_ranking_html(title, entries, badge, card_bg_url=card_bg_url)
     viewport_height = _HEADER_HEIGHT + len(entries) * _ROW_HEIGHT + _FOOTER_HEIGHT
     return await render_html(
         html_content,

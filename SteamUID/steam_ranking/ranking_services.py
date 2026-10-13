@@ -12,7 +12,7 @@ from ..utils.helper.bind import get_binds, session_ids
 from ..utils.helper.game import resolve_game_ref
 from ..utils.helper.config import region_cc, griddb_cover_key
 from ..utils.helper.command import resolve_viewer
-from ..utils.helper.profile import load_profile_assets
+from ..utils.helper.profile import load_profile_assets, load_card_background_name, load_initiator_card_background_name
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steamid import auto2steamid64
 from ..utils.helper.game_cover import resolve_cover_names
@@ -25,7 +25,7 @@ from ..utils.render.html.user_ranking import (
     UserRankingEntry,
     render_user_ranking,
 )
-from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
 from ..utils.database.model_play_record import SteamPlayRecord
 
 _TAG = "[Steam·排行]"
@@ -179,7 +179,12 @@ async def build_group_player_ranking(ev: Event) -> bytes:
 
     ranked = _rank_desc(totals, _limit_of(ev.text.split()))
     entries = await _user_entries(group_id, ranked)
-    return await render_user_ranking(f"steam群游玩时长排行 Top{len(entries)}", entries)
+    card_bg_name = await load_initiator_card_background_name(ev)
+    return await render_user_ranking(
+        f"steam群游玩时长排行 Top{len(entries)}",
+        entries,
+        card_bg_url=resolve_card_bg_url(card_bg_name),
+    )
 
 
 async def build_group_game_ranking(ev: Event) -> bytes:
@@ -196,7 +201,12 @@ async def build_group_game_ranking(ev: Event) -> bytes:
 
     ranked = dict(_rank_desc(totals, _limit_of(ev.text.split())))
     entries = await _game_entries(ranked)
-    return await render_game_ranking(f"steam群游戏排行 Top{len(entries)}", entries)
+    card_bg_name = await load_initiator_card_background_name(ev)
+    return await render_game_ranking(
+        f"steam群游戏排行 Top{len(entries)}",
+        entries,
+        card_bg_url=resolve_card_bg_url(card_bg_name),
+    )
 
 
 async def build_group_game_player_ranking(ev: Event) -> bytes:
@@ -219,8 +229,16 @@ async def build_group_game_player_ranking(ev: Event) -> bytes:
 
     ranked = _rank_desc(totals, _limit_of(words[1:]))
     entries = await _user_entries(group_id, ranked)
-    badge = await _game_badge(ref.appid, ref.name)
-    return await render_user_ranking(f"steam群游戏玩家排行 Top{len(entries)}", entries, badge=badge)
+    badge, card_bg_name = await asyncio.gather(
+        _game_badge(ref.appid, ref.name),
+        load_initiator_card_background_name(ev),
+    )
+    return await render_user_ranking(
+        f"steam群游戏玩家排行 Top{len(entries)}",
+        entries,
+        badge=badge,
+        card_bg_url=resolve_card_bg_url(card_bg_name),
+    )
 
 
 async def build_self_ranking(ev: Event, *, allow_at: bool) -> bytes:
@@ -254,5 +272,13 @@ async def build_self_ranking(ev: Event, *, allow_at: bool) -> bytes:
 
     ranked = dict(_rank_desc(totals, limit))
     entries = await _game_entries(ranked)
-    account = await _account_pill(target_steamids[0])
-    return await render_game_ranking(f"steam个人排行 Top{len(entries)}", entries, account)
+    account, card_bg_name = await asyncio.gather(
+        _account_pill(target_steamids[0]),
+        load_card_background_name(target_steamids[0]),
+    )
+    return await render_game_ranking(
+        f"steam个人排行 Top{len(entries)}",
+        entries,
+        account,
+        card_bg_url=resolve_card_bg_url(card_bg_name),
+    )

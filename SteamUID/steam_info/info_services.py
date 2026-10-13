@@ -8,8 +8,8 @@ from ..steam_config import SteamConfig
 from ..utils.api.models import PlayerSummary, OwnedGamesPayload
 from ..utils.helper.level import load_level_badge
 from ..utils.helper.price import sum_library_value
-from ..utils.helper.config import region, region_cc
-from ..utils.helper.profile import load_profile_assets
+from ..utils.helper.config import region, region_cc, use_profile_card_bg
+from ..utils.helper.profile import load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_owned_games, fetch_player_summaries
 from ..utils.render.html.info_card import InfoCard, render_info_card
 from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
@@ -56,10 +56,11 @@ async def build_steam_info(steamid64: str) -> bytes:
         raise ValueError("请先配置 Steam API Key")
 
     cooldown = SteamConfig.get_config("KeyPoolCooldown").data
-    profile, players, library = await asyncio.gather(
+    profile, players, library, card_bg_name = await asyncio.gather(
         load_profile_assets(steamid64),
         fetch_player_summaries([steamid64], keys=keys, cooldown=cooldown),
         fetch_owned_games(steamid64, keys=keys, cooldown=cooldown),
+        load_card_background_name(steamid64),
     )
     if not players:
         raise ValueError("未找到该 Steam 用户")
@@ -74,12 +75,18 @@ async def build_steam_info(steamid64: str) -> bytes:
     country = player["loccountrycode"] if "loccountrycode" in player else ""
     created = player["timecreated"] if "timecreated" in player else 0
 
+    # 开关开启时顶层底图只认个人资料背景，取不到交给模板回落自定义 / 默认底图
+    if use_profile_card_bg():
+        card_background = get_img_cache_url(card_bg_name)
+    else:
+        card_background = get_img_cache_url(profile.background_name)
+
     card = InfoCard(
         name=profile.name,
         friend_code=profile.friend_code,
         avatar_url=get_img_cache_url(profile.avatar_name) or get_default_avatar_url(),
         frame_url=get_img_cache_url(profile.frame_name),
-        background_url=get_img_cache_url(profile.background_name),
+        background_url=card_background,
         status_text=status_text,
         status_tone=status_tone,
         badge_icon_url=get_img_cache_url(profile.badge_icon_name),
