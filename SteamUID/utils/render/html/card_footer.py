@@ -6,10 +6,11 @@
 
 
 def footer_html() -> str:
-    """拼装署名页脚 HTML；高亮只变色，字重与正文一致。"""
+    """拼装署名页脚 HTML；三处高亮只变色，字重与正文一致。"""
     return (
         '<div class="card-footer">'
         'Create by <span class="footer-highlight">GsCore</span> &amp; '
-        'Power by <span class="footer-highlight">SteamUID</span>'
+        'Power by <span class="footer-highlight">SteamUID</span> &amp; '
+        'Author by <span class="footer-highlight">sssysy</span>'
         "</div>"
     )
