@@ -453,6 +453,37 @@ class WishlistMutationResponse(TypedDict, total=False):
     response: dict[str, bool]
 
 
+class FamilyGroupForUserPayload(TypedDict, total=False):
+    family_groupid: str
+    is_not_member_of_any_group: bool
+
+
+class FamilyGroupForUserResponse(TypedDict):
+    response: FamilyGroupForUserPayload
+
+
+class SharedLibraryApp(TypedDict, total=False):
+    appid: int
+    owner_steamids: list[str]
+    name: str
+    capsule_filename: str
+    img_icon_hash: str
+    exclude_reason: int
+    rt_time_acquired: int
+    rt_last_played: int
+    rt_playtime: int
+    app_type: int
+
+
+class SharedLibraryAppsPayload(TypedDict, total=False):
+    apps: list[SharedLibraryApp]
+    owner_steamid: str
+
+
+class SharedLibraryAppsResponse(TypedDict):
+    response: SharedLibraryAppsPayload
+
+
 class YearReviewImage(TypedDict, total=False):
     name: str
     url_path: str

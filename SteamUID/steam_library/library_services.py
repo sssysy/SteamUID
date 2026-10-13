@@ -1,4 +1,4 @@
-"""游戏墙与游戏推荐：拉取资料与游戏库、解析封面，最后渲染出图。"""
+"""游戏墙、家庭库与游戏推荐：拉取资料与游戏库、解析封面，最后渲染出图。"""
 
 import random
 import asyncio
@@ -6,11 +6,15 @@ from dataclasses import dataclass
 from collections.abc import Sequence
 
 from ..steam_config import SteamConfig
-from ..utils.helper.config import region_cc, griddb_cover_key
+from ..utils.api.family import get_shared_library_apps, get_family_group_for_user
+from ..utils.api.models import SharedLibraryApp
+from ..utils.helper.bind import is_logged_in
+from ..utils.helper.config import api_base, region_cc, griddb_cover_key
 from ..utils.helper.library import LibraryGame, visible_games
 from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_owned_games
 from ..utils.render.html.wall import WallGame, render_game_wall
+from ..utils.helper.auth_token import run_with_token
 from ..utils.helper.game_cover import resolve_cover_names
 from ..utils.helper.game_detail import clean_description, load_store_detail
 from ..utils.render.html.account_pill import PillAccount
@@ -162,3 +166,76 @@ async def build_recommend_pick(steamid64: str) -> bytes:
         games,
         card_bg_url=resolve_card_bg_url(card_bg_name),
     )
+
+
+# 家庭库上限：超出部分不上墙，只在卡片末尾提示数量
+_FAMILY_LIMIT = 1000
+# 只上墙 k_EAppTypeGame，排除 DLC(32) 与工具 / 视频 / 音乐等条目
+_FAMILY_APP_TYPE_GAME = 1
+
+
+def _is_family_game(app: SharedLibraryApp) -> bool:
+    """接口未回传 app_type 时按 proto 默认值 k_EAppTypeGame 处理。"""
+    if "app_type" not in app:
+        return True
+    return app["app_type"] == _FAMILY_APP_TYPE_GAME
+
+
+async def _fetch_family_apps(steamid64: str) -> list[SharedLibraryApp]:
+    """两步拉家庭共享库：先取家庭组再取共享应用；未登录与凭据失效分别抛错。"""
+    if not await is_logged_in(steamid64):
+        raise ValueError("请先使用 steam登录 扫码登录后再使用家庭库")
+
+    async def call(token: str) -> list[SharedLibraryApp]:
+        group = await get_family_group_for_user(steamid64, access_token=token, base_url=api_base())
+        family_groupid = group["response"]["family_groupid"] if "family_groupid" in group["response"] else ""
+        if not family_groupid or family_groupid == "0":
+            raise ValueError("该账号未加入 Steam 家庭")
+
+        payload = await get_shared_library_apps(family_groupid, steamid64, access_token=token, base_url=api_base())
+        return payload["response"]["apps"] if "apps" in payload["response"] else []
+
+    apps = await run_with_token(steamid64, call)
+    if apps is None:
+        raise ValueError("登录凭据已失效，请重新 steam登录")
+    return apps
+
+
+def _family_wall_games(apps: Sequence[SharedLibraryApp]) -> tuple[list[LibraryGame], int]:
+    """家庭条目 -> 按时长降序并截断的上墙列表，以及超出的数量。"""
+    games = [
+        LibraryGame(
+            appid=str(app["appid"]),
+            name=app["name"] if "name" in app else "",
+            playtime_minutes=app["rt_playtime"] if "rt_playtime" in app else 0,
+        )
+        for app in apps
+        if "appid" in app and _is_family_game(app)
+    ]
+    games.sort(key=lambda game: game.playtime_minutes, reverse=True)
+    return games[:_FAMILY_LIMIT], max(0, len(games) - _FAMILY_LIMIT)
+
+
+async def build_family_wall(steamid64: str) -> bytes:
+    """出图入口：家庭共享库 -> 过滤截断 -> 封面 -> 渲染成游戏墙。"""
+    apps = await _fetch_family_apps(steamid64)
+    games, overflow = _family_wall_games(apps)
+    if not games:
+        raise ValueError("家庭库中暂无可展示的游戏")
+
+    profile = await load_profile_assets(steamid64)
+    covers = await resolve_cover_names(
+        [game.appid for game in games],
+        country=region_cc(),
+        griddb_key=griddb_cover_key(),
+    )
+    wall_games = [
+        WallGame(
+            name=game.name,
+            playtime_minutes=game.playtime_minutes,
+            cover_url=get_img_cache_url(covers[game.appid]) if game.appid in covers else "",
+        )
+        for game in games
+    ]
+    note = f"另有 {overflow} 款未展示（按游玩时长排序，仅显示前 {_FAMILY_LIMIT} 款）" if overflow else ""
+    return await render_game_wall(_pill_account(profile), wall_games, title="steam家庭库", note=note)

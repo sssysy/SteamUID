@@ -98,6 +98,15 @@
         "need_admin": false
       },
       {
+        "name": "家庭库",
+        "desc": "把 Steam 家庭共享库渲染成封面墙",
+        "eg": "家庭库",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "玩什么",
         "desc": "从游戏库随机挑三款游戏",
         "eg": "玩什么",

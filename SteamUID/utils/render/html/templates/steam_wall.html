@@ -37,12 +37,13 @@ body {
 <body>
 <div class="steam-wall-card" id="steam-wall-card">
   <div class="wall-header">
-    <div class="wall-title">steam游戏墙</div>
+    <div class="wall-title">{{ title }}</div>
     {{ account_pill_html }}
   </div>
 
   {{ grid_html }}
 
+  {{ note_html }}
   {{ footer_html }}
 </div>
 </body>

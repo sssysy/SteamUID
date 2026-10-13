@@ -52,6 +52,14 @@
   object-position: center;
 }
 
+/* 网格下方补充说明行（如家庭库超出上限的提示） */
+.wall-note {
+  padding: 12px 28px 0 28px;
+  font-size: 14px;
+  line-height: 22px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 /* 药丸本体是 common.css 的公共组件，这里只改右上角的宽度 */
 .wall-header .pill-item {
   width: 320px;

@@ -17,6 +17,10 @@ AUTH_GENERATE_ACCESS_TOKEN = "/IAuthenticationService/GenerateAccessTokenForApp/
 WISHLIST_ADD = "/IWishlistService/AddToWishlist/v1"
 WISHLIST_REMOVE = "/IWishlistService/RemoveFromWishlist/v1"
 
+# IFamilyGroupsService
+FAMILY_GET_GROUP_FOR_USER = "/IFamilyGroupsService/GetFamilyGroupForUser/v1"
+FAMILY_GET_SHARED_LIBRARY_APPS = "/IFamilyGroupsService/GetSharedLibraryApps/v1"
+
 # ISteamUser / IPlayerService / ISteamUserStats
 API_GET_PLAYER_SUMMARIES = "/ISteamUser/GetPlayerSummaries/v2/"
 API_GET_OWNED_GAMES = "/IPlayerService/GetOwnedGames/v1/"
