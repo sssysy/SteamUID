@@ -16,6 +16,8 @@ T_SteamPlayRecord = TypeVar("T_SteamPlayRecord", bound="SteamPlayRecord")
 class SteamPlayRecord(BaseIDModel, table=True):
     """一次游玩会话；end_ts 为空表示仍在进行中。"""
 
+    __table_args__ = {"extend_existing": True}
+
     steamid64: str = Field(default="", index=True, title="SteamID64")
     appid: str = Field(default="", index=True, title="游戏AppID")
     start_ts: int = Field(default=0, title="开始游戏时间戳")
