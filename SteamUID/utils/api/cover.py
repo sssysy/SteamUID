@@ -12,6 +12,7 @@ from .endpoints import (
     APP_ICON_TEMPLATE,
     COVER_VARIANT_PATHS,
     COVER_ASSET_TEMPLATE,
+    SHARED_CDN_BASE_DEFAULT,
 )
 
 _TAG = "游戏封面"
@@ -40,6 +41,12 @@ def build_app_icon_url(appid: str | int, icon_hash: str) -> str:
 def build_store_asset_url(appid: str | int, path: str) -> str:
     """按 PICS 给的相对路径拼官方资源直链；路径可含哈希目录与本地化文件名。"""
     return COVER_ASSET_TEMPLATE.format(appid=str(appid).strip(), variant=path.strip())
+
+
+def build_store_item_asset_url(asset_url_format: str, filename: str) -> str:
+    """按榜单接口的 asset_url_format 拼直链；该格式自带 appid 目录与版本号。"""
+    path = asset_url_format.replace("${FILENAME}", filename.strip()).lstrip("/")
+    return f"{SHARED_CDN_BASE_DEFAULT}/store_item_assets/{path}"
 
 
 def _griddb_headers(api_key: str) -> dict[str, str]:

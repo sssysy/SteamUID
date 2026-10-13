@@ -191,6 +191,24 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "热门排行",
+        "desc": "本周 / 当前最热游戏，3×3 封面宫格",
+        "eg": "本周热门排行",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "热销排行",
+        "desc": "本周 / 上周销量榜，3×3 封面宫格",
+        "eg": "本周热销排行",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

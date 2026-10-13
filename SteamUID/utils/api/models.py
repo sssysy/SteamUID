@@ -415,6 +415,117 @@ class StoreSearchResponse(TypedDict, total=False):
     items: list[StoreSearchItem]
 
 
+class StoreItemAssets(TypedDict, total=False):
+    asset_url_format: str
+    header: str
+    main_capsule: str
+    small_capsule: str
+
+
+class StoreBrowseContext(TypedDict):
+    """StoreBrowse 语境；榜单接口缺了它只会返回空 response。"""
+
+    language: str
+    country_code: str
+
+
+class StoreItemDataRequest(TypedDict, total=False):
+    """榜单条目申请字段：简介 / 封面 / 单次购买价，折扣另取商店详情。"""
+
+    include_basic_info: bool
+    include_assets: bool
+    include_all_purchase_options: bool
+
+
+class WeeklyTopSellersQuery(TypedDict, total=False):
+    country_code: str
+    context: StoreBrowseContext
+    data_request: StoreItemDataRequest
+    start_date: int
+    page_start: int
+    page_count: int
+
+
+class ChartsQuery(TypedDict):
+    """当前在线榜与本周活跃榜的请求体一致，共用一个结构。"""
+
+    context: StoreBrowseContext
+    data_request: StoreItemDataRequest
+
+
+class StoreItemBasicInfo(TypedDict, total=False):
+    short_description: str
+
+
+class StorePurchaseOption(TypedDict, total=False):
+    formatted_final_price: str
+    formatted_original_price: str
+    discount_pct: int
+
+
+class StoreBrowseItem(TypedDict, total=False):
+    """StoreBrowse 条目：三个榜单接口共用同一结构。"""
+
+    id: int
+    appid: int
+    name: str
+    type: int
+    is_free: bool
+    basic_info: StoreItemBasicInfo
+    assets: StoreItemAssets
+    # 区域不可售与免费游戏会返回 null，取价时要先判空
+    best_purchase_option: StorePurchaseOption | None
+
+
+class WeeklyTopSellerRank(TypedDict, total=False):
+    rank: int
+    appid: int
+    item: StoreBrowseItem
+
+
+class WeeklyTopSellersPayload(TypedDict, total=False):
+    start_date: int
+    ranks: list[WeeklyTopSellerRank]
+
+
+class WeeklyTopSellersResponse(TypedDict):
+    response: WeeklyTopSellersPayload
+
+
+class ConcurrentPlayersRank(TypedDict, total=False):
+    rank: int
+    appid: int
+    concurrent_in_game: int
+    peak_in_game: int
+    item: StoreBrowseItem
+
+
+class ConcurrentPlayersPayload(TypedDict, total=False):
+    last_update: int
+    ranks: list[ConcurrentPlayersRank]
+
+
+class ConcurrentPlayersResponse(TypedDict):
+    response: ConcurrentPlayersPayload
+
+
+class MostPlayedRank(TypedDict, total=False):
+    rank: int
+    appid: int
+    last_week_rank: int
+    peak_in_game: int
+    item: StoreBrowseItem
+
+
+class MostPlayedPayload(TypedDict, total=False):
+    rollup_date: int
+    ranks: list[MostPlayedRank]
+
+
+class MostPlayedResponse(TypedDict):
+    response: MostPlayedPayload
+
+
 class StoreEventAnnouncementBody(TypedDict, total=False):
     gid: str
     clanid: str
