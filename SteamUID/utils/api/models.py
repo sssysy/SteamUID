@@ -189,6 +189,15 @@ class SchemaForGameResponse(TypedDict, total=False):
     game: SchemaGamePayload
 
 
+class CurrentPlayersPayload(TypedDict, total=False):
+    player_count: int
+    result: int
+
+
+class CurrentPlayersResponse(TypedDict):
+    response: CurrentPlayersPayload
+
+
 class ReleaseDate(TypedDict, total=False):
     coming_soon: bool
     date: str

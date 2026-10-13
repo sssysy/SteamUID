@@ -21,9 +21,11 @@ from .models import (
     PlayerStatsPayload,
     YearReviewResponse,
     StoreSearchResponse,
+    CurrentPlayersPayload,
     PartnerEventsResponse,
     SchemaForGameResponse,
     AchievementSchemaEntry,
+    CurrentPlayersResponse,
     PlayerSummariesResponse,
     PlayerAchievementsResponse,
     RecentlyPlayedGamesPayload,
@@ -48,6 +50,7 @@ from .endpoints import (
     API_GET_RECENTLY_PLAYED_GAMES,
     STORE_EVENTS_PARTNER_PAGEABLE,
     API_GET_PROFILE_ITEMS_EQUIPPED,
+    API_GET_NUMBER_OF_CURRENT_PLAYERS,
     API_GET_USER_YEAR_IN_REVIEW_SHARE_IMAGE,
 )
 
@@ -376,6 +379,23 @@ async def get_community_profile_xml(
         resp = await request_ok_response(client, "GET", url, tag=_TAG, timeout=timeout)
 
     return resp.text
+
+
+async def get_number_of_current_players(
+    appid: str,
+    *,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> CurrentPlayersPayload:
+    """查询游戏当前在线玩家数；该接口公开，无需 API Key。"""
+    url = f"{base_url.rstrip('/')}{API_GET_NUMBER_OF_CURRENT_PLAYERS}"
+
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params={"appid": appid}, timeout=timeout)
+
+    payload: CurrentPlayersResponse = resp.json()
+    return payload["response"]
 
 
 async def get_server_info(

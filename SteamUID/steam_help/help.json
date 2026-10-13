@@ -182,6 +182,15 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "当前玩家",
+        "desc": "查询指定游戏当前的在线玩家数",
+        "eg": "当前玩家 黑神话",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
