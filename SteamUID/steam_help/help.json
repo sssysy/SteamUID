@@ -186,8 +186,26 @@
     ]
   },
   "订阅相关": {
-    "desc": "降价与公告订阅",
+    "desc": "推送开关、降价与公告订阅",
     "data": [
+      {
+        "name": "订阅状态",
+        "desc": "查看全局开启的推送开关与公告 / 降价订阅数量",
+        "eg": "订阅状态",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "推送开关",
+        "desc": "订阅 / 取消各类推送，总开关为 订阅推送 / 取消订阅推送",
+        "eg": "订阅开始游戏推送",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
       {
         "name": "订阅降价",
         "desc": "订阅指定游戏的降价提醒",
@@ -237,20 +255,6 @@
         "name": "订阅公告列表",
         "desc": "查看本人订阅的游戏公告列表",
         "eg": "订阅公告列表",
-        "highlight": 6,
-        "need_ck": false,
-        "need_sk": false,
-        "need_admin": false
-      }
-    ]
-  },
-  "推送设置": {
-    "desc": "游戏状态变化推送",
-    "data": [
-      {
-        "name": "推送开关",
-        "desc": "订阅 / 取消各类推送，总开关为 订阅推送 / 取消订阅推送",
-        "eg": "订阅开始游戏推送",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,

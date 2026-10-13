@@ -1,8 +1,13 @@
-"""Steam 订阅推送开关命令的实现。"""
+"""Steam 订阅推送开关与订阅状态查询的实现。"""
+
+from collections.abc import Sequence
 
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
+from gsuid_core.subscribe import gs_subscribe
+from gsuid_core.utils.database.models import Subscribe
 
+from ..steam_config import SteamConfig
 from ..utils.helper.bind import (
     is_subscribed,
     subscribe_kind,
@@ -10,6 +15,10 @@ from ..utils.helper.bind import (
     get_main_steamid64,
 )
 from ..utils.helper.status import NOTIFY_KINDS
+from ..utils.helper.announce import SUBSCRIBE_TASK as ANNOUNCE_TASK
+from ..utils.helper.price_drop import SUBSCRIBE_TASK as PRICE_TASK
+
+_PREFIX = "[Steam]"
 
 
 async def _current_steamid64(ev: Event) -> str:
@@ -45,3 +54,42 @@ async def toggle_all_subscribe(bot: Bot, ev: Event, enable: bool) -> None:
     for kind in NOTIFY_KINDS:
         await unsubscribe_kind(ev, steamid64, kind)
     await bot.send("已关闭全部推送")
+
+
+def _subscribe_rows(rows: object) -> list[Subscribe]:
+    """框架订阅查询无类型标注，这里立刻收窄为 Subscribe。"""
+    if not isinstance(rows, Sequence):
+        return []
+    return [row for row in rows if isinstance(row, Subscribe)]
+
+
+async def _count_games(ev: Event, task_name: str) -> int:
+    """该用户在该 bot 下订阅去重后的游戏数，口径与订阅列表一致。"""
+    rows = _subscribe_rows(
+        await gs_subscribe.get_subscribe(
+            task_name,
+            user_id=ev.user_id,
+            bot_id=ev.bot_id,
+            user_type=ev.user_type,
+        )
+    )
+    return len({row.uid for row in rows if row.uid})
+
+
+async def build_subscribe_status_text(ev: Event) -> str:
+    """订阅状态：仅全局开启的类型按账号判开关，公告 / 降价看订阅游戏数。
+
+    未绑定账号时推送项无从判定，只出公告 / 降价数量。
+    """
+    lines = [f"{_PREFIX} 订阅状态："]
+    steamid64 = await get_main_steamid64(ev, ev.user_id)
+    if steamid64 is not None:
+        enabled = SteamConfig.get_config("NotifyTypes").data
+        for kind in NOTIFY_KINDS:
+            if kind not in enabled:
+                continue
+            state = "开" if await is_subscribed(ev, steamid64, kind) else "关"
+            lines.append(f"- {kind}推送：{state}")
+    lines.append(f"- 订阅公告数量：{await _count_games(ev, ANNOUNCE_TASK)}")
+    lines.append(f"- 订阅降价数量：{await _count_games(ev, PRICE_TASK)}")
+    return "\n".join(lines)

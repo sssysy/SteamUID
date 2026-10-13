@@ -1,10 +1,10 @@
-"""Steam 订阅推送命令：按通知类型开关当前账号的个人推送订阅。"""
+"""Steam 订阅推送命令：按通知类型开关当前账号的个人推送订阅与订阅状态查询。"""
 
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
-from .subscribe_services import toggle_subscribe, toggle_all_subscribe
+from .subscribe_services import toggle_subscribe, toggle_all_subscribe, build_subscribe_status_text
 from ..utils.helper.status import NOTIFY_KINDS
 from ..utils.helper.command import command_guard
 
@@ -35,3 +35,10 @@ async def steam_unsubscribe_push(bot: Bot, ev: Event) -> None:
 async def steam_toggle_all_push(bot: Bot, ev: Event) -> None:
     """steam订阅推送 / steam取消订阅推送：全部推送类型的总开关。"""
     await toggle_all_subscribe(bot, ev, enable=_ALL_CMDS[ev.command])
+
+
+@subscribe_sv.on_fullmatch("订阅状态", block=True)
+@command_guard
+async def steam_subscribe_status(bot: Bot, ev: Event) -> None:
+    """steam订阅状态：查看全局开启的推送开关与公告 / 降价订阅数量。"""
+    await bot.send(await build_subscribe_status_text(ev))
