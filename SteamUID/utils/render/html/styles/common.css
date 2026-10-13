@@ -17,7 +17,6 @@ body {
   display: flex;
   flex-direction: column;
   width: 560px;
-  min-height: 360px;
   padding: 20px 24px 14px 24px;
   overflow: hidden;
   background-color: #171a21;
@@ -55,15 +54,15 @@ body {
   border: none;
 }
 
-/* 背景图片：只占右半，到中线渐隐结束 */
+/* 背景图：宽 58%、上对齐；渐隐 42%→84% 整段落在图内，左缘不留硬边 */
 .pill-bg {
   position: absolute;
   inset: 0;
-  background-size: cover;
-  background-position: right center;
+  background-size: 58% auto;
+  background-position: right top;
   background-repeat: no-repeat;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 50%, rgba(0, 0, 0, 1) 100%);
-  mask-image: linear-gradient(to right, transparent 0%, transparent 50%, rgba(0, 0, 0, 1) 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 42%, rgba(0, 0, 0, 1) 84%);
+  mask-image: linear-gradient(to right, transparent 42%, rgba(0, 0, 0, 1) 84%);
   z-index: 1;
 }
 
