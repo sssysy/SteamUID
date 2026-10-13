@@ -31,7 +31,7 @@ async def _send_announce_list(bot: Bot, ev: Event) -> None:
 @announce_sv.on_fullmatch("订阅公告列表", block=True)
 @command_guard
 async def steam_announce_list(bot: Bot, ev: Event) -> None:
-    """steam订阅公告列表：本会话本人订阅的游戏公告列表。"""
+    """steam订阅公告列表：本会话订阅的游戏公告列表。"""
     await _send_announce_list(bot, ev)
 
 

@@ -5,11 +5,11 @@ from collections.abc import Sequence
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
-from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.utils.database.models import Subscribe
 
-from ..utils.helper.bind import is_subscribed
+from ..utils.helper.bind import is_subscribed, add_scope_subscribe
 from ..utils.helper.notify import subscribe_task_name
+from ..utils.helper.status import NOTIFY_KINDS
 from ..utils.helper.announce import SUBSCRIBE_TASK as ANNOUNCE_TASK
 from ..utils.helper.price_drop import SUBSCRIBE_TASK as PRICE_TASK
 from ..utils.database.model_bind import SteamBind, LegacyPushRow
@@ -26,6 +26,13 @@ _LEGACY_KIND_BY_COLUMN: dict[str, str] = {
 # 1.0 的降价 / 公告订阅任务名，迁移时整表改写成 2.0 任务名
 _LEGACY_PRICE_TASK = "steam商店降价订阅"
 _LEGACY_ANNOUNCE_TASK = "订阅steam游戏公告"
+
+# 群维度订阅的任务名：状态推送五类 + 公告 + 降价；探索队列按人订阅，不参与去重
+_SCOPE_TASKS: tuple[str, ...] = (
+    *(subscribe_task_name(kind) for kind in NOTIFY_KINDS),
+    ANNOUNCE_TASK,
+    PRICE_TASK,
+)
 
 
 def _subscribe_rows(rows: object) -> list[Subscribe]:
@@ -61,9 +68,34 @@ async def _migrate_push_switches(rows: Sequence[LegacyPushRow]) -> int:
                 continue
             if await is_subscribed(ev, row.steamid64, kind):
                 continue
-            await gs_subscribe.add_subscribe("single", subscribe_task_name(kind), ev, uid=row.steamid64)
+            await add_scope_subscribe(ev, subscribe_task_name(kind), row.steamid64)
             created += 1
     return created
+
+
+async def _dedup_group_rows(task_name: str) -> int:
+    """同一会话同一 uid 只留最新一行，清掉重连或旧版本留下的重复群订阅。"""
+    rows = _subscribe_rows(await Subscribe.select_rows(task_name=task_name))
+    kept: dict[tuple[str, str, str], Subscribe] = {}
+    for row in rows:
+        group_id = row.group_id
+        uid = row.uid
+        if not group_id or not uid:
+            continue
+        key = (row.bot_id, group_id, uid)
+        if key not in kept or row.id > kept[key].id:
+            kept[key] = row
+
+    removed = 0
+    for row in rows:
+        group_id = row.group_id
+        uid = row.uid
+        if not group_id or not uid:
+            continue
+        if kept[(row.bot_id, group_id, uid)].id == row.id:
+            continue
+        removed += await Subscribe.delete_row(id=row.id)
+    return removed
 
 
 async def _rename_task(old_name: str, new_name: str) -> int:
@@ -76,21 +108,26 @@ async def _rename_task(old_name: str, new_name: str) -> int:
 
 
 async def migrate_subscribe_state(bot: Bot) -> None:
-    """全量迁移：补推送订阅，并把降价 / 公告任务名改写成 2.0 名称。"""
+    """全量迁移：补推送订阅、改写降价 / 公告任务名，并清掉重复的群订阅行。"""
     scan = await SteamBind.scan_legacy_push_rows()
     if scan is None:
         raise ValueError("读取旧版订阅数据失败，请稍后重试")
 
     price_renamed = await _rename_task(_LEGACY_PRICE_TASK, PRICE_TASK)
     announce_renamed = await _rename_task(_LEGACY_ANNOUNCE_TASK, ANNOUNCE_TASK)
-    if not scan.has_legacy_columns and not price_renamed and not announce_renamed:
+    created = await _migrate_push_switches(scan.rows) if scan.has_legacy_columns else 0
+
+    cleaned = 0
+    for task_name in _SCOPE_TASKS:
+        cleaned += await _dedup_group_rows(task_name)
+
+    if not scan.has_legacy_columns and not price_renamed and not announce_renamed and not cleaned:
         await bot.send("无旧版本数据，无需迁移")
         return
 
-    created = await _migrate_push_switches(scan.rows) if scan.has_legacy_columns else 0
     logger.info(
         f"{_TAG} 迁移完成: 新建推送订阅 {created} 条 / 跳过 {scan.skipped} 行, "
-        f"改写降价 {price_renamed} 条, 改写公告 {announce_renamed} 条"
+        f"改写降价 {price_renamed} 条, 改写公告 {announce_renamed} 条, 清理重复 {cleaned} 条"
     )
 
     lines = ["迁移完成："]
@@ -100,4 +137,5 @@ async def migrate_subscribe_state(bot: Bot) -> None:
             lines.append(f"跳过异常数据 {scan.skipped} 行")
     lines.append(f"改写降价订阅 {price_renamed} 条")
     lines.append(f"改写公告订阅 {announce_renamed} 条")
+    lines.append(f"清理重复群订阅 {cleaned} 条")
     await bot.send("\n".join(lines))

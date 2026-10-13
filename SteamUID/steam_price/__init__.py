@@ -23,7 +23,7 @@ async def _send_price_list(bot: Bot, ev: Event) -> None:
 @price_sv.on_fullmatch("订阅降价查看", block=True)
 @command_guard
 async def steam_price_list(bot: Bot, ev: Event) -> None:
-    """steam订阅降价查看：本会话本人订阅的降价提醒与当前售价。"""
+    """steam订阅降价查看：本会话订阅的降价提醒与当前售价。"""
     await _send_price_list(bot, ev)
 
 

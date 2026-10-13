@@ -120,6 +120,16 @@ async def request_openid_login(bot: Bot, ev: Event) -> str:
         _SESSIONS.pop(state, None)
 
 
+async def _assert_scope_bind_free(ev: Event, user_id: str, steamid64: str, name: str) -> None:
+    """群内该账号只允许一个人绑定，否则群维度订阅行归属不明。"""
+    if not ev.group_id:
+        return
+    bot_id, bot_self_id, group_id = session_ids(ev)
+    binds = await SteamBind.get_binds_by_group(bot_id, bot_self_id, group_id)
+    if any(bind.steamid64 == steamid64 and bind.user_id != user_id for bind in binds):
+        raise ValueError(f"该账户已被本群其他用户绑定：[{name}]")
+
+
 async def bind_account(ev: Event, user_id: str, steamid64: str) -> None:
     """校验并写入绑定，新绑定设为当前账户。"""
     profile = await load_profile_assets(steamid64)
@@ -128,6 +138,7 @@ async def bind_account(ev: Event, user_id: str, steamid64: str) -> None:
     if any(bind.steamid64 == steamid64 for bind in binds):
         raise ValueError(f"该账户已绑定：[{profile.name}]")
 
+    await _assert_scope_bind_free(ev, user_id, steamid64, profile.name)
     await add_bind(ev, user_id, steamid64, SteamConfig.get_config("DefaultNotifyTypes").data)
 
 

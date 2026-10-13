@@ -5,10 +5,16 @@ from collections.abc import Sequence
 
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
-from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.utils.database.models import Subscribe
 
 from ..utils.api.models import AppDetailsEntry
+from ..utils.helper.bind import (
+    scope_name,
+    scope_task_rows,
+    add_scope_subscribe,
+    scope_subscribe_rows,
+    delete_scope_subscribe,
+)
 from ..utils.helper.game import GameRef, match_tip_text, resolve_game_ref
 from ..utils.helper.price import (
     entry_data,
@@ -41,13 +47,6 @@ _NO_PRICE = "该游戏无可用价格（免费或未发售），无法订阅降�
 
 # 商店详情逐游戏请求，分批并发与封面解析保持一致
 _DETAIL_BATCH = 10
-
-
-def _subscribe_rows(rows: object) -> list[Subscribe]:
-    """框架订阅接口无类型标注，这里立刻收窄为 Subscribe。"""
-    if not isinstance(rows, Sequence):
-        return []
-    return [row for row in rows if isinstance(row, Subscribe)]
 
 
 def _appids_of(rows: Sequence[Subscribe]) -> list[str]:
@@ -83,15 +82,8 @@ async def _resolve_ref(bot: Bot, ev: Event) -> GameRef:
 
 
 async def _is_subscribed(ev: Event, appid: str) -> bool:
-    """该用户是否已订阅该 appid 的降价提醒。"""
-    rows = await gs_subscribe.get_subscribe(
-        SUBSCRIBE_TASK,
-        user_id=ev.user_id,
-        bot_id=ev.bot_id,
-        user_type=ev.user_type,
-        uid=appid,
-    )
-    return bool(_subscribe_rows(rows))
+    """当前会话是否已订阅该 appid 的降价提醒。"""
+    return bool(await scope_subscribe_rows(ev, SUBSCRIBE_TASK, appid))
 
 
 def _entry(
@@ -120,7 +112,7 @@ async def subscribe_price(bot: Bot, ev: Event) -> None:
     """steam订阅降价<游戏名/AppID>：订阅该游戏的降价提醒。"""
     ref = await _resolve_ref(bot, ev)
     if await _is_subscribed(ev, ref.appid):
-        await bot.send(f"该游戏已在订阅中：{ref.name}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}已订阅该游戏：{ref.name}({ref.appid})")
         return
 
     prices = await fetch_price_overviews([ref.appid], cc=region_cc())
@@ -131,35 +123,30 @@ async def subscribe_price(bot: Bot, ev: Event) -> None:
     if overview is None:
         raise ValueError(_NO_PRICE)
 
-    await gs_subscribe.add_subscribe("single", SUBSCRIBE_TASK, ev, uid=ref.appid)
+    await add_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
     baseline = to_baseline(overview)
     await SteamPoll.upsert(BASELINE_TASK, baseline_key(ref.appid), baseline_to_json(baseline))
-    await bot.send(f"已订阅【{ref.name}】({ref.appid}) 降价提醒，当前售价 {format_price(overview, region().currency)}")
+    await bot.send(
+        f"已为{scope_name(ev)}订阅【{ref.name}】({ref.appid}) 降价提醒，当前售价 {format_price(overview, region().currency)}"
+    )
 
 
 async def unsubscribe_price(bot: Bot, ev: Event) -> None:
     """steam取消订阅降价<游戏名/AppID>：取消订阅该游戏的降价提醒。"""
     ref = await _resolve_ref(bot, ev)
     if not await _is_subscribed(ev, ref.appid):
-        await bot.send(f"该游戏不在订阅中：{ref.name}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}未订阅该游戏：{ref.name}({ref.appid})")
         return
-    await gs_subscribe.delete_subscribe("single", SUBSCRIBE_TASK, ev, uid=ref.appid)
-    await bot.send(f"已取消订阅【{ref.name}】({ref.appid}) 降价提醒")
+    await delete_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
+    await bot.send(f"已取消{scope_name(ev)}订阅的【{ref.name}】({ref.appid}) 降价提醒")
 
 
 async def build_price_list_card(ev: Event) -> bytes:
-    """steam订阅降价查看：本会话本人的降价订阅与当前售价渲染成卡片。"""
-    rows = _subscribe_rows(
-        await gs_subscribe.get_subscribe(
-            SUBSCRIBE_TASK,
-            user_id=ev.user_id,
-            bot_id=ev.bot_id,
-            user_type=ev.user_type,
-        )
-    )
+    """steam订阅降价查看：本会话订阅的降价与当前售价渲染成卡片。"""
+    rows = await scope_task_rows(ev, SUBSCRIBE_TASK)
     appids = _appids_of(rows)
     if not appids:
-        raise ValueError("您当前没有订阅任何降价提醒")
+        raise ValueError(f"{scope_name(ev)}当前没有订阅任何降价提醒")
 
     cc = region_cc()
     prices, covers, details = await asyncio.gather(

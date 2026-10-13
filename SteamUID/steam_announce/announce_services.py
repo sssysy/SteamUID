@@ -13,6 +13,13 @@ from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.utils.database.models import Subscribe
 
 from ..utils.api.public import get_game_announcements
+from ..utils.helper.bind import (
+    scope_name,
+    scope_task_rows,
+    add_scope_subscribe,
+    scope_subscribe_rows,
+    delete_scope_subscribe,
+)
 from ..utils.helper.game import GameRef, match_tip_text, resolve_game_ref
 from ..utils.helper.config import region_cc, store_base, region_lang, griddb_cover_key
 from ..utils.helper.announce import (
@@ -48,7 +55,6 @@ _TAG = "[Steam·公告订阅]"
 _LANG = "schinese"
 _WRITE_USAGE = "steam订阅公告 异环 或 steam取消订阅公告 4508340"
 _NO_ANNOUNCE = "拉取不到该游戏的公告，请确认游戏名或 AppID"
-_NO_SUBSCRIBE = "您当前没有订阅任何游戏公告"
 
 
 def _griddb_key() -> str:
@@ -98,15 +104,8 @@ def _ts_of(rows: Sequence[Subscribe], appid: str) -> int:
 
 
 async def _my_rows(ev: Event, appid: str) -> list[Subscribe]:
-    """当前会话本人对该 appid 的订阅行。"""
-    rows = await gs_subscribe.get_subscribe(
-        SUBSCRIBE_TASK,
-        user_id=ev.user_id,
-        bot_id=ev.bot_id,
-        user_type=ev.user_type,
-        uid=appid,
-    )
-    return _subscribe_rows(rows)
+    """当前会话对该 appid 的订阅行：群看本群，私聊看本人。"""
+    return await scope_subscribe_rows(ev, SUBSCRIBE_TASK, appid)
 
 
 async def _latest(appid: str) -> AnnounceItem | None:
@@ -151,7 +150,7 @@ async def subscribe_announce(bot: Bot, ev: Event) -> None:
     ref = await _resolve_ref(bot, ev)
     mine = await _my_rows(ev, ref.appid)
     if mine:
-        await bot.send(f"该游戏已在订阅中：{_name_of(mine, ref.appid)}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}已订阅该游戏：{_name_of(mine, ref.appid)}({ref.appid})")
         return
 
     # 订阅前先记下当前最新公告作为基线，避免刚订阅就把旧公告推出去
@@ -161,16 +160,9 @@ async def subscribe_announce(bot: Bot, ev: Event) -> None:
 
     name = await resolve_game_name(ref.appid, cc=region_cc(), lang=region_lang()) or ref.appid
     extra_message, extra_data = subscribe_fields(name)
-    await gs_subscribe.add_subscribe(
-        "single",
-        SUBSCRIBE_TASK,
-        ev,
-        extra_message=extra_message,
-        uid=ref.appid,
-        extra_data=extra_data,
-    )
+    await add_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid, extra_message=extra_message, extra_data=extra_data)
     await SteamPoll.upsert(BASELINE_TASK, ref.appid, baseline_to_json(baseline_of(latest)))
-    await bot.send(f"已订阅【{name}】({ref.appid}) 的游戏公告，有新公告时会推送给您")
+    await bot.send(f"已为{scope_name(ev)}订阅【{name}】({ref.appid}) 的游戏公告推送")
 
 
 async def unsubscribe_announce(bot: Bot, ev: Event) -> None:
@@ -178,30 +170,23 @@ async def unsubscribe_announce(bot: Bot, ev: Event) -> None:
     ref = await _resolve_ref(bot, ev)
     mine = await _my_rows(ev, ref.appid)
     if not mine:
-        await bot.send(f"该游戏不在订阅中：{ref.name}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}未订阅该游戏：{ref.name}({ref.appid})")
         return
 
-    await gs_subscribe.delete_subscribe("single", SUBSCRIBE_TASK, ev, uid=ref.appid)
+    await delete_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
     # 最后一个订阅者退订后连基线一起清掉，避免轮询表留下孤儿行
     remaining = _subscribe_rows(await gs_subscribe.get_subscribe(SUBSCRIBE_TASK, uid=ref.appid))
     if not remaining:
         await SteamPoll.delete_row(BASELINE_TASK, ref.appid)
-    await bot.send(f"已取消订阅【{_name_of(mine, ref.appid)}】({ref.appid}) 的公告推送")
+    await bot.send(f"已取消{scope_name(ev)}订阅的【{_name_of(mine, ref.appid)}】({ref.appid}) 公告推送")
 
 
 async def build_announce_list_card(ev: Event) -> bytes:
-    """steam订阅公告列表：本会话本人订阅的游戏公告渲染成卡片。"""
-    rows = _subscribe_rows(
-        await gs_subscribe.get_subscribe(
-            SUBSCRIBE_TASK,
-            user_id=ev.user_id,
-            bot_id=ev.bot_id,
-            user_type=ev.user_type,
-        )
-    )
+    """steam订阅公告列表：本会话订阅的游戏公告渲染成卡片。"""
+    rows = await scope_task_rows(ev, SUBSCRIBE_TASK)
     appids = _appids_of(rows)
     if not appids:
-        raise ValueError(_NO_SUBSCRIBE)
+        raise ValueError(f"{scope_name(ev)}当前没有订阅任何游戏公告")
 
     cc = region_cc()
     lang = region_lang()

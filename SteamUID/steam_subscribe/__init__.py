@@ -1,4 +1,4 @@
-"""Steam 订阅推送命令：按通知类型开关当前账号的个人推送订阅与订阅状态查询。"""
+"""Steam 订阅推送命令：按通知类型开关当前会话的推送订阅与订阅状态查询。"""
 
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
@@ -40,5 +40,5 @@ async def steam_toggle_all_push(bot: Bot, ev: Event) -> None:
 @subscribe_sv.on_fullmatch("订阅状态", block=True)
 @command_guard
 async def steam_subscribe_status(bot: Bot, ev: Event) -> None:
-    """steam订阅状态：查看全局开启的推送开关与公告 / 降价订阅数量。"""
+    """steam订阅状态：查看本会话的推送开关与公告 / 降价订阅数量。"""
     await bot.send(await build_subscribe_status_text(ev))

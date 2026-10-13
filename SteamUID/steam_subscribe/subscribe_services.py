@@ -1,16 +1,14 @@
 """Steam 订阅推送开关与订阅状态查询的实现。"""
 
-from collections.abc import Sequence
-
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
-from gsuid_core.subscribe import gs_subscribe
-from gsuid_core.utils.database.models import Subscribe
 
 from ..steam_config import SteamConfig
 from ..utils.helper.bind import (
+    scope_name,
     is_subscribed,
     subscribe_kind,
+    scope_task_rows,
     unsubscribe_kind,
     get_main_steamid64,
 )
@@ -34,13 +32,13 @@ async def toggle_subscribe(bot: Bot, ev: Event, kind: str, enable: bool) -> None
     steamid64 = await _current_steamid64(ev)
     if enable:
         await subscribe_kind(ev, steamid64, kind)
-        await bot.send(f"已订阅 {kind} 推送")
+        await bot.send(f"已为{scope_name(ev)}订阅 {kind} 推送")
         return
     if not await is_subscribed(ev, steamid64, kind):
-        await bot.send(f"该账号未订阅 {kind} 推送")
+        await bot.send(f"{scope_name(ev)}未订阅 {kind} 推送")
         return
     await unsubscribe_kind(ev, steamid64, kind)
-    await bot.send(f"已取消订阅 {kind} 推送")
+    await bot.send(f"已取消{scope_name(ev)}订阅的 {kind} 推送")
 
 
 async def toggle_all_subscribe(bot: Bot, ev: Event, enable: bool) -> None:
@@ -49,39 +47,25 @@ async def toggle_all_subscribe(bot: Bot, ev: Event, enable: bool) -> None:
     if enable:
         for kind in NOTIFY_KINDS:
             await subscribe_kind(ev, steamid64, kind)
-        await bot.send("已开启全部推送")
+        await bot.send(f"已为{scope_name(ev)}开启全部推送")
         return
     for kind in NOTIFY_KINDS:
         await unsubscribe_kind(ev, steamid64, kind)
-    await bot.send("已关闭全部推送")
-
-
-def _subscribe_rows(rows: object) -> list[Subscribe]:
-    """框架订阅查询无类型标注，这里立刻收窄为 Subscribe。"""
-    if not isinstance(rows, Sequence):
-        return []
-    return [row for row in rows if isinstance(row, Subscribe)]
+    await bot.send(f"已关闭{scope_name(ev)}的全部推送")
 
 
 async def _count_games(ev: Event, task_name: str) -> int:
-    """该用户在该 bot 下订阅去重后的游戏数，口径与订阅列表一致。"""
-    rows = _subscribe_rows(
-        await gs_subscribe.get_subscribe(
-            task_name,
-            user_id=ev.user_id,
-            bot_id=ev.bot_id,
-            user_type=ev.user_type,
-        )
-    )
+    """当前会话订阅去重后的游戏数，口径与订阅列表一致。"""
+    rows = await scope_task_rows(ev, task_name)
     return len({row.uid for row in rows if row.uid})
 
 
 async def build_subscribe_status_text(ev: Event) -> str:
-    """订阅状态：仅全局开启的类型按账号判开关，公告 / 降价看订阅游戏数。
+    """订阅状态：仅全局开启的类型按本会话账号判开关，公告 / 降价看本会话订阅数。
 
     未绑定账号时推送项无从判定，只出公告 / 降价数量。
     """
-    lines = [f"{_PREFIX} 订阅状态："]
+    lines = [f"{_PREFIX} {scope_name(ev)}订阅状态："]
     steamid64 = await get_main_steamid64(ev, ev.user_id)
     if steamid64 is not None:
         enabled = SteamConfig.get_config("NotifyTypes").data
