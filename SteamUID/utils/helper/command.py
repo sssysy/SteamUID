@@ -3,6 +3,8 @@
 from functools import wraps
 from collections.abc import Callable, Awaitable
 
+import httpx
+
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
@@ -10,6 +12,7 @@ from gsuid_core.models import Event
 from .steamid import auto2steamid64
 
 _TAG = "[Steam·账户绑定]"
+_NET_TAG = "[Steam·网络请求]"
 
 
 def sender_text(ev: Event, key: str) -> str:
@@ -55,6 +58,9 @@ def command_guard(
             await func(bot, ev)
         except ValueError as e:
             await bot.send(str(e))
+        except httpx.TimeoutException as e:
+            logger.warning(f"{_NET_TAG} 连接 Steam 超时: {type(e).__name__}")
+            await bot.send("连接 Steam 超时，请稍后重试")
         except Exception as e:
             logger.exception(f"{_TAG} 命令执行失败: {e!r}")
             await bot.send("操作失败，请稍后重试")
