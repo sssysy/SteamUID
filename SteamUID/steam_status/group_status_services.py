@@ -12,7 +12,7 @@ from .status_services import PERSONA_TEXT
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import session_ids
 from ..utils.helper.config import region_cc, griddb_cover_key
-from ..utils.helper.profile import load_mini_background_name
+from ..utils.helper.profile import load_profile_background_name
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steam_api import fetch_player_summaries
 from ..utils.helper.game_cover import resolve_cover_name
@@ -100,11 +100,11 @@ def _active_accounts(binds: Sequence[SteamBind], summaries: Mapping[str, PlayerS
 
 
 async def _background_url(account: _ActiveAccount, *, country: str, griddb_key: str) -> str:
-    """背景直链：游戏中用游戏封面，在线用迷你资料背景；取不到留空串。"""
+    """背景直链：游戏中用游戏封面，在线用个人资料背景；取不到留空串。"""
     if account.appid:
         name = await resolve_cover_name(account.appid, country=country, griddb_key=griddb_key)
     else:
-        name = await load_mini_background_name(account.steamid64)
+        name = await load_profile_background_name(account.steamid64)
     return get_img_cache_url(name)
 
 

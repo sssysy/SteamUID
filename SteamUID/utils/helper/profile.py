@@ -4,6 +4,7 @@
 """
 
 import asyncio
+from typing import Literal
 from functools import partial
 from xml.etree import ElementTree
 from dataclasses import replace, dataclass
@@ -13,7 +14,7 @@ from gsuid_core.logger import logger
 
 from .config import api_base, community_base
 from .steamid import steamid64_to_friend_code
-from ..key_pool import request_with_api_key
+from ..key_pool import has_api_key, request_with_api_key
 from ..api.models import (
     ProfileItemEntry,
     MiniprofilePayload,
@@ -27,6 +28,7 @@ from ..api.public import (
 )
 from ..downloader import download
 from .game_detail import clean_description
+from ...steam_config import SteamConfig
 from ..api.endpoints import COMMUNITY_ASSETS_TEMPLATE
 
 _TAG = "[Steam·账户绑定]"
@@ -160,13 +162,14 @@ async def _fetch_decorations(steamid64: str, *, force: bool = False) -> _Decorat
 
 
 async def load_profile_assets(steamid64: str, *, force: bool = False) -> SteamProfile:
-    """抓取完整资料；迷你资料失败时只缺省装扮与等级，不影响昵称与头像。
+    """抓取完整资料：昵称头像来自社区 XML，装扮来自迷你资料，背景优先装配项。
 
-    force 为真时重下图片，忽略 img_cache 命中。
+    任一来源失败只缺省对应字段，不影响昵称与头像；force 为真时重下图片。
     """
-    base, decorations = await asyncio.gather(
+    base, decorations, background_name = await asyncio.gather(
         _fetch_base_profile(steamid64, force=force),
         _fetch_decorations(steamid64, force=force),
+        _fetch_equipped_background(steamid64, force=force),
         return_exceptions=True,
     )
     if isinstance(base, BaseException):
@@ -174,21 +177,36 @@ async def load_profile_assets(steamid64: str, *, force: bool = False) -> SteamPr
 
     if isinstance(decorations, BaseException):
         logger.warning(f"{_TAG} 迷你资料获取失败 {steamid64}: {decorations!r}")
-        return base
+        decorations = _Decorations(
+            frame_name="",
+            background_name="",
+            level=0,
+            badge_name="",
+            badge_icon_name="",
+        )
+
+    if isinstance(background_name, BaseException):
+        logger.warning(f"{_TAG} 个人资料背景获取失败 {steamid64}: {background_name!r}")
+        background_name = ""
 
     return replace(
         base,
         frame_name=decorations.frame_name,
-        background_name=decorations.background_name,
+        # 个人资料背景优先，取不到时回落到迷你资料背景
+        background_name=background_name or decorations.background_name,
         level=decorations.level,
         badge_name=decorations.badge_name,
         badge_icon_name=decorations.badge_icon_name,
     )
 
 
-async def load_mini_background_name(steamid64: str) -> str:
-    """取迷你资料背景并落 img_cache，返回文件名；未装扮或下载失败返回空串。"""
-    deco = _parse_miniprofile(await get_miniprofile(steamid64, lang=_LANG, base_url=community_base()))
+async def load_profile_background_name(steamid64: str) -> str:
+    """取个人资料背景并落 img_cache；未装备时回落迷你资料背景，取不到返回空串。"""
+    name = await _fetch_equipped_background(steamid64)
+    if name:
+        return name
+    mini = await get_miniprofile(steamid64, lang=_LANG, base_url=community_base())
+    deco = _parse_miniprofile(mini)
     return await _download_name(deco.background_url)
 
 
@@ -217,6 +235,45 @@ def _community_asset_url(relative_path: str) -> str:
 
 async def _request_equipped(steamid64: str, lang: str, key: str) -> ProfileItemsEquippedPayload:
     return await get_profile_items_equipped(steamid64, key=key, lang=lang, base_url=api_base())
+
+
+_EquippedKey = Literal["profile_background", "mini_profile_background"]
+
+
+def _pick_equipped_item(
+    payload: ProfileItemsEquippedPayload,
+    key: _EquippedKey,
+) -> ProfileItemEntry:
+    """取装备项；未装备时返回空条目。"""
+    if key in payload:
+        return payload[key]
+    return ProfileItemEntry()
+
+
+def _item_large_url(item: ProfileItemEntry) -> str:
+    """装备项大图（背景静态首帧）直链；无图返回空串。"""
+    return _community_asset_url(item["image_large"] if "image_large" in item else "")
+
+
+def _equipped_background_url(payload: ProfileItemsEquippedPayload) -> str:
+    """个人资料背景直链；未装备时回落迷你资料背景，都没有返回空串。"""
+    profile_bg = _item_large_url(_pick_equipped_item(payload, "profile_background"))
+    if profile_bg:
+        return profile_bg
+    return _item_large_url(_pick_equipped_item(payload, "mini_profile_background"))
+
+
+async def _fetch_equipped_background(steamid64: str, *, force: bool = False) -> str:
+    """个人资料背景静态图落 img_cache；未配置 API Key 时返回空串。"""
+    keys = SteamConfig.get_config("SteamAPIKey").data
+    if not has_api_key(keys):
+        return ""
+    payload = await request_with_api_key(
+        partial(_request_equipped, steamid64, _LANG),
+        keys,
+        cooldown_seconds=SteamConfig.get_config("KeyPoolCooldown").data,
+    )
+    return await _download_name(_equipped_background_url(payload), force=force)
 
 
 async def load_status_assets(
@@ -254,17 +311,16 @@ async def load_status_assets(
     deco = _parse_miniprofile(mini)
     animated = equipped["animated_avatar"] if "animated_avatar" in equipped else ProfileItemEntry()
     frame_item = equipped["avatar_frame"] if "avatar_frame" in equipped else ProfileItemEntry()
-    mini_bg = equipped["mini_profile_background"] if "mini_profile_background" in equipped else ProfileItemEntry()
 
     animated_url = _community_asset_url(animated["image_small"] if "image_small" in animated else "")
-    mini_bg_url = _community_asset_url(mini_bg["image_large"] if "image_large" in mini_bg else "")
+    background_url = _equipped_background_url(equipped)
     frame_url = _community_asset_url(frame_item["image_small"] if "image_small" in frame_item else "") or deco.frame_url
     mini_avatar_url = mini["avatar_url"] if "avatar_url" in mini else ""
 
     avatar_name, frame_name, background_name, webm_name, mp4_name, badge_icon_name = await asyncio.gather(
         _download_name(animated_url or mini_avatar_url or fallback_avatar_url),
         _download_name(frame_url),
-        _download_name(mini_bg_url or deco.background_url),
+        _download_name(background_url or deco.background_url),
         _download_name(deco.background_webm_url),
         _download_name(deco.background_mp4_url),
         _download_name(deco.badge_icon_url),
