@@ -15,19 +15,27 @@ from ..utils.helper.command import command_guard
 price_sv = SV("Steam降价订阅")
 
 
-# 列表整串匹配必须先于 订阅降价 前缀注册，否则会被前缀吃掉参数区
-@price_sv.on_fullmatch("订阅降价查看", block=True)
-@command_guard
-async def steam_price_list(bot: Bot, ev: Event) -> None:
-    """steam订阅降价查看：本会话本人订阅的降价提醒与当前售价。"""
+async def _send_price_list(bot: Bot, ev: Event) -> None:
+    """出降价订阅列表卡片。"""
     await bot.send("正在生成降价订阅列表......")
     await bot.send(MessageSegment.image(await build_price_list_card(ev)))
 
 
+@price_sv.on_fullmatch("订阅降价查看", block=True)
+@command_guard
+async def steam_price_list(bot: Bot, ev: Event) -> None:
+    """steam订阅降价查看：本会话本人订阅的降价提醒与当前售价。"""
+    await _send_price_list(bot, ev)
+
+
+# 前缀允许命令词后不带空格，订阅降价查看 会被 订阅降价 先吃掉，故前缀内转出列表
 @price_sv.on_prefix("订阅降价", block=True)
 @command_guard
 async def steam_price_subscribe(bot: Bot, ev: Event) -> None:
     """steam订阅降价<游戏名/AppID>：订阅该游戏的降价提醒。"""
+    if ev.text.strip() == "查看":
+        await _send_price_list(bot, ev)
+        return
     await subscribe_price(bot, ev)
 
 

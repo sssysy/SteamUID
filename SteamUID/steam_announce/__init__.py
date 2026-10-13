@@ -23,19 +23,27 @@ _TAG = "[Steam·公告轮询]"
 announce_sv = SV("Steam公告订阅")
 
 
-# 列表整串匹配必须先于 订阅公告 前缀注册，否则会被前缀吃掉参数区
-@announce_sv.on_fullmatch("订阅公告列表", block=True)
-@command_guard
-async def steam_announce_list(bot: Bot, ev: Event) -> None:
-    """steam订阅公告列表：本会话本人订阅的游戏公告列表。"""
+async def _send_announce_list(bot: Bot, ev: Event) -> None:
+    """出公告订阅列表卡片。"""
     await bot.send("正在生成公告订阅列表......")
     await bot.send(MessageSegment.image(await build_announce_list_card(ev)))
 
 
+@announce_sv.on_fullmatch("订阅公告列表", block=True)
+@command_guard
+async def steam_announce_list(bot: Bot, ev: Event) -> None:
+    """steam订阅公告列表：本会话本人订阅的游戏公告列表。"""
+    await _send_announce_list(bot, ev)
+
+
+# 前缀允许命令词后不带空格，订阅公告列表 会被 订阅公告 先吃掉，故前缀内转出列表
 @announce_sv.on_prefix("订阅公告", block=True)
 @command_guard
 async def steam_announce_subscribe(bot: Bot, ev: Event) -> None:
     """steam订阅公告<游戏名/AppID>：订阅该游戏的新公告推送。"""
+    if ev.text.strip() == "列表":
+        await _send_announce_list(bot, ev)
+        return
     await subscribe_announce(bot, ev)
 
 
