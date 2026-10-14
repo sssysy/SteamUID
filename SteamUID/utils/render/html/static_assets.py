@@ -1,4 +1,4 @@
-"""插件自带静态图、字体与数据图缓存的 HTTP 挂载与直链生成。"""
+"""插件自带静态图与数据图缓存的 HTTP 挂载与直链生成。"""
 
 from pathlib import Path
 
@@ -17,16 +17,12 @@ from ...helper.config import custom_bg_path
 
 _HTML_DIR = Path(__file__).resolve().parent
 TEXTURE2D_DIR = _HTML_DIR / "texture2d"
-FONTS_DIR = _HTML_DIR.parent / "fonts"
 IMG_CACHE_DIR = get_res_path("SteamUID/img_cache")
 
 DEFAULT_AVATAR_NAME = "default_icon.jpg"
 DEFAULT_BG_NAME = "bind_bg.jpg"
-# 自带字体只有一档，模板三档 @font-face 都引用它
-FONT_NAME = "font.ttf"
 
 _TEXTURE2D_ROUTE = "/steamuid/texture2d"
-_FONTS_ROUTE = "/steamuid/fonts"
 _IMG_CACHE_ROUTE = "/steamuid/img_cache"
 _CUSTOM_BG_ROUTE = "/steamuid/custom_bg"
 
@@ -50,12 +46,11 @@ def _base_url() -> str:
 
 
 def _ensure_mounted() -> None:
-    """把自带图 / 字体 / 数据图缓存挂到核心 FastAPI；按路由去重，重复调用不重挂。"""
+    """把自带图 / 数据图缓存挂到核心 FastAPI；按路由去重，重复调用不重挂。"""
     # 新版 fastapi 把 include_router 收成无 path 的容器对象，按类型取路径
     mounted: set[str] = {route.path for route in fastapi_app.routes if isinstance(route, (Route, Mount))}
     for route_path, directory, name in (
         (_TEXTURE2D_ROUTE, TEXTURE2D_DIR, "steamuid_texture2d"),
-        (_FONTS_ROUTE, FONTS_DIR, "steamuid_fonts"),
         (_IMG_CACHE_ROUTE, IMG_CACHE_DIR, "steamuid_img_cache"),
     ):
         if route_path in mounted or not directory.is_dir():
@@ -71,14 +66,6 @@ def get_texture_url(name: str) -> str:
         return ""
     _ensure_mounted()
     return f"{_base_url()}{_TEXTURE2D_ROUTE}/{name}"
-
-
-def get_font_url(name: str) -> str:
-    """插件自带字体直链；字体缺失时回落空串。"""
-    if not (FONTS_DIR / name).is_file():
-        return ""
-    _ensure_mounted()
-    return f"{_base_url()}{_FONTS_ROUTE}/{name}"
 
 
 def get_img_cache_url(name: str) -> str:

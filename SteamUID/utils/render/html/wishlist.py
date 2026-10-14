@@ -8,7 +8,6 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import FONT_NAME, get_font_url
 from ...helper.price import PriceKind
 
 # 背景与「查看」卡片同款：压暗渐变 + 底图（自定义背景优先）
@@ -96,9 +95,6 @@ def render_wishlist_html(user: PillAccount, card: WishlistCard, *, card_bg_url: 
     template = get_template("steam_wishlist.html")
     return template.render(
         styles=read_styles("common.css", "wishlist.css"),
-        font_regular_url=get_font_url(FONT_NAME),
-        font_medium_url=get_font_url(FONT_NAME),
-        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         bg_url=card_bg_url,
         title=html.escape(f"steam愿望单列表 共{card.total}款"),

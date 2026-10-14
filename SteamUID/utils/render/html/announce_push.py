@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import FONT_NAME, get_font_url
 
 # 正文长度不可预期，视口只是起点，实际截图按元素高度裁切
 _CANVAS_WIDTH = 720
@@ -28,9 +27,6 @@ def render_announce_push_html(card: AnnouncePushCard) -> str:
     template = get_template("steam_announce_push.html")
     return template.render(
         styles=read_styles("common.css", "announce_push.css"),
-        font_regular_url=get_font_url(FONT_NAME),
-        font_medium_url=get_font_url(FONT_NAME),
-        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         event_tag=html.escape(card.event_tag),
         announce_title=html.escape(card.title),

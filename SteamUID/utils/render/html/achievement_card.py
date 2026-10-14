@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import FONT_NAME, get_font_url, get_texture_url
+from .static_assets import get_texture_url
 
 _DEFAULT_ICON_NAME = "default_icon.jpg"
 
@@ -151,9 +151,6 @@ def render_achievement_card_html(card: AchievementCard) -> str:
     template = get_template("steam_achievement.html")
     return template.render(
         styles=read_styles("common.css", "achievement.css"),
-        font_regular_url=get_font_url(FONT_NAME),
-        font_medium_url=get_font_url(FONT_NAME),
-        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_canvas_width(len(slots)),
         cover_url=html.escape(card.cover_url or game_icon),
         game_icon_url=html.escape(game_icon),

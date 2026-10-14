@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import FONT_NAME, get_bg_url, get_font_url
+from .static_assets import get_bg_url
 
 _CANVAS_WIDTH = 880
 # 估高只用于给浏览器留视口，实际截图按元素高度裁切
@@ -48,9 +48,6 @@ def render_price_drop_html(card: PriceDropCard) -> str:
     template = get_template("steam_price_drop.html")
     return template.render(
         styles=read_styles("common.css", "price_drop.css"),
-        font_regular_url=get_font_url(FONT_NAME),
-        font_medium_url=get_font_url(FONT_NAME),
-        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         bg_url=get_bg_url(),
         cover_url=html.escape(card.cover_url),

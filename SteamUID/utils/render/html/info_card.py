@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import FONT_NAME, get_bg_url, get_font_url, get_default_avatar_url
+from .static_assets import get_bg_url, get_default_avatar_url
 from ...helper.config import hide_id
 
 # 无玩家背景图时与「查看」卡片同款的底图（自定义背景优先）
@@ -123,9 +123,6 @@ def render_info_card_html(card: InfoCard) -> str:
     template = get_template("steam_info.html")
     return template.render(
         styles=read_styles("common.css", "info.css"),
-        font_regular_url=get_font_url(FONT_NAME),
-        font_medium_url=get_font_url(FONT_NAME),
-        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         bg_url=card.background_url,
         card_bg_url=get_bg_url(),

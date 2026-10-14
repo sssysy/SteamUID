@@ -3,27 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <style>
-@font-face {
-  font-family: 'SteamFont';
-  src: url('{{ font_regular_url }}') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'SteamFont';
-  src: url('{{ font_medium_url }}') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'SteamFont';
-  src: url('{{ font_bold_url }}') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-}
 {{ styles }}
 body {
-  font-family: 'SteamFont', "Motiva Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "WenQuanYi Zen Hei", sans-serif;
 }
 /* 容器宽度由 Python 侧常量注入；背景与「查看」卡片同款：压暗渐变 + 底图 */
 .group-status-card {
