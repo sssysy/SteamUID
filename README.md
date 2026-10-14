@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="ICON.png">
-    <img src="ICON.png" width="256" height="256" alt="SteamUID">
+    <img src="ICON.png" width="227" height="227" alt="SteamUID">
   </a>
 </p>
 <h1 align="center">SteamUID 2.0.0</h1>
