@@ -4,11 +4,7 @@ import html
 from dataclasses import dataclass
 
 from .render import read_styles, render_html, get_template, render_html_gif
-from .static_assets import get_font_url, get_default_avatar_url
-
-_FONT_REGULAR = "steam-Regular.ttf"
-_FONT_MEDIUM = "steam-Medium.ttf"
-_FONT_BOLD = "steam-Bold.ttf"
+from .static_assets import FONT_NAME, get_font_url, get_default_avatar_url
 
 _SELECTOR = "#steam-status-card"
 # 容器 328px、body 放大 1.5 倍，视口按 492 宽预留
@@ -107,9 +103,9 @@ def render_status_card_html(card: StatusCard) -> str:
     template = get_template("steam_status.html")
     return template.render(
         styles=read_styles("status.css"),
-        font_regular_url=get_font_url(_FONT_REGULAR),
-        font_medium_url=get_font_url(_FONT_MEDIUM),
-        font_bold_url=get_font_url(_FONT_BOLD),
+        font_regular_url=get_font_url(FONT_NAME),
+        font_medium_url=get_font_url(FONT_NAME),
+        font_bold_url=get_font_url(FONT_NAME),
         avatar_url=html.escape(card.avatar_url or get_default_avatar_url()),
         status_tone=card.status_tone,
         border_color_class=f"border_color_{card.status_tone}",

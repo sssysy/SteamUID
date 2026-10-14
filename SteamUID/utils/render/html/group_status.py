@@ -5,11 +5,7 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_font_url
-
-_FONT_REGULAR = "steam-Regular.ttf"
-_FONT_MEDIUM = "steam-Medium.ttf"
-_FONT_BOLD = "steam-Bold.ttf"
+from .static_assets import FONT_NAME, get_font_url
 
 _CARD_WIDTH = 560
 # 估高只用于给浏览器留视口，实际截图按元素高度裁切
@@ -25,9 +21,9 @@ def render_group_status_html(members: Sequence[PillAccount], *, has_more: bool, 
     template = get_template("steam_group_status.html")
     return template.render(
         styles=read_styles("common.css", "group_status.css"),
-        font_regular_url=get_font_url(_FONT_REGULAR),
-        font_medium_url=get_font_url(_FONT_MEDIUM),
-        font_bold_url=get_font_url(_FONT_BOLD),
+        font_regular_url=get_font_url(FONT_NAME),
+        font_medium_url=get_font_url(FONT_NAME),
+        font_bold_url=get_font_url(FONT_NAME),
         bg_url=card_bg_url,
         canvas_width=_CARD_WIDTH,
         items_html=items_html,

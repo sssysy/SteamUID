@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from collections.abc import Sequence
 
 from .render import read_styles, render_html, get_template
-from .static_assets import get_bg_url, get_font_url
+from .static_assets import FONT_NAME, get_bg_url, get_font_url
 from ...helper.status import GAME_KINDS, ACHIEVEMENT_KIND
 
 _CARD_WIDTH = 460
@@ -23,9 +23,6 @@ _ACHIEVEMENT_LIST_PADDING = 12
 _MAX_ACHIEVEMENT_ROWS = 5
 _ACHIEVEMENT_MORE_HEIGHT = 30
 
-_FONT_REGULAR = "steam-Regular.ttf"
-_FONT_MEDIUM = "steam-Medium.ttf"
-_FONT_BOLD = "steam-Bold.ttf"
 _TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -223,9 +220,9 @@ def render_game_status_html(items: Sequence[CardItem]) -> str:
     template = get_template("steam_game_status.html")
     return template.render(
         styles=read_styles("common.css", "game_status.css"),
-        font_regular_url=get_font_url(_FONT_REGULAR),
-        font_medium_url=get_font_url(_FONT_MEDIUM),
-        font_bold_url=get_font_url(_FONT_BOLD),
+        font_regular_url=get_font_url(FONT_NAME),
+        font_medium_url=get_font_url(FONT_NAME),
+        font_bold_url=get_font_url(FONT_NAME),
         card_bg_url=get_bg_url(),
         cards=cards,
         card_width=_CARD_WIDTH,

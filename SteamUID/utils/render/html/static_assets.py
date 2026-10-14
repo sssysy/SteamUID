@@ -22,6 +22,8 @@ IMG_CACHE_DIR = get_res_path("SteamUID/img_cache")
 
 DEFAULT_AVATAR_NAME = "default_icon.jpg"
 DEFAULT_BG_NAME = "bind_bg.jpg"
+# 自带字体只有一档，模板三档 @font-face 都引用它
+FONT_NAME = "font.ttf"
 
 _TEXTURE2D_ROUTE = "/steamuid/texture2d"
 _FONTS_ROUTE = "/steamuid/fonts"

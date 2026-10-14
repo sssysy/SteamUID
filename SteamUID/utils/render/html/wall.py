@@ -8,12 +8,8 @@ from collections.abc import Sequence
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .account_pill import PillAccount, pill_html
-from .static_assets import get_font_url
+from .static_assets import FONT_NAME, get_font_url
 from ...helper.library import span_of
-
-_FONT_REGULAR = "steam-Regular.ttf"
-_FONT_MEDIUM = "steam-Medium.ttf"
-_FONT_BOLD = "steam-Bold.ttf"
 
 _CANVAS_WIDTH = 1200
 _COLUMNS = 8
@@ -65,9 +61,9 @@ def render_game_wall_html(
     template = get_template("steam_wall.html")
     return template.render(
         styles=read_styles("common.css", "wall.css"),
-        font_regular_url=get_font_url(_FONT_REGULAR),
-        font_medium_url=get_font_url(_FONT_MEDIUM),
-        font_bold_url=get_font_url(_FONT_BOLD),
+        font_regular_url=get_font_url(FONT_NAME),
+        font_medium_url=get_font_url(FONT_NAME),
+        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         title=title,
         account_pill_html=pill_html(user),

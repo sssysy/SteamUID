@@ -6,12 +6,8 @@ from collections.abc import Sequence
 
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import get_bg_url, get_font_url
+from .static_assets import FONT_NAME, get_bg_url, get_font_url
 from ...helper.price import PriceKind
-
-_FONT_REGULAR = "steam-Regular.ttf"
-_FONT_MEDIUM = "steam-Medium.ttf"
-_FONT_BOLD = "steam-Bold.ttf"
 
 # 背景与「查看」卡片同款：压暗渐变 + 底图（自定义背景优先）
 _CANVAS_WIDTH = 880
@@ -79,9 +75,9 @@ def render_price_list_html(card: PriceListCard) -> str:
     template = get_template("steam_price_list.html")
     return template.render(
         styles=read_styles("common.css", "price_list.css"),
-        font_regular_url=get_font_url(_FONT_REGULAR),
-        font_medium_url=get_font_url(_FONT_MEDIUM),
-        font_bold_url=get_font_url(_FONT_BOLD),
+        font_regular_url=get_font_url(FONT_NAME),
+        font_medium_url=get_font_url(FONT_NAME),
+        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         bg_url=get_bg_url(),
         title=html.escape(f"steam订阅降价 共{len(card.entries)}款"),

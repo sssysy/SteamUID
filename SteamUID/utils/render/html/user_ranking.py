@@ -6,12 +6,8 @@ from collections.abc import Sequence
 
 from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
-from .static_assets import get_font_url, get_default_avatar_url
+from .static_assets import FONT_NAME, get_font_url, get_default_avatar_url
 from ...helper.ranking import format_duration
-
-_FONT_REGULAR = "steam-Regular.ttf"
-_FONT_MEDIUM = "steam-Medium.ttf"
-_FONT_BOLD = "steam-Bold.ttf"
 
 # 背景与「查看」卡片同款：压暗渐变 + 底图（自定义背景优先）
 _CANVAS_WIDTH = 680
@@ -79,9 +75,9 @@ def render_user_ranking_html(
     items_html = "\n".join(_row_html(index, entry) for index, entry in enumerate(entries, 1))
     return template.render(
         styles=read_styles("common.css", "ranking.css"),
-        font_regular_url=get_font_url(_FONT_REGULAR),
-        font_medium_url=get_font_url(_FONT_MEDIUM),
-        font_bold_url=get_font_url(_FONT_BOLD),
+        font_regular_url=get_font_url(FONT_NAME),
+        font_medium_url=get_font_url(FONT_NAME),
+        font_bold_url=get_font_url(FONT_NAME),
         canvas_width=_CANVAS_WIDTH,
         bg_url=card_bg_url,
         title=html.escape(title),
