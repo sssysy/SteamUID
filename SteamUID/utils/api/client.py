@@ -29,17 +29,6 @@ STEAM_STORE_COOKIES: dict[str, str] = {
     "wants_mature_content": "1",
 }
 
-# 手机 App 的真实调用形态：扫码登录与令牌换新都必须走这套头，网页头拿不到手机端会话
-MOBILE_API_HEADERS: dict[str, str] = {
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Sec-Fetch-Site": "cross-site",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Dest": "empty",
-    "User-Agent": "okhttp/4.9.2",
-    "Cookie": "mobileClient=android; mobileClientVersion=777777 3.10.3",
-}
-
 _PROXY_SCHEMES = ("http://", "https://", "socks5://", "socks5h://")
 
 
@@ -100,7 +89,6 @@ async def request_response(
     tag: str,
     params: Mapping[str, str | int | float | bool] | None = None,
     data: Mapping[str, str | int | float] | None = None,
-    files: Mapping[str, tuple[None, str]] | None = None,
     headers: Mapping[str, str] | None = None,
     timeout: float | None = None,
 ) -> httpx.Response:
@@ -110,7 +98,6 @@ async def request_response(
         url,
         params=params,
         data=data,
-        files=files,
         headers=headers,
         timeout=timeout,
     )
@@ -127,7 +114,6 @@ async def request_ok_response(
     tag: str,
     params: Mapping[str, str | int | float | bool] | None = None,
     data: Mapping[str, str | int | float] | None = None,
-    files: Mapping[str, tuple[None, str]] | None = None,
     headers: Mapping[str, str] | None = None,
     timeout: float | None = None,
 ) -> httpx.Response:
@@ -139,7 +125,6 @@ async def request_ok_response(
         tag=tag,
         params=params,
         data=data,
-        files=files,
         headers=headers,
         timeout=timeout,
     )

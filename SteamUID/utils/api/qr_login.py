@@ -4,13 +4,12 @@
 凭据落库 / 会话校验由调用方处理。
 """
 
-import base64
 from types import TracebackType
 
 from gsuid_core.logger import logger
 
 from .auth import steamid_from_access_token
-from .client import MOBILE_API_HEADERS, make_async_client, request_ok_response
+from .client import DEFAULT_USER_AGENT, make_async_client, request_ok_response
 from .models import (
     QrReady,
     QrWaiting,
@@ -23,46 +22,14 @@ from .endpoints import (
     AUTH_BEGIN_QR,
     API_BASE_DEFAULT,
     AUTH_POLL_STATUS,
+    COMMUNITY_BASE_DEFAULT,
 )
 
 _TAG = "扫码登录"
 
-# EAuthTokenPlatformType_MobileApp = 3，配 Android 设备信息；手机 App 只认这种二维码
-_PLATFORM_TYPE = 3
-_OS_TYPE = -500
-_GAMING_DEVICE_TYPE = 528
-# 会显示在用户的 Steam 授权设备列表里
-_DEVICE_NAME = "GsCore_SteamUID"
-
-
-def _varint(value: int) -> bytes:
-    """protobuf varint；负数按 64 位补码写，os_type=-500 就是这种编码。"""
-    value &= (1 << 64) - 1
-    encoded = bytearray()
-    while value > 0x7F:
-        encoded.append((value & 0x7F) | 0x80)
-        value >>= 7
-    encoded.append(value)
-    return bytes(encoded)
-
-
-def _field_varint(field: int, value: int) -> bytes:
-    return _varint(field << 3) + _varint(value)
-
-
-def _field_string(field: int, value: str) -> bytes:
-    raw = value.encode("utf-8")
-    return _varint((field << 3) | 2) + _varint(len(raw)) + raw
-
-
-def _qr_request_payload(device_name: str) -> str:
-    """把 CAuthentication_BeginAuthSessionViaQR_Request 编成 base64（device_details 是第 3 字段）。"""
-    details = _field_string(1, device_name)
-    details += _field_varint(2, _PLATFORM_TYPE)
-    details += _field_varint(3, _OS_TYPE)
-    details += _field_varint(4, _GAMING_DEVICE_TYPE)
-    request = _varint((3 << 3) | 2) + _varint(len(details)) + details
-    return base64.b64encode(request).decode("ascii")
+# EAuthTokenPlatformType_WebBrowser = 2 + Community：拿网页会话用的令牌
+_PLATFORM_TYPE = "2"
+_WEBSITE_ID = "Community"
 
 
 class SteamQrLogin:
@@ -82,7 +49,11 @@ class SteamQrLogin:
         self.client = make_async_client(
             proxy=proxy,
             timeout=timeout,
-            headers=MOBILE_API_HEADERS,
+            headers={
+                "Origin": COMMUNITY_BASE_DEFAULT,
+                "Referer": f"{COMMUNITY_BASE_DEFAULT}/",
+                "Accept": "application/json",
+            },
         )
 
     async def close(self) -> None:
@@ -106,8 +77,11 @@ class SteamQrLogin:
             "POST",
             f"{self.api_base_url}{AUTH_BEGIN_QR}",
             tag=_TAG,
-            params={"format": "json"},
-            files={"input_protobuf_encoded": (None, _qr_request_payload(_DEVICE_NAME))},
+            data={
+                "device_friendly_name": DEFAULT_USER_AGENT,
+                "platform_type": _PLATFORM_TYPE,
+                "website_id": _WEBSITE_ID,
+            },
             timeout=self.timeout,
         )
         payload: BeginQrResponse = resp.json()
@@ -146,8 +120,8 @@ class SteamQrLogin:
         response = payload["response"]
 
         if "new_challenge_url" in response:
-            # 轮换出来的新二维码扫不了，原 client_id 照样能收到确认，忽略新链接即可
-            logger.debug(f"[Steam·{_TAG}] 服务端轮换了二维码（新码不可用），继续用原会话轮询")
+            # 轮换出的新二维码扫不了，原 client_id 照样能收到确认，忽略新链接即可
+            logger.debug(f"[Steam·{_TAG}] 服务端轮换了二维码，继续用原会话轮询")
 
         scanned = bool(response["had_remote_interaction"]) if "had_remote_interaction" in response else False
         if "refresh_token" not in response or "access_token" not in response:

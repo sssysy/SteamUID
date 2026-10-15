@@ -8,7 +8,7 @@ import json
 from base64 import urlsafe_b64decode
 from binascii import hexlify
 
-from .client import MOBILE_API_HEADERS, make_async_client, request_ok_response
+from .client import make_async_client, request_ok_response
 from .models import AccessTokenPayload, AccessTokenResponse
 from .endpoints import API_BASE_DEFAULT, AUTH_GENERATE_ACCESS_TOKEN
 
@@ -61,7 +61,6 @@ async def generate_access_token_for_app(
             url,
             tag=_TAG,
             data={"refresh_token": refresh_token, "steamid": steamid},
-            headers=MOBILE_API_HEADERS,
             timeout=timeout,
         )
 
