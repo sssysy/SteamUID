@@ -132,6 +132,15 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "VAC封禁",
+        "desc": "查询账号的社区 / VAC / 经济封禁情况",
+        "eg": "查封禁",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

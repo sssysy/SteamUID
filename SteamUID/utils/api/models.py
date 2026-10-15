@@ -100,6 +100,20 @@ class PlayerSummariesResponse(TypedDict, total=False):
     response: PlayerSummariesPayload
 
 
+class PlayerBan(TypedDict, total=False):
+    SteamId: str
+    CommunityBanned: bool
+    VACBanned: bool
+    NumberOfVACBans: int
+    DaysSinceLastBan: int
+    NumberOfGameBans: int
+    EconomyBan: str
+
+
+class PlayerBansPayload(TypedDict, total=False):
+    players: list[PlayerBan]
+
+
 class OwnedGame(TypedDict, total=False):
     appid: int
     name: str

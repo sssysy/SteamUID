@@ -13,6 +13,12 @@ from .steamid import auto2steamid64
 
 _TAG = "[Steam·账户绑定]"
 _NET_TAG = "[Steam·网络请求]"
+_KEY_TAG = "[Steam·密钥池]"
+
+# Key 被拒时接口用 401 / 403，正文固定带这段提示，据此区分站点自身的 403
+_KEY_DENIED_CODES = frozenset({httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN})
+_KEY_DENIED_MARK = "verify your <pre>key=</pre> parameter"
+_NO_KEY_HINT = "无可用API Key，请检查当前所有 Key 可用状态"
 
 
 def sender_text(ev: Event, key: str) -> str:
@@ -47,6 +53,19 @@ def resolve_viewer(ev: Event, *, allow_at: bool) -> str:
     return ev.user_id
 
 
+def _is_key_denied(error: httpx.HTTPStatusError) -> bool:
+    """是否 Steam 拒绝 API Key；商店等站点自身的 403 不算。"""
+    if error.response.status_code not in _KEY_DENIED_CODES:
+        return False
+    return _KEY_DENIED_MARK in error.response.text
+
+
+async def _reply_failure(bot: Bot, error: Exception) -> None:
+    """未知错误的统一回执：详细信息只进日志。"""
+    logger.exception(f"{_TAG} 命令执行失败: {error!r}")
+    await bot.send("操作失败，请稍后重试")
+
+
 def command_guard(
     func: Callable[[Bot, Event], Awaitable[None]],
 ) -> Callable[[Bot, Event], Awaitable[None]]:
@@ -61,8 +80,13 @@ def command_guard(
         except httpx.TimeoutException as e:
             logger.warning(f"{_NET_TAG} 连接 Steam 超时: {type(e).__name__}")
             await bot.send("连接 Steam 超时，请稍后重试")
+        except httpx.HTTPStatusError as e:
+            if _is_key_denied(e):
+                logger.warning(f"{_KEY_TAG} API Key 被拒绝，HTTP {e.response.status_code}")
+                await bot.send(_NO_KEY_HINT)
+            else:
+                await _reply_failure(bot, e)
         except Exception as e:
-            logger.exception(f"{_TAG} 命令执行失败: {e!r}")
-            await bot.send("操作失败，请稍后重试")
+            await _reply_failure(bot, e)
 
     return wrapper

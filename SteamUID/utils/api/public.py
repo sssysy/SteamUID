@@ -7,6 +7,7 @@ from collections.abc import Sequence
 
 from .client import STEAM_STORE_COOKIES, make_async_client, request_ok_response
 from .models import (
+    PlayerBan,
     StoreEvent,
     WishlistItem,
     PlayerSummary,
@@ -14,6 +15,7 @@ from .models import (
     StoreSearchItem,
     WishlistResponse,
     OwnedGamesPayload,
+    PlayerBansPayload,
     ServerInfoPayload,
     YearReviewPayload,
     MiniprofilePayload,
@@ -39,6 +41,7 @@ from .endpoints import (
     API_GET_WISHLIST,
     STORE_BASE_DEFAULT,
     API_GET_OWNED_GAMES,
+    API_GET_PLAYER_BANS,
     API_GET_SERVER_INFO,
     COMMUNITY_MINIPROFILE,
     COMMUNITY_PROFILE_XML,
@@ -79,6 +82,25 @@ async def get_player_summaries(
     payload: PlayerSummariesResponse = resp.json()
     response = payload["response"]
     return response["players"] if "players" in response else []
+
+
+async def get_player_bans(
+    steamid64: str,
+    *,
+    key: str,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> list[PlayerBan]:
+    """查询单个玩家的封禁汇总，无效或不存在时接口回空列表。"""
+    url = f"{base_url.rstrip('/')}{API_GET_PLAYER_BANS}"
+    params = {"key": key, "steamids": steamid64}
+
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+
+    payload: PlayerBansPayload = resp.json()
+    return payload["players"] if "players" in payload else []
 
 
 async def get_game_details(
