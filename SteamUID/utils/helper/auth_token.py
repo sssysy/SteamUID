@@ -32,21 +32,27 @@ async def renew_access_token(steamid64: str) -> str | None:
         return None
 
     try:
-        token = await generate_access_token_for_app(account.refresh_token, steamid64, base_url=api_base())
+        payload = await generate_access_token_for_app(account.refresh_token, steamid64, base_url=api_base())
     except (httpx.HTTPError, ValueError) as error:
         logger.warning(f"{_TAG} 刷新 access_token 失败 steamid={steamid64}: {type(error).__name__}")
         return None
 
+    # 轮换出来的 refresh_token 必须先落库：新的一下发，旧的就立刻失效
+    rotated = account.refresh_token
+    if "refresh_token" in payload and payload["refresh_token"]:
+        rotated = payload["refresh_token"]
+        logger.info(f"{_TAG} refresh_token 已轮换 steamid={steamid64}")
+
     await SteamAuth.upsert_account(
         steamid64=steamid64,
         account_name=account.account_name,
-        access_token=token,
-        refresh_token=account.refresh_token,
+        access_token=payload["access_token"],
+        refresh_token=rotated,
         session_id=account.session_id,
         cookies_json=account.cookies_json,
         updated_at=int(time.time()),
     )
-    return token
+    return payload["access_token"]
 
 
 def _is_unauthorized(error: httpx.HTTPStatusError) -> bool:

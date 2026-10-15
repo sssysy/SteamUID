@@ -62,6 +62,7 @@ QrPollResult = QrWaiting | QrReady
 
 class AccessTokenPayload(TypedDict, total=False):
     access_token: str
+    refresh_token: str
 
 
 class AccessTokenResponse(TypedDict):

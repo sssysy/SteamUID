@@ -8,8 +8,8 @@ import json
 from base64 import urlsafe_b64decode
 from binascii import hexlify
 
-from .client import make_async_client, request_ok_response
-from .models import AccessTokenResponse
+from .client import MOBILE_API_HEADERS, make_async_client, request_ok_response
+from .models import AccessTokenPayload, AccessTokenResponse
 from .endpoints import API_BASE_DEFAULT, AUTH_GENERATE_ACCESS_TOKEN
 
 _TAG = "账户令牌"
@@ -48,8 +48,11 @@ async def generate_access_token_for_app(
     base_url: str = API_BASE_DEFAULT,
     proxy: str | None = None,
     timeout: float = 15.0,
-) -> str:
-    """用 refresh_token 换新的 access_token，响应缺字段时抛 ValueError。"""
+) -> AccessTokenPayload:
+    """用 refresh_token 换新的 access_token，响应缺 access_token 时抛 ValueError。
+
+    服务端可能顺带轮换 refresh_token，调用方必须检查返回里有没有它并覆盖落库。
+    """
     url = f"{base_url.rstrip('/')}{AUTH_GENERATE_ACCESS_TOKEN}"
     async with make_async_client(proxy=proxy, timeout=timeout) as client:
         resp = await request_ok_response(
@@ -58,6 +61,7 @@ async def generate_access_token_for_app(
             url,
             tag=_TAG,
             data={"refresh_token": refresh_token, "steamid": steamid},
+            headers=MOBILE_API_HEADERS,
             timeout=timeout,
         )
 
@@ -65,4 +69,4 @@ async def generate_access_token_for_app(
     response = payload["response"]
     if "access_token" not in response:
         raise ValueError("刷新 access_token 返回数据异常")
-    return response["access_token"]
+    return response
