@@ -47,6 +47,31 @@
   object-fit: cover;
 }
 
+.game-status-card .avatar-wrapper {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+/* 头像框比头像放大 18.8%，叠层顺序与旧版一致 */
+.game-status-card .avatar-frame {
+  position: absolute;
+  top: -9.4%;
+  left: -9.4%;
+  width: 118.8%;
+  height: 118.8%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.game-status-card .avatar-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
 .game-status-card .status-bar {
   width: 4px;
   height: 56px;

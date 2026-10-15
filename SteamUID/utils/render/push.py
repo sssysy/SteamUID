@@ -22,6 +22,7 @@ from ..helper.status import (
     is_image_mode,
     is_merge_mode,
 )
+from ..helper.profile import load_frame_name
 from .html.game_status import (
     CardItem,
     AchievementRow,
@@ -69,15 +70,17 @@ async def _dispatch_image(deliveries: Sequence[Delivery], options: PushOptions) 
     if card_entries:
         covers = await _resolve_covers(card_entries, options)
         avatars = await _resolve_avatars(card_entries)
+        frames = await _resolve_frames(card_entries)
         icons = await _resolve_icons(card_entries)
     else:
         covers = {}
         avatars = {}
+        frames = {}
         icons = {}
 
     merge = is_merge_mode(options.mode)
     for delivery, (cards, texts) in split:
-        groups = _card_groups(cards, covers, avatars, icons, options)
+        groups = _card_groups(cards, covers, avatars, frames, icons, options)
         if groups and merge:
             await _send_image(delivery, groups, options)
         else:
@@ -103,6 +106,7 @@ def _card_groups(
     cards: Sequence[_Entry],
     covers: dict[str, str],
     avatars: dict[str, str],
+    frames: dict[str, str],
     icons: dict[str, str],
     options: PushOptions,
 ) -> list[_CardGroup]:
@@ -123,14 +127,14 @@ def _card_groups(
     for entry in cards:
         event = entry[0]
         if event.kind != ACHIEVEMENT_KIND:
-            groups.append((_card_item(event, entry[1], covers, avatars, options), (entry,)))
+            groups.append((_card_item(event, entry[1], covers, avatars, frames, options), (entry,)))
             continue
         key = (event.steamid64, event.appid)
         if key in emitted:
             continue
         emitted.add(key)
         merged = tuple(achievement_entries[key])
-        groups.append((_achievement_item(merged, avatars, icons), merged))
+        groups.append((_achievement_item(merged, avatars, frames, icons), merged))
     return groups
 
 
@@ -186,6 +190,7 @@ def _card_item(
     name: str,
     covers: dict[str, str],
     avatars: dict[str, str],
+    frames: dict[str, str],
     options: PushOptions,
 ) -> GameStatusItem:
     avatar_url = get_default_avatar_url()
@@ -194,12 +199,14 @@ def _card_item(
     cover_url = ""
     if options.with_cover and event.appid in covers:
         cover_url = covers[event.appid]
+    frame_url = frames[event.steamid64] if event.steamid64 in frames else ""
     return GameStatusItem(
         kind=event.kind,
         nickname=hide_id(event.nickname or event.steamid64),
         group_name=name,
         game_name=event.game_name or event.appid,
         avatar_url=avatar_url,
+        frame_url=frame_url,
         cover_url=cover_url,
     )
 
@@ -207,6 +214,7 @@ def _card_item(
 def _achievement_item(
     entries: Sequence[_Entry],
     avatars: dict[str, str],
+    frames: dict[str, str],
     icons: dict[str, str],
 ) -> AchievementItem:
     """把同一玩家同一游戏的成就事件拼成一张卡，成就按事件顺序往下排。"""
@@ -214,6 +222,7 @@ def _achievement_item(
     avatar_url = get_default_avatar_url()
     if event.avatar in avatars:
         avatar_url = avatars[event.avatar]
+    frame_url = frames[event.steamid64] if event.steamid64 in frames else ""
     rows: list[AchievementRow] = []
     for unlock_event, _ in entries:
         unlock = unlock_event.achievement
@@ -232,6 +241,7 @@ def _achievement_item(
         group_name=entries[0][1],
         game_name=event.game_name or event.appid,
         avatar_url=avatar_url,
+        frame_url=frame_url,
         achievements=tuple(rows),
     )
 
@@ -262,6 +272,22 @@ async def _resolve_covers(entries: Sequence[_Entry], options: PushOptions) -> di
 async def _resolve_avatars(entries: Sequence[_Entry]) -> dict[str, str]:
     urls = [event.avatar for event, _ in entries if event.avatar]
     return await _resolve_images(urls)
+
+
+async def _resolve_frames(entries: Sequence[_Entry]) -> dict[str, str]:
+    """按 steamid 去重取静态头像框直链；走装扮缓存，单点失败不进表。"""
+    steamids = sorted({event.steamid64 for event, _ in entries if event.steamid64})
+    if not steamids:
+        return {}
+    results = await asyncio.gather(*(load_frame_name(steamid) for steamid in steamids), return_exceptions=True)
+    links: dict[str, str] = {}
+    for steamid, result in zip(steamids, results):
+        if isinstance(result, BaseException):
+            logger.warning(f"{_TAG} 头像框解析失败 steamid={steamid}: {type(result).__name__}")
+            continue
+        if result:
+            links[steamid] = get_img_cache_url(result)
+    return links
 
 
 async def _resolve_icons(entries: Sequence[_Entry]) -> dict[str, str]:

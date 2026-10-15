@@ -12,8 +12,6 @@ from ..utils.render.html.static_assets import (
     get_default_avatar_url,
 )
 
-_LANG = "schinese"
-
 # communityvisibilitystate 取 1 即资料私密
 _VISIBILITY_PRIVATE = 1
 
@@ -64,13 +62,7 @@ async def build_status_image(steamid64: str) -> bytes:
         raise ValueError("该用户资料为私有，无法查看状态")
 
     fallback_avatar = player["avatarfull"] if "avatarfull" in player else ""
-    assets = await load_status_assets(
-        steamid64,
-        keys=keys,
-        cooldown=cooldown,
-        lang=_LANG,
-        fallback_avatar_url=fallback_avatar,
-    )
+    assets = await load_status_assets(steamid64, fallback_avatar_url=fallback_avatar)
     badge = await load_level_badge(assets.level)
     status_text, status_tone = _presence(player)
 

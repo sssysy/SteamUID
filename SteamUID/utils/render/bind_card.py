@@ -80,7 +80,7 @@ async def render_bind_card_image(ev: Event, user_id: str, *, force: bool = False
     binds = await get_binds(ev, user_id)
     items, card_bg_name = await asyncio.gather(
         _build_card_items(binds, session_ids(ev)[2], force=force),
-        load_initiator_card_background_name(ev),
+        load_initiator_card_background_name(ev, force=force),
     )
     user_name = sender_text(ev, "nickname") or user_id
     qq_avatar_url = await _resolve_qq_avatar(ev)

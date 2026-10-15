@@ -35,6 +35,7 @@ class GameStatusItem:
     group_name: str
     game_name: str
     avatar_url: str
+    frame_url: str = ""
     cover_url: str = ""
 
 
@@ -57,6 +58,7 @@ class AchievementItem:
     game_name: str
     avatar_url: str
     achievements: tuple[AchievementRow, ...]
+    frame_url: str = ""
 
 
 CardItem = GameStatusItem | AchievementItem
@@ -101,10 +103,16 @@ def _format_time(ts: int) -> str:
     return time.strftime(_TIME_FORMAT, time.localtime(ts))
 
 
-def _avatar_box(avatar_url: str, bar_color: str) -> str:
+def _avatar_box(avatar_url: str, frame_url: str, bar_color: str) -> str:
+    frame_html = ""
+    if frame_url:
+        frame_html = f'<div class="avatar-frame"><img src="{html.escape(frame_url)}" alt=""></div>'
     return (
         '<div class="avatar-box">'
+        '<div class="avatar-wrapper">'
         f'<img class="avatar" src="{html.escape(avatar_url)}" alt="">'
+        f"{frame_html}"
+        "</div>"
         f'<div class="status-bar" style="background-color: {bar_color};"></div>'
         "</div>"
     )
@@ -129,7 +137,7 @@ def _status_html(item: GameStatusItem) -> str:
         game_html = f'<div class="game-name" style="color: {theme.game};">{html.escape(item.game_name)}</div>'
     info = (
         '<div class="info-row">'
-        f"{_avatar_box(item.avatar_url, theme.bar)}"
+        f"{_avatar_box(item.avatar_url, item.frame_url, theme.bar)}"
         '<div class="text-area">'
         f"{_persona_row(item.nickname, item.group_name)}"
         f'<div class="subtitle" style="color: {theme.subtitle};">{_SUBTITLES[item.kind]}</div>'
@@ -171,7 +179,7 @@ def _achievement_html(item: AchievementItem) -> str:
     )
     info = (
         '<div class="info-row">'
-        f"{_avatar_box(item.avatar_url, theme.bar)}"
+        f"{_avatar_box(item.avatar_url, item.frame_url, theme.bar)}"
         '<div class="text-area">'
         f"{_persona_row(item.nickname, item.group_name)}"
         f'<div class="subtitle" style="color: {theme.subtitle};">{subtitle}</div>'
