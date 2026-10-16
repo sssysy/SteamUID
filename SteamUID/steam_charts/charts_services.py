@@ -170,7 +170,9 @@ async def _resolve_covers(picked: Sequence[_Picked]) -> dict[str, str]:
         covers[appid] = path.name
 
     if missing:
-        fallback = await resolve_cover_names(missing, country=region_cc(), griddb_key=griddb_cover_key())
+        fallback = await resolve_cover_names(
+            missing, country=region_cc(), lang=region_lang(), griddb_key=griddb_cover_key()
+        )
         covers.update({appid: name for appid, name in fallback.items() if name})
     return covers
 

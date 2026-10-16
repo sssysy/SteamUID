@@ -171,7 +171,7 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
     details, prices, covers, profile, card_bg_name = await asyncio.gather(
         _load_details(appids, cc=cc),
         get_price_overview(appids, cc=cc, base_url=store_base()),
-        resolve_cover_names(appids, country=cc, griddb_key=griddb_key),
+        resolve_cover_names(appids, country=cc, lang=region_lang(), griddb_key=griddb_key),
         load_profile_assets(steamid64),
         load_card_background_name(steamid64),
     )

@@ -9,7 +9,7 @@ from ..steam_config import SteamConfig
 from ..utils.api.family import get_shared_library_apps, get_family_group_for_user
 from ..utils.api.models import SharedLibraryApp
 from ..utils.helper.bind import is_logged_in
-from ..utils.helper.config import api_base, region_cc, griddb_cover_key
+from ..utils.helper.config import api_base, region_cc, region_lang, griddb_cover_key
 from ..utils.helper.library import LibraryGame, visible_games
 from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_owned_games
@@ -82,6 +82,7 @@ async def build_game_wall(steamid64: str) -> bytes:
     covers = await resolve_cover_names(
         [game.appid for game in played],
         country=region_cc(),
+        lang=region_lang(),
         griddb_key=griddb_key,
     )
 
@@ -149,6 +150,7 @@ async def build_recommend_pick(steamid64: str) -> bytes:
         resolve_cover_names(
             [candidate.appid for candidate in picked],
             country=region_cc(),
+            lang=region_lang(),
             griddb_key=griddb_key,
         ),
         load_card_background_name(steamid64),
@@ -227,6 +229,7 @@ async def build_family_wall(steamid64: str) -> bytes:
     covers = await resolve_cover_names(
         [game.appid for game in games],
         country=region_cc(),
+        lang=region_lang(),
         griddb_key=griddb_cover_key(),
     )
     wall_games = [

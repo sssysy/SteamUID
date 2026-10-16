@@ -79,6 +79,7 @@ def push_options() -> PushOptions:
         mode=SteamConfig.get_config("PushMode").data,
         with_cover=SteamConfig.get_config("PushImage").data,
         region_cc=region_cc(),
+        region_lang=region_lang(),
         griddb_key=griddb_cover_key(),
     )
 

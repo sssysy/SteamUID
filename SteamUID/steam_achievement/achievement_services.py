@@ -335,7 +335,7 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
         fetch_achievement_schema(ref.appid, keys=keys, cooldown=cooldown),
         load_store_detail(ref.appid, None),
         load_profile_assets(steamid64),
-        resolve_cover_name(ref.appid, country=region_cc(), griddb_key=griddb_key),
+        resolve_cover_name(ref.appid, country=region_cc(), lang=lang, griddb_key=griddb_key),
         _game_icon_url(steamid64, ref.appid, keys=keys, cooldown=cooldown, lang=lang),
     )
 

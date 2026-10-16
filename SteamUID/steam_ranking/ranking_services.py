@@ -90,7 +90,7 @@ async def _game_entries(seconds: Mapping[str, int]) -> list[GameRankingEntry]:
     country = region_cc()
     griddb_key = griddb_cover_key()
     covers, names = await asyncio.gather(
-        resolve_cover_names(appids, country=country, griddb_key=griddb_key),
+        resolve_cover_names(appids, country=country, lang=region_lang(), griddb_key=griddb_key),
         resolve_game_names(appids, cc=country, lang=region_lang()),
     )
 
@@ -113,7 +113,7 @@ async def _game_badge(appid: str, fallback_name: str) -> RankingBadge:
     name, meta, covers = await asyncio.gather(
         resolve_game_name(appid, cc=country, lang=lang),
         pics_game_meta(appid, lang=lang),
-        resolve_cover_names([appid], country=country, griddb_key=griddb_key),
+        resolve_cover_names([appid], country=country, lang=lang, griddb_key=griddb_key),
     )
     icon_name = await download_image_name(meta["icon_url"]) if "icon_url" in meta else ""
     logo_name = icon_name or (covers[appid] if appid in covers else "")

@@ -11,7 +11,7 @@ from ..steam_config import SteamConfig
 from .status_services import PERSONA_TEXT
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import session_ids
-from ..utils.helper.config import region_cc, griddb_cover_key
+from ..utils.helper.config import region_cc, region_lang, griddb_cover_key
 from ..utils.helper.profile import load_mini_background_name, load_initiator_card_background_name
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steam_api import fetch_player_summaries
@@ -99,10 +99,10 @@ def _active_accounts(binds: Sequence[SteamBind], summaries: Mapping[str, PlayerS
     return actives
 
 
-async def _background_url(account: _ActiveAccount, *, country: str, griddb_key: str) -> str:
+async def _background_url(account: _ActiveAccount, *, country: str, lang: str, griddb_key: str) -> str:
     """背景直链：游戏中用游戏封面，在线用迷你资料背景；取不到留空串。"""
     if account.appid:
-        name = await resolve_cover_name(account.appid, country=country, griddb_key=griddb_key)
+        name = await resolve_cover_name(account.appid, country=country, lang=lang, griddb_key=griddb_key)
     else:
         name = await load_mini_background_name(account.steamid64)
     return get_img_cache_url(name)
@@ -157,11 +157,12 @@ async def build_group_status_image(ev: Event) -> bytes:
         raise ValueError(_NO_MEMBER)
 
     country = region_cc()
+    lang = region_lang()
     griddb_key = griddb_cover_key()
     shown = actives[:_MAX_MEMBERS]
     loaded, card_bg_name = await asyncio.gather(
         asyncio.gather(
-            *(_background_url(account, country=country, griddb_key=griddb_key) for account in shown),
+            *(_background_url(account, country=country, lang=lang, griddb_key=griddb_key) for account in shown),
             return_exceptions=True,
         ),
         load_initiator_card_background_name(ev),

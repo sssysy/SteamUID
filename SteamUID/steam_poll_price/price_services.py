@@ -126,6 +126,7 @@ async def _drop_card(drop: _Drop) -> PriceDropCard:
     cover_name = await resolve_cover_name(
         drop.appid,
         country=cc,
+        lang=region_lang(),
         griddb_key=griddb_cover_key(),
     )
     # 原价优先取本轮 initial_formatted，缺失时回落上一轮现价

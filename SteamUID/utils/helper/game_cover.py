@@ -1,4 +1,4 @@
-"""游戏封面解析：用户区官方图 -> 全球区官方图 -> SteamGridDB 社区封面。
+"""游戏封面解析：用户区官方图 -> steamcmd PICS 官方图 -> SteamGridDB 社区封面。
 
 命中后把图片落 img_cache 并返回文件名，直链拼接由上层渲染层负责。
 """
@@ -15,7 +15,7 @@ from gsuid_core.logger import logger
 from ..api.cover import fetch_griddb_grids, get_official_cover_url, fetch_griddb_grids_batch
 from ..api.models import GridDbGrid, GridDbBatchEntry, GridDbGridsResponse
 from ..downloader import download
-from .game_detail import load_store_detail
+from .game_detail import pics_game_meta, load_store_detail
 from ..database.model_cache import SteamCache
 
 _TAG = "[Steam·游戏封面]"
@@ -26,6 +26,8 @@ _GRIDDB_CACHE_TYPE = "griddb_cover"
 _DETAIL_CHUNK = 10
 # GridDB 批量查询单请求携带的游戏数上限
 _GRIDDB_BATCH_SIZE = 50
+# PICS 只有单 appid 接口，回退时按并发上限逐个补
+_PICS_BATCH = 10
 
 
 async def download_image_name(url: str) -> str:
@@ -49,6 +51,25 @@ async def _store_header(appid: str, cc: str | None) -> str:
         return ""
     data = entry["data"]
     return data["header_image"] if "header_image" in data else ""
+
+
+async def _pics_cover(appid: str, lang: str) -> str:
+    """steamcmd PICS 的官方横板直链；未收录或请求失败返回空串。"""
+    meta = await pics_game_meta(appid, lang=lang)
+    return meta["cover_url"] if "cover_url" in meta else ""
+
+
+async def _pics_cover_urls(appids: Sequence[str], lang: str) -> list[str]:
+    """并发取 PICS 横板直链，返回与入参对齐的列表；未收录的位置回落空串。"""
+    if not appids:
+        return []
+    sem = asyncio.Semaphore(_PICS_BATCH)
+
+    async def one(appid: str) -> str:
+        async with sem:
+            return await _pics_cover(appid, lang)
+
+    return list(await asyncio.gather(*(one(appid) for appid in appids)))
 
 
 def _first_grid_url(payload: GridDbGridsResponse) -> str:
@@ -80,7 +101,7 @@ async def _griddb_cover(appid: str, api_key: str) -> str:
     return url
 
 
-async def resolve_cover_name(appid: str, *, country: str, griddb_key: str) -> str:
+async def resolve_cover_name(appid: str, *, country: str, lang: str, griddb_key: str) -> str:
     """三级回退解析封面并落 img_cache，返回文件名；全部失败返回空串。
 
     命中过的直链写入 SteamCache，后续轮次直接复用；缓存直链失效则重新回退。
@@ -94,10 +115,7 @@ async def resolve_cover_name(appid: str, *, country: str, griddb_key: str) -> st
         if name:
             return name
 
-    if country:
-        candidates = [await _store_header(appid, country), await _store_header(appid, None)]
-    else:
-        candidates = [await _store_header(appid, None)]
+    candidates = [await _store_header(appid, country.strip() or None), await _pics_cover(appid, lang)]
     if griddb_key:
         candidates.append(await _griddb_cover(appid, griddb_key))
 
@@ -153,11 +171,12 @@ async def resolve_cover_names(
     appids: Sequence[str],
     *,
     country: str,
+    lang: str,
     griddb_key: str,
 ) -> dict[str, str]:
     """批量解析封面并落 img_cache，返回 appid 到文件名的映射（只含成功项）。
 
-    回退顺序：官方 CDN 直链 -> 商店详情 header_image -> SteamGridDB 社区封面。
+    回退顺序：官方 CDN 直链 -> 商店详情 header_image -> PICS 官方图 -> SteamGridDB。
     """
     ordered = list(dict.fromkeys(appid.strip() for appid in appids if appid.strip()))
     if not ordered:
@@ -177,6 +196,13 @@ async def resolve_cover_names(
         # 详情接口返回的常与官方直链同址，同址不再重复下载
         candidates = [url if url != official[appid] else "" for appid, url in zip(chunk, details)]
         for appid, name in zip(chunk, await _download_names(candidates)):
+            if name:
+                names[appid] = name
+
+    remaining = [appid for appid in ordered if appid not in names]
+    if remaining:
+        pics_urls = await _pics_cover_urls(remaining, lang)
+        for appid, name in zip(remaining, await _download_names(pics_urls)):
             if name:
                 names[appid] = name
 

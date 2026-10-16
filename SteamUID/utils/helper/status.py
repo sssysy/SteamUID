@@ -55,6 +55,7 @@ class PushOptions:
     mode: str
     with_cover: bool
     region_cc: str
+    region_lang: str
     griddb_key: str
 
 

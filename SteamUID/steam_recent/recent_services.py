@@ -42,7 +42,7 @@ async def _game_entries(ranked: Sequence[tuple[str, int, str]]) -> list[GameRank
     country = region_cc()
     griddb_key = griddb_cover_key()
     covers, names = await asyncio.gather(
-        resolve_cover_names(appids, country=country, griddb_key=griddb_key),
+        resolve_cover_names(appids, country=country, lang=region_lang(), griddb_key=griddb_key),
         resolve_game_names(appids, cc=country, lang=region_lang()),
     )
 

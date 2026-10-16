@@ -36,7 +36,6 @@ from ..utils.helper.announce import (
     subscribe_fields,
     baseline_from_json,
     resolve_game_badge,
-    resolve_pics_badge,
     is_new_announcement,
 )
 from ..utils.helper.game_cover import resolve_cover_names
@@ -190,17 +189,11 @@ async def build_announce_list_card(ev: Event) -> bytes:
 
     cc = region_cc()
     lang = region_lang()
-    covers = await resolve_cover_names(appids, country=cc, griddb_key=_griddb_key())
+    covers = await resolve_cover_names(appids, country=cc, lang=lang, griddb_key=_griddb_key())
     entries: list[AnnounceEntry] = []
     for appid in appids:
         name = _name_of(rows, appid)
         cover_url = get_img_cache_url(covers[appid]) if appid in covers else ""
-        if not cover_url:
-            # 未发售 / 商店未收录的游戏官方封面必然取不到，退回 PICS 的官方图
-            pics_name, cover_name = await resolve_pics_badge(appid, lang=lang)
-            if name == appid and pics_name != appid:
-                name = pics_name
-            cover_url = get_img_cache_url(cover_name) if cover_name else ""
         entries.append(
             AnnounceEntry(
                 appid=appid,

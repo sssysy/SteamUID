@@ -256,7 +256,12 @@ async def _resolve_covers(entries: Sequence[_Entry], options: PushOptions) -> di
             wanted.add(event.appid)
     ordered = sorted(wanted)
     results = await asyncio.gather(
-        *(resolve_cover_name(appid, country=options.region_cc, griddb_key=options.griddb_key) for appid in ordered),
+        *(
+            resolve_cover_name(
+                appid, country=options.region_cc, lang=options.region_lang, griddb_key=options.griddb_key
+            )
+            for appid in ordered
+        ),
         return_exceptions=True,
     )
     covers: dict[str, str] = {}

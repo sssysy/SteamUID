@@ -154,14 +154,6 @@ def subscribe_ts(extra_data: str | None) -> int:
     return payload["ts"] if "ts" in payload else 0
 
 
-async def resolve_pics_badge(appid: str, *, lang: str) -> tuple[str, str]:
-    """PICS 里的游戏名与已落盘封面文件名；未收录返回 appid 与空串。"""
-    meta = await pics_game_meta(appid, lang=lang)
-    name = meta["name"] if "name" in meta else appid
-    cover_url = meta["cover_url"] if "cover_url" in meta else ""
-    return name, await download_image_name(cover_url)
-
-
 async def resolve_game_badge(appid: str, *, cc: str, lang: str, griddb_key: str) -> tuple[str, str]:
     """卡片顶部的游戏名与方形 logo 文件名：PICS 方形图标优先，取不到回落官方封面。"""
     name = await resolve_game_name(appid, cc=cc, lang=lang) or appid
@@ -169,4 +161,4 @@ async def resolve_game_badge(appid: str, *, cc: str, lang: str, griddb_key: str)
     icon = await download_image_name(meta["icon_url"]) if "icon_url" in meta else ""
     if icon:
         return name, icon
-    return name, await resolve_cover_name(appid, country=cc, griddb_key=griddb_key)
+    return name, await resolve_cover_name(appid, country=cc, lang=lang, griddb_key=griddb_key)

@@ -151,7 +151,7 @@ async def build_price_list_card(ev: Event) -> bytes:
     cc = region_cc()
     prices, covers, details = await asyncio.gather(
         fetch_price_overviews(appids, cc=cc),
-        resolve_cover_names(appids, country=cc, griddb_key=griddb_cover_key()),
+        resolve_cover_names(appids, country=cc, lang=region_lang(), griddb_key=griddb_cover_key()),
         _load_details(appids, cc),
     )
     names = await resolve_game_names(appids, cc=cc, lang=region_lang(), details=dict(zip(appids, details)))
