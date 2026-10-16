@@ -9,7 +9,10 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from .steamid import auto2steamid64
+from .steamid import auto2steamid64, parse_profile_page
+from ..key_pool import has_api_key
+from .steam_api import fetch_vanity_steamid64
+from ...steam_config import SteamConfig
 
 _TAG = "[Steam·账户绑定]"
 _NET_TAG = "[Steam·网络请求]"
@@ -31,14 +34,39 @@ def sender_text(ev: Event, key: str) -> str:
     return ""
 
 
-def resolve_target(ev: Event, *, allow_at: bool) -> tuple[str, str | None]:
-    """分层解析目标：@ 层（受开关约束）→ steamid / 好友码层。"""
+async def resolve_target(ev: Event, *, allow_at: bool) -> tuple[str, str | None]:
+    """分层解析目标：@ 层（受开关约束）→ 个人资料页 / steamid / 好友码层。"""
     user_id = ev.user_id
     if ev.at:
         if not allow_at:
             raise ValueError("管理员未开放 @ 他人功能")
         user_id = ev.at
-    return user_id, auto2steamid64(ev.text)
+    return user_id, await resolve_steamid64(ev.text)
+
+
+async def resolve_steamid64(raw: str) -> str | None:
+    """把个人资料页 / steamid / 好友码统一成 steamid64；无法识别返回 None。"""
+    direct = auto2steamid64(raw)
+    if direct is not None:
+        return direct
+
+    page = parse_profile_page(raw)
+    if page is None:
+        return None
+    if page.kind == "steamid64":
+        return page.value
+
+    keys = SteamConfig.get_config("SteamAPIKey").data
+    if not has_api_key(keys):
+        raise ValueError("未配置 Steam API Key，无法解析个人资料页")
+    steamid64 = await fetch_vanity_steamid64(
+        page.value,
+        keys=keys,
+        cooldown=SteamConfig.get_config("KeyPoolCooldown").data,
+    )
+    if steamid64 is None:
+        raise ValueError("未找到该个人资料页中的账号")
+    return steamid64
 
 
 def resolve_viewer(ev: Event, *, allow_at: bool) -> str:

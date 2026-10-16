@@ -17,8 +17,8 @@ status_sv = SV("steam用户相关")
 @status_sv.on_command("状态", block=True)
 @command_guard
 async def steam_status(bot: Bot, ev: Event) -> None:
-    """steam状态[@他人|steamid|好友码]：渲染目标账号的迷你资料卡。"""
-    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    """steam状态[@他人|个人资料页|steamid|好友码]：渲染目标账号的迷你资料卡。"""
+    user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await get_main_steamid64(ev, user_id)
     if steamid64 is None:

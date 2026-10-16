@@ -98,6 +98,19 @@ def _parse_profile_xml(xml: str) -> tuple[str, str, str]:
     return name, avatar, clean_description(root.findtext("summary") or "")
 
 
+async def load_custom_url(steamid64: str) -> str:
+    """取个人资料页的自定义域名（customURL）；未设置时返回空串。"""
+    xml = await get_community_profile_xml(steamid64, base_url=community_base())
+    try:
+        root = ElementTree.fromstring(xml)
+    except ElementTree.ParseError as e:
+        raise ValueError("Steam 资料解析失败，请稍后重试") from e
+
+    if root.find("error") is not None:
+        raise ValueError("该 steamid 不存在或资料不可见")
+    return (root.findtext("customURL") or "").strip()
+
+
 async def _fetch_base_profile(steamid64: str, *, force: bool = False) -> SteamProfile:
     xml = await get_community_profile_xml(steamid64, base_url=community_base())
     name, avatar, summary = _parse_profile_xml(xml)

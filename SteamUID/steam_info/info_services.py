@@ -9,7 +9,16 @@ from ..utils.api.models import PlayerSummary, OwnedGamesPayload
 from ..utils.helper.level import load_level_badge
 from ..utils.helper.price import sum_library_value
 from ..utils.helper.config import region, region_cc, use_profile_card_bg
-from ..utils.helper.profile import load_profile_assets, load_card_background_name
+from ..utils.helper.command import resolve_steamid64
+from ..utils.helper.profile import load_custom_url, load_profile_assets, load_card_background_name
+from ..utils.helper.steamid import (
+    steamid64_to_hex_id,
+    steamid64_to_steamid3,
+    steamid64_to_legacy_id,
+    vanity_to_community_url,
+    steamid64_to_friend_code,
+    steamid64_to_community_url,
+)
 from ..utils.helper.steam_api import fetch_owned_games, fetch_player_summaries
 from ..utils.render.html.info_card import InfoCard, render_info_card
 from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
@@ -103,3 +112,28 @@ async def build_steam_info(steamid64: str) -> bytes:
         game_count=game_count,
     )
     return await render_info_card(card)
+
+
+async def build_identity_text(raw: str) -> str:
+    """把个人资料页 / steamid / 好友码转成多格式身份文本。"""
+    text = raw.strip()
+    if not text:
+        raise ValueError("请传入个人资料页、steamid 或好友码")
+
+    steamid64 = await resolve_steamid64(text)
+    if steamid64 is None:
+        raise ValueError("无法识别的输入，请传入个人资料页 / steamid / 好友码")
+
+    custom_url = await load_custom_url(steamid64)
+    lines = [
+        "[Steam] 个人身份列表：",
+        f"SteamID64: {steamid64}",
+        f"SteamID64 (旧): {steamid64_to_legacy_id(steamid64)}",
+        f"steamID3: {steamid64_to_steamid3(steamid64)}",
+        f"SteamID32 (好友码): {steamid64_to_friend_code(steamid64)}",
+        f"SteamHEXID: {steamid64_to_hex_id(steamid64)}",
+    ]
+    if custom_url:
+        lines.append(f"Steam 自定社区 URL：{vanity_to_community_url(custom_url)}")
+    lines.append(f"Steam 原始社区 URL：{steamid64_to_community_url(steamid64)}")
+    return "\n".join(lines)

@@ -21,7 +21,7 @@ bind_sv = SV("Steam绑定账号")
 @bind_sv.on_command("绑定")
 @command_guard
 async def steam_bind(bot: Bot, ev: Event) -> None:
-    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await request_openid_login(bot, ev)
     await bind_account(ev, user_id, steamid64)
@@ -31,7 +31,7 @@ async def steam_bind(bot: Bot, ev: Event) -> None:
 @bind_sv.on_command("解绑")
 @command_guard
 async def steam_unbind(bot: Bot, ev: Event) -> None:
-    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await request_openid_login(bot, ev)
     await unbind_account(ev, user_id, steamid64)
@@ -41,7 +41,7 @@ async def steam_unbind(bot: Bot, ev: Event) -> None:
 @bind_sv.on_command("查看")
 @command_guard
 async def steam_view(bot: Bot, ev: Event) -> None:
-    user_id, _ = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    user_id, _ = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     await send_bind_card(bot, ev, user_id)
 
 

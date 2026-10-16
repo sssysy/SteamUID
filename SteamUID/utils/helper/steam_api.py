@@ -21,6 +21,7 @@ from ..api.public import (
     get_owned_games,
     get_player_bans,
     get_user_wishlist,
+    resolve_vanity_url,
     get_player_summaries,
     get_achievement_schema,
     get_player_achievements,
@@ -163,3 +164,21 @@ async def fetch_achievement_schema(
         encoded = msgspec.json.encode(entries).decode("utf-8")
         await SteamCache.upsert(_SCHEMA_CACHE_TYPE, appid, encoded, int(time.time()))
     return entries
+
+
+async def _request_vanity_steamid64(vanity: str, key: str) -> str | None:
+    return await resolve_vanity_url(vanity, key=key, base_url=api_base())
+
+
+async def fetch_vanity_steamid64(
+    vanity: str,
+    *,
+    keys: Sequence[str],
+    cooldown: int,
+) -> str | None:
+    """把个人资料页自定义域名换成 steamid64；不存在返回 None，429 换 Key 重试。"""
+    return await request_with_api_key(
+        partial(_request_vanity_steamid64, vanity),
+        keys,
+        cooldown_seconds=cooldown,
+    )

@@ -25,6 +25,7 @@ from .models import (
     StoreSearchResponse,
     CurrentPlayersPayload,
     PartnerEventsResponse,
+    ResolveVanityResponse,
     SchemaForGameResponse,
     AchievementSchemaEntry,
     CurrentPlayersResponse,
@@ -45,6 +46,7 @@ from .endpoints import (
     API_GET_SERVER_INFO,
     COMMUNITY_MINIPROFILE,
     COMMUNITY_PROFILE_XML,
+    API_RESOLVE_VANITY_URL,
     COMMUNITY_BASE_DEFAULT,
     STORE_GET_GAME_DETAILS,
     API_GET_SCHEMA_FOR_GAME,
@@ -434,3 +436,27 @@ async def get_server_info(
 
     payload: ServerInfoPayload = resp.json()
     return payload
+
+
+async def resolve_vanity_url(
+    vanity: str,
+    *,
+    key: str,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> str | None:
+    """把个人资料页自定义域名换成 steamid64；不存在或非个人资料时返回 None。"""
+    url = f"{base_url.rstrip('/')}{API_RESOLVE_VANITY_URL}"
+    params = {"key": key, "vanityurl": vanity, "url_type": 1}
+
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+
+    payload: ResolveVanityResponse = resp.json()
+    response = payload["response"]
+    if "success" not in response or response["success"] != 1:
+        return None
+    if "steamid" not in response:
+        return None
+    return response["steamid"] or None

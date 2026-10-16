@@ -17,7 +17,7 @@ library_sv = SV("steam库存相关")
 @command_guard
 async def steam_game_wall(bot: Bot, ev: Event) -> None:
     """steam游戏墙：把目标账号的游戏库渲染成封面墙。"""
-    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await get_main_steamid64(ev, user_id)
     if steamid64 is None:
@@ -31,7 +31,7 @@ async def steam_game_wall(bot: Bot, ev: Event) -> None:
 @command_guard
 async def steam_play_what(bot: Bot, ev: Event) -> None:
     """steam玩什么：从目标账号游戏库里随机挑三款渲染出图。"""
-    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await get_main_steamid64(ev, user_id)
     if steamid64 is None:

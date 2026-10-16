@@ -15,8 +15,8 @@ vac_sv = SV("steam用户相关")
 @vac_sv.on_command(("vac", "查封禁"), block=True)
 @command_guard
 async def steam_vac(bot: Bot, ev: Event) -> None:
-    """steamvac / steam查封禁[@他人|steamid|好友码]：查询目标账号的封禁汇总。"""
-    user_id, steamid64 = resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    """steamvac / steam查封禁[@他人|个人资料页|steamid|好友码]：查询目标账号的封禁汇总。"""
+    user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
         steamid64 = await get_main_steamid64(ev, user_id)
     if steamid64 is None:

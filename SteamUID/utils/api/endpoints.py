@@ -24,6 +24,7 @@ FAMILY_GET_SHARED_LIBRARY_APPS = "/IFamilyGroupsService/GetSharedLibraryApps/v1"
 # ISteamUser / IPlayerService / ISteamUserStats
 API_GET_PLAYER_SUMMARIES = "/ISteamUser/GetPlayerSummaries/v2/"
 API_GET_PLAYER_BANS = "/ISteamUser/GetPlayerBans/v1/"
+API_RESOLVE_VANITY_URL = "/ISteamUser/ResolveVanityURL/v1/"
 API_GET_OWNED_GAMES = "/IPlayerService/GetOwnedGames/v1/"
 API_GET_RECENTLY_PLAYED_GAMES = "/IPlayerService/GetRecentlyPlayedGames/v1/"
 API_GET_PLAYER_ACHIEVEMENTS = "/ISteamUserStats/GetPlayerAchievements/v1/"

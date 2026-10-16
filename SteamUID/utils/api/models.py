@@ -114,6 +114,16 @@ class PlayerBansPayload(TypedDict, total=False):
     players: list[PlayerBan]
 
 
+class ResolveVanityPayload(TypedDict, total=False):
+    steamid: str
+    success: int
+    message: str
+
+
+class ResolveVanityResponse(TypedDict):
+    response: ResolveVanityPayload
+
+
 class OwnedGame(TypedDict, total=False):
     appid: int
     name: str

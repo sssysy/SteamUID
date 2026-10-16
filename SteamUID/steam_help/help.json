@@ -142,6 +142,16 @@
         "need_sk": false,
         "need_admin": false
       }
+,
+      {
+        "name": "转换",
+        "desc": "把个人资料页 / steamid / 好友码转为多格式身份",
+        "eg": "转换 个人资料页",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
     ]
   },
   "排行统计": {
