@@ -92,6 +92,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "单个 Key 触发 429 后的冷却秒数",
         600,
     ),
+    "NotifyKeyExhausted": GsBoolConfig(
+        "Key 全失效时私信主人",
+        "开启后，所有 Steam API Key 判定失效时私信主人一次",
+        True,
+    ),
     "NotifySwitch": GsBoolConfig(
         "开启用户状态变化通知",
         "关闭后仍会轮询并记录，但不再推送",
