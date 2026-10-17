@@ -79,6 +79,17 @@ class PicsMeta(TypedDict, total=False):
     cover_url: str
 
 
+async def cached_pics_game_meta(appid: str, *, lang: str) -> PicsMeta | None:
+    """只读 PICS 缓存；未命中返回 None，不触发网络请求。"""
+    aid = appid.strip()
+    if not aid.isdigit():
+        return None
+    cached = await SteamCache.get_value(_PICS_CACHE_TYPE, f"{aid}|{lang}")
+    if not cached:
+        return None
+    return msgspec.json.decode(cached, type=PicsMeta)
+
+
 def _pics_meta(payload: PicsInfoResponse, appid: str, lang: str) -> PicsMeta:
     """从 PICS 提取本地化名、方形图标与官方封面直链；缺失项各自回落。"""
     data = payload["data"] if "data" in payload else {}

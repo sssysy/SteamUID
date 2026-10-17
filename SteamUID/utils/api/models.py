@@ -100,6 +100,20 @@ class PlayerSummariesResponse(TypedDict, total=False):
     response: PlayerSummariesPayload
 
 
+class FriendEntry(TypedDict, total=False):
+    steamid: str
+    relationship: str
+    friend_since: int
+
+
+class FriendListPayload(TypedDict, total=False):
+    friends: list[FriendEntry]
+
+
+class FriendListResponse(TypedDict, total=False):
+    friendslist: FriendListPayload
+
+
 class PlayerBan(TypedDict, total=False):
     SteamId: str
     CommunityBanned: bool

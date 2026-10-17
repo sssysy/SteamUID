@@ -173,6 +173,7 @@ async def build_group_status_image(ev: Event) -> bytes:
     )
     return await render_group_status(
         list(pills),
-        has_more=len(actives) > _MAX_MEMBERS,
+        title="steam群友状态",
+        more_text="..." if len(actives) > _MAX_MEMBERS else "",
         card_bg_url=resolve_card_bg_url(card_bg_name),
     )

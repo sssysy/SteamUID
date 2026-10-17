@@ -9,6 +9,7 @@ from .client import STEAM_STORE_COOKIES, make_async_client, request_ok_response
 from .models import (
     PlayerBan,
     StoreEvent,
+    FriendEntry,
     WishlistItem,
     PlayerSummary,
     AppDetailsEntry,
@@ -18,6 +19,7 @@ from .models import (
     PlayerBansPayload,
     ServerInfoPayload,
     YearReviewPayload,
+    FriendListResponse,
     MiniprofilePayload,
     OwnedGamesResponse,
     PlayerStatsPayload,
@@ -41,6 +43,7 @@ from .endpoints import (
     API_BASE_DEFAULT,
     API_GET_WISHLIST,
     STORE_BASE_DEFAULT,
+    API_GET_FRIEND_LIST,
     API_GET_OWNED_GAMES,
     API_GET_PLAYER_BANS,
     API_GET_SERVER_INFO,
@@ -103,6 +106,28 @@ async def get_player_bans(
 
     payload: PlayerBansPayload = resp.json()
     return payload["players"] if "players" in payload else []
+
+
+async def get_friend_list(
+    steamid64: str,
+    *,
+    key: str,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> list[FriendEntry]:
+    """查询玩家好友列表原始条目，目标账号的好友列表需对调用方公开。"""
+    url = f"{base_url.rstrip('/')}{API_GET_FRIEND_LIST}"
+    params = {"key": key, "steamid": steamid64}
+
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+
+    payload: FriendListResponse = resp.json()
+    if "friendslist" not in payload:
+        return []
+    friendslist = payload["friendslist"]
+    return friendslist["friends"] if "friends" in friendslist else []
 
 
 async def get_game_details(

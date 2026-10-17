@@ -1,10 +1,11 @@
-"""游戏封面解析：用户区官方图 -> steamcmd PICS 官方图 -> SteamGridDB 社区封面。
+"""游戏封面解析：商店封面 -> steamcmd PICS 官方图 -> SteamGridDB 社区封面。
 
-命中后把图片落 img_cache 并返回文件名，直链拼接由上层渲染层负责。
+命中后把图片落 img_cache，并返回文件名与可复用的 PICS 译名。
 """
 
 import time
 import asyncio
+from dataclasses import dataclass
 from collections.abc import Sequence
 
 import httpx
@@ -15,7 +16,7 @@ from gsuid_core.logger import logger
 from ..api.cover import fetch_griddb_grids, get_official_cover_url, fetch_griddb_grids_batch
 from ..api.models import GridDbGrid, GridDbBatchEntry, GridDbGridsResponse
 from ..downloader import download
-from .game_detail import pics_game_meta, load_store_detail
+from .game_detail import pics_game_meta, load_store_detail, cached_pics_game_meta
 from ..database.model_cache import SteamCache
 
 _TAG = "[Steam·游戏封面]"
@@ -28,6 +29,14 @@ _DETAIL_CHUNK = 10
 _GRIDDB_BATCH_SIZE = 50
 # PICS 只有单 appid 接口，回退时按并发上限逐个补
 _PICS_BATCH = 10
+
+
+@dataclass(frozen=True)
+class CoverResolution:
+    """封面文件名与 PICS 本地化游戏名；未回退 steamcmd 时名字为空串。"""
+
+    image_name: str
+    game_name: str = ""
 
 
 async def download_image_name(url: str) -> str:
@@ -101,33 +110,56 @@ async def _griddb_cover(appid: str, api_key: str) -> str:
     return url
 
 
-async def resolve_cover_name(appid: str, *, country: str, lang: str, griddb_key: str) -> str:
-    """三级回退解析封面并落 img_cache，返回文件名；全部失败返回空串。
+async def resolve_cover(appid: str, *, country: str, lang: str, griddb_key: str) -> CoverResolution:
+    """惰性回退解析封面与 PICS 译名；商店封面成功时不请求 steamcmd。"""
+    aid = appid.strip()
+    if not aid:
+        return CoverResolution(image_name="")
 
-    命中过的直链写入 SteamCache，后续轮次直接复用；缓存直链失效则重新回退。
-    """
-    if not appid.strip():
-        return ""
-
-    cached = await SteamCache.get_value(_CACHE_TYPE, appid)
+    cached = await SteamCache.get_value(_CACHE_TYPE, aid)
     if cached:
-        name = await download_image_name(cached)
-        if name:
-            return name
+        image_name = await download_image_name(cached)
+        if image_name:
+            cached_meta = await cached_pics_game_meta(aid, lang=lang)
+            game_name = ""
+            if (
+                cached_meta is not None
+                and "cover_url" in cached_meta
+                and cached_meta["cover_url"] == cached
+                and "name" in cached_meta
+            ):
+                game_name = cached_meta["name"]
+            return CoverResolution(image_name, game_name)
 
-    candidates = [await _store_header(appid, country.strip() or None), await _pics_cover(appid, lang)]
+    store_url = await _store_header(aid, country.strip() or None)
+    store_name = await download_image_name(store_url)
+    if store_name:
+        await SteamCache.upsert(_CACHE_TYPE, aid, store_url, int(time.time()))
+        return CoverResolution(store_name)
+
+    pics_meta = await pics_game_meta(aid, lang=lang)
+    pics_name = pics_meta["name"] if "name" in pics_meta else ""
+    if "cover_url" in pics_meta:
+        pics_cover = pics_meta["cover_url"]
+        pics_image_name = await download_image_name(pics_cover)
+        if pics_image_name:
+            await SteamCache.upsert(_CACHE_TYPE, aid, pics_cover, int(time.time()))
+            return CoverResolution(pics_image_name, pics_name)
+
     if griddb_key:
-        candidates.append(await _griddb_cover(appid, griddb_key))
+        grid_url = await _griddb_cover(aid, griddb_key)
+        grid_image_name = await download_image_name(grid_url)
+        if grid_image_name:
+            await SteamCache.upsert(_CACHE_TYPE, aid, grid_url, int(time.time()))
+            return CoverResolution(grid_image_name, pics_name)
 
-    for url in candidates:
-        if not url:
-            continue
-        name = await download_image_name(url)
-        if not name:
-            continue
-        await SteamCache.upsert(_CACHE_TYPE, appid, url, int(time.time()))
-        return name
-    return ""
+    return CoverResolution(image_name="", game_name=pics_name)
+
+
+async def resolve_cover_name(appid: str, *, country: str, lang: str, griddb_key: str) -> str:
+    """只取封面文件名；译名由 resolve_cover 的调用方按需复用。"""
+    resolved = await resolve_cover(appid, country=country, lang=lang, griddb_key=griddb_key)
+    return resolved.image_name
 
 
 async def _download_names(urls: Sequence[str]) -> list[str]:

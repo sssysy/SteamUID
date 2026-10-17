@@ -10,6 +10,7 @@ from .status_services import build_status_image
 from ..utils.helper.bind import get_main_steamid64
 from ..utils.helper.command import command_guard, resolve_target
 from .group_status_services import build_group_status_image
+from .friend_status_services import build_friend_status_image
 
 status_sv = SV("steam用户相关")
 
@@ -32,3 +33,10 @@ async def steam_status(bot: Bot, ev: Event) -> None:
 async def steam_group_status(bot: Bot, ev: Event) -> None:
     """steam群友状态：本群已绑定群友的实时在线与游戏状态。"""
     await bot.send(MessageSegment.image(await build_group_status_image(ev)))
+
+
+@status_sv.on_command("好友状态", block=True)
+@command_guard
+async def steam_friend_status(bot: Bot, ev: Event) -> None:
+    """steam好友状态[@他人|个人资料页|steamid|好友码]：在线好友列表。"""
+    await bot.send(MessageSegment.image(await build_friend_status_image(ev)))

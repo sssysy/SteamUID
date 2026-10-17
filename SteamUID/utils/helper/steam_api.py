@@ -10,6 +10,7 @@ from .config import api_base
 from ..key_pool import request_with_api_key
 from ..api.models import (
     PlayerBan,
+    FriendEntry,
     WishlistItem,
     PlayerSummary,
     OwnedGamesPayload,
@@ -18,6 +19,7 @@ from ..api.models import (
     RecentlyPlayedGamesPayload,
 )
 from ..api.public import (
+    get_friend_list,
     get_owned_games,
     get_player_bans,
     get_user_wishlist,
@@ -52,6 +54,24 @@ async def fetch_player_summaries(
         chunk = ids[start : start + SUMMARY_CHUNK]
         players.extend(await request_with_api_key(partial(_request_summaries, chunk), keys, cooldown_seconds=cooldown))
     return players
+
+
+async def _request_friend_list(steamid64: str, key: str) -> list[FriendEntry]:
+    return await get_friend_list(steamid64, key=key, base_url=api_base())
+
+
+async def fetch_friend_list(
+    steamid64: str,
+    *,
+    keys: Sequence[str],
+    cooldown: int,
+) -> list[FriendEntry]:
+    """查询目标账号好友列表，429 由密钥池换 Key 重试。"""
+    return await request_with_api_key(
+        partial(_request_friend_list, steamid64),
+        keys,
+        cooldown_seconds=cooldown,
+    )
 
 
 async def _request_player_bans(steamid64: str, key: str) -> list[PlayerBan]:

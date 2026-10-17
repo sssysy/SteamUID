@@ -30,7 +30,7 @@ from .html.game_status import (
     AchievementItem,
     render_game_status,
 )
-from ..helper.game_cover import resolve_cover_name
+from ..helper.game_cover import CoverResolution, resolve_cover
 from .html.static_assets import get_img_cache_url, get_default_avatar_url
 
 _TAG = "[Steam·状态推送]"
@@ -104,7 +104,7 @@ def _partition(entries: Sequence[_Entry]) -> tuple[list[_Entry], list[_Entry]]:
 
 def _card_groups(
     cards: Sequence[_Entry],
-    covers: dict[str, str],
+    covers: dict[str, CoverResolution],
     avatars: dict[str, str],
     frames: dict[str, str],
     icons: dict[str, str],
@@ -188,7 +188,7 @@ def _events_of(entries: Sequence[_Entry]) -> list[UserStatusEvent]:
 def _card_item(
     event: UserStatusEvent,
     name: str,
-    covers: dict[str, str],
+    covers: dict[str, CoverResolution],
     avatars: dict[str, str],
     frames: dict[str, str],
     options: PushOptions,
@@ -196,15 +196,19 @@ def _card_item(
     avatar_url = get_default_avatar_url()
     if event.avatar in avatars:
         avatar_url = avatars[event.avatar]
+    game_name = event.game_name
     cover_url = ""
     if options.with_cover and event.appid in covers:
-        cover_url = covers[event.appid]
+        resolved = covers[event.appid]
+        if resolved.game_name:
+            game_name = resolved.game_name
+        cover_url = get_img_cache_url(resolved.image_name)
     frame_url = frames[event.steamid64] if event.steamid64 in frames else ""
     return GameStatusItem(
         kind=event.kind,
         nickname=hide_id(event.nickname or event.steamid64),
         group_name=name,
-        game_name=event.game_name or event.appid,
+        game_name=game_name or event.appid,
         avatar_url=avatar_url,
         frame_url=frame_url,
         cover_url=cover_url,
@@ -246,8 +250,8 @@ def _achievement_item(
     )
 
 
-async def _resolve_covers(entries: Sequence[_Entry], options: PushOptions) -> dict[str, str]:
-    """开关开启时，按 appid 去重解析封面直链；关闭时不做任何请求。"""
+async def _resolve_covers(entries: Sequence[_Entry], options: PushOptions) -> dict[str, CoverResolution]:
+    """开关开启时，按 appid 去重解析封面与译名；关闭时不做任何请求。"""
     if not options.with_cover:
         return {}
     wanted: set[str] = set()
@@ -257,20 +261,18 @@ async def _resolve_covers(entries: Sequence[_Entry], options: PushOptions) -> di
     ordered = sorted(wanted)
     results = await asyncio.gather(
         *(
-            resolve_cover_name(
-                appid, country=options.region_cc, lang=options.region_lang, griddb_key=options.griddb_key
-            )
+            resolve_cover(appid, country=options.region_cc, lang=options.region_lang, griddb_key=options.griddb_key)
             for appid in ordered
         ),
         return_exceptions=True,
     )
-    covers: dict[str, str] = {}
+    covers: dict[str, CoverResolution] = {}
     for key, result in zip(ordered, results):
         if isinstance(result, BaseException):
             logger.warning(f"{_TAG} 封面解析失败 appid={key}: {type(result).__name__}")
             continue
-        if result:
-            covers[key] = get_img_cache_url(result)
+        if result.image_name or result.game_name:
+            covers[key] = result
     return covers
 
 

@@ -17,12 +17,12 @@ body {
 <body>
 <div class="group-status-card" id="steam-group-status-card">
   <div class="group-status-header">
-    <div class="group-status-title">steam群友状态</div>
+    <div class="group-status-title">{{ title }}</div>
   </div>
 
-  <div class="pill-list">{{ items_html }}</div>
+  <div class="pill-list{% if columns == 2 %} two-col{% endif %}"{% if columns == 2 %} style="grid-template-rows: repeat({{ rows }}, auto);"{% endif %}>{{ items_html }}</div>
 
-  {% if has_more %}<div class="more-dots">...</div>{% endif %}
+  {% if more_text %}<div class="more-dots">{{ more_text }}</div>{% endif %}
 
   {{ footer_html }}
 </div>
