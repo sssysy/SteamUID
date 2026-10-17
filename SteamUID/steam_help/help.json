@@ -159,8 +159,17 @@
     "data": [
       {
         "name": "个人排行",
-        "desc": "自己在本群的游戏时长排行",
+        "desc": "当前主账号的 Steam 官方游戏时长排行",
         "eg": "排行",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "群排行",
+        "desc": "自己在本群的游戏时长排行",
+        "eg": "群排行",
         "highlight": 6,
         "need_ck": false,
         "need_sk": false,

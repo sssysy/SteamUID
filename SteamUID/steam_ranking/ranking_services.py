@@ -1,4 +1,4 @@
-"""四种排行卡片的数据聚合与出图：个人 / 群玩家 / 群游戏 / 群游戏玩家。"""
+"""四种群内排行卡片的数据聚合与出图：个人 / 群玩家 / 群游戏 / 群游戏玩家。"""
 
 import asyncio
 from collections import defaultdict
@@ -238,7 +238,7 @@ async def build_group_game_player_ranking(ev: Event) -> bytes:
 
 
 async def build_self_ranking(ev: Event, *, allow_at: bool) -> bytes:
-    """steam排行[steamid/好友码] [条数]：目标在本群的游戏时长排行。"""
+    """steam群排行[steamid/好友码] [条数]：目标在本群的游戏时长排行。"""
     if not ev.group_id:
         raise ValueError("请在群聊中使用此功能")
 
@@ -273,7 +273,7 @@ async def build_self_ranking(ev: Event, *, allow_at: bool) -> bytes:
         load_card_background_name(target_steamids[0]),
     )
     return await render_game_ranking(
-        f"steam个人排行 Top{len(entries)}",
+        f"steam群排行 Top{len(entries)}",
         entries,
         account,
         card_bg_url=resolve_card_bg_url(card_bg_name),

@@ -1,4 +1,4 @@
-"""Steam 排行命令：个人 / 群玩家 / 群游戏 / 群游戏玩家 四种游玩时长排行。"""
+"""Steam 排行命令：个人官方时长排行与群内排行。"""
 
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
@@ -13,14 +13,22 @@ from .ranking_services import (
     build_group_game_player_ranking,
 )
 from ..utils.helper.command import command_guard
+from .official_ranking_services import build_official_self_ranking
 
 ranking_sv = SV("steam排行相关")
 
 
 @ranking_sv.on_command(("排行", "排名", "统计"), block=True)
 @command_guard
-async def steam_ranking(bot: Bot, ev: Event) -> None:
-    """steam排行[steamid/好友码] [条数]：目标在本群的游戏时长排行。"""
+async def steam_official_ranking(bot: Bot, ev: Event) -> None:
+    """steam排行[条数]：当前用户主账号的 Steam 官方游戏时长排行。"""
+    await bot.send(MessageSegment.image(await build_official_self_ranking(ev)))
+
+
+@ranking_sv.on_command(("群排行", "群排名", "群统计"), block=True)
+@command_guard
+async def steam_group_ranking(bot: Bot, ev: Event) -> None:
+    """steam群排行[steamid/好友码] [条数]：目标在本群的游戏时长排行。"""
     await bot.send(MessageSegment.image(await build_self_ranking(ev, allow_at=SteamConfig.get_config("AllowAt").data)))
 
 
