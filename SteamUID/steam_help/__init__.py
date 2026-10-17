@@ -97,6 +97,7 @@ async def get_help(pm: int) -> str | bytes:
         cag_bg=textures.cag,
         item_bg=textures.item,
         footer=textures.footer,
+        column=4,
         pm=pm,
     )
 
