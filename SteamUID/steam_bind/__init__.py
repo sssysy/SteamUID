@@ -11,20 +11,26 @@ from .bind_services import (
     switch_account,
     unbind_account,
     refresh_bind_card,
+    cancel_openid_login,
     request_openid_login,
 )
-from ..utils.helper.command import command_guard, resolve_target
+from ..utils.helper.command import command_guard, resolve_target, command_guard_at
 
 bind_sv = SV("Steam绑定账号")
 
 
 @bind_sv.on_command("绑定")
-@command_guard
+@command_guard_at
 async def steam_bind(bot: Bot, ev: Event) -> None:
     user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
+    manual_bind = steamid64 is not None
     if steamid64 is None:
-        steamid64 = await request_openid_login(bot, ev)
+        steamid64 = await request_openid_login(bot, ev, user_id, at_user=True)
+        if steamid64 is None:
+            return
     await bind_account(ev, user_id, steamid64)
+    if manual_bind:
+        cancel_openid_login(ev, user_id)
     await send_bind_card(bot, ev, user_id)
 
 
@@ -33,7 +39,9 @@ async def steam_bind(bot: Bot, ev: Event) -> None:
 async def steam_unbind(bot: Bot, ev: Event) -> None:
     user_id, steamid64 = await resolve_target(ev, allow_at=SteamConfig.get_config("AllowAt").data)
     if steamid64 is None:
-        steamid64 = await request_openid_login(bot, ev)
+        steamid64 = await request_openid_login(bot, ev, user_id)
+        if steamid64 is None:
+            return
     await unbind_account(ev, user_id, steamid64)
     await send_bind_card(bot, ev, user_id)
 

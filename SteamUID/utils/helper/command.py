@@ -8,6 +8,7 @@ import httpx
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 
 from .steamid import auto2steamid64, parse_profile_page
 from ..key_pool import has_api_key
@@ -88,14 +89,24 @@ def _is_key_denied(error: httpx.HTTPStatusError) -> bool:
     return _KEY_DENIED_MARK in error.response.text
 
 
-async def _reply_failure(bot: Bot, error: Exception) -> None:
+async def _send_reply(bot: Bot, ev: Event, text: str, *, at_user: bool) -> None:
+    """按命令要求决定是否把发起人放在回执最前。"""
+    if not at_user:
+        await bot.send(text)
+        return
+    await bot.send([MessageSegment.at(ev.user_id), MessageSegment.text(f"\n{text}")])
+
+
+async def _reply_failure(bot: Bot, ev: Event, error: Exception, *, at_user: bool) -> None:
     """未知错误的统一回执：详细信息只进日志。"""
     logger.exception(f"{_TAG} 命令执行失败: {error!r}")
-    await bot.send("操作失败，请稍后重试")
+    await _send_reply(bot, ev, "操作失败，请稍后重试", at_user=at_user)
 
 
-def command_guard(
+def _command_guard(
     func: Callable[[Bot, Event], Awaitable[None]],
+    *,
+    at_user: bool,
 ) -> Callable[[Bot, Event], Awaitable[None]]:
     """命令错误边界：校验类错误回执原文，未知错误写日志并提示用户。"""
 
@@ -104,17 +115,31 @@ def command_guard(
         try:
             await func(bot, ev)
         except ValueError as e:
-            await bot.send(str(e))
+            await _send_reply(bot, ev, str(e), at_user=at_user)
         except httpx.TimeoutException as e:
             logger.warning(f"{_NET_TAG} 连接 Steam 超时: {type(e).__name__}")
-            await bot.send("连接 Steam 超时，请稍后重试")
+            await _send_reply(bot, ev, "连接 Steam 超时，请稍后重试", at_user=at_user)
         except httpx.HTTPStatusError as e:
             if _is_key_denied(e):
                 logger.warning(f"{_KEY_TAG} API Key 被拒绝，HTTP {e.response.status_code}")
-                await bot.send(_NO_KEY_HINT)
+                await _send_reply(bot, ev, _NO_KEY_HINT, at_user=at_user)
             else:
-                await _reply_failure(bot, e)
+                await _reply_failure(bot, ev, e, at_user=at_user)
         except Exception as e:
-            await _reply_failure(bot, e)
+            await _reply_failure(bot, ev, e, at_user=at_user)
 
     return wrapper
+
+
+def command_guard(
+    func: Callable[[Bot, Event], Awaitable[None]],
+) -> Callable[[Bot, Event], Awaitable[None]]:
+    """默认错误回执，不额外 @ 发起人。"""
+    return _command_guard(func, at_user=False)
+
+
+def command_guard_at(
+    func: Callable[[Bot, Event], Awaitable[None]],
+) -> Callable[[Bot, Event], Awaitable[None]]:
+    """错误回执将发起人放在最前，成功回执仍由命令自行发送。"""
+    return _command_guard(func, at_user=True)

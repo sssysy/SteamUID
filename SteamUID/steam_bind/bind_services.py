@@ -26,6 +26,7 @@ from ..utils.database.model_bind import SteamBind
 _OPENID_TTL = 300.0
 _POLL_INTERVAL = 2.0
 _SUCCESS_URL = "https://github.com/sssysy/SteamUID"
+_LoginOwner = tuple[str, str, str, str]
 
 
 @dataclass
@@ -33,6 +34,7 @@ class _LoginSession:
     """单次 OpenID 登录会话，state 作为会话 key。"""
 
     state: str
+    owner: _LoginOwner
     created_at: float
     status: str = "pending"
     steamid64: str = ""
@@ -44,6 +46,12 @@ _SESSIONS: dict[str, _LoginSession] = {}
 
 def _expired(session: _LoginSession) -> bool:
     return time.monotonic() - session.created_at > _OPENID_TTL
+
+
+def _login_owner(ev: Event, user_id: str) -> _LoginOwner:
+    """同一会话内同一目标用户的网页登录相互独占。"""
+    bot_id, bot_self_id, group_id = session_ids(ev)
+    return bot_id, bot_self_id, group_id, user_id
 
 
 @app.get("/steam/openid")
@@ -93,19 +101,35 @@ async def openid_callback(request: Request) -> Response:
     return RedirectResponse(_SUCCESS_URL, status_code=303)
 
 
-async def request_openid_login(bot: Bot, ev: Event) -> str:
-    """发起网页登录并轮询结果，返回 steamid64；失败抛 ValueError。"""
+async def request_openid_login(
+    bot: Bot,
+    ev: Event,
+    user_id: str,
+    *,
+    at_user: bool = False,
+) -> str | None:
+    """发起网页登录并轮询结果；取消时返回 None，失败抛 ValueError。"""
     base = base_url()
     if not base:
         raise ValueError("未配置 GsCore 公网地址，无法发起 Steam 网页登录")
 
     state = secrets.token_urlsafe(16)
-    session = _LoginSession(state=state, created_at=time.monotonic())
+    session = _LoginSession(
+        state=state,
+        owner=_login_owner(ev, user_id),
+        created_at=time.monotonic(),
+    )
     _SESSIONS[state] = session
 
-    await bot.send(
-        f"1. 请携带steam好友码进行绑定！如：steam绑定12345678\n2. 或在 {int(_OPENID_TTL)} 秒内打开链接通过Openid完成 Steam 绑定：\n{base}/steam/openid?state={state}"
+    prompt = (
+        f"1. 请携带steam好友码进行绑定！如：steam绑定12345678\n"
+        f"2. 或在 {int(_OPENID_TTL)} 秒内打开链接通过Openid完成 Steam 绑定：\n"
+        f"{base}/steam/openid?state={state}"
     )
+    if at_user:
+        await bot.send([MessageSegment.at(ev.user_id), MessageSegment.text(f"\n{prompt}")])
+    else:
+        await bot.send(prompt)
 
     deadline = time.monotonic() + _OPENID_TTL
     try:
@@ -113,11 +137,21 @@ async def request_openid_login(bot: Bot, ev: Event) -> str:
             await asyncio.sleep(_POLL_INTERVAL)
             if session.status == "success":
                 return session.steamid64
+            if session.status == "cancelled":
+                return None
             if session.status == "failed":
                 raise ValueError(f"Steam 登录失败：{session.msg}")
         raise ValueError("Steam 登录超时，请重新发起")
     finally:
         _SESSIONS.pop(state, None)
+
+
+def cancel_openid_login(ev: Event, user_id: str) -> None:
+    """使同一会话目标的待确认网页登录失效，原等待流程静默结束。"""
+    owner = _login_owner(ev, user_id)
+    for session in _SESSIONS.values():
+        if session.owner == owner and session.status == "pending":
+            session.status = "cancelled"
 
 
 async def _assert_scope_bind_free(ev: Event, user_id: str, steamid64: str, name: str) -> None:

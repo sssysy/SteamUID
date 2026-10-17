@@ -97,14 +97,12 @@ async def start_qr_login(bot: Bot, ev: Event) -> None:
     async with SteamQrLogin(api_base_url=api_base()) as session:
         challenge = await session.begin()
         image = await render_qr_png(challenge["challenge_url"])
+        await bot.send(MessageSegment.image(image))
         await bot.send(
-            MessageSegment.node(
-                [
-                    MessageSegment.image(image),
-                    _at_user(ev),
-                    MessageSegment.text(f" {_PREFIX} {_login_hint(ev.user_id)}"),
-                ]
-            )
+            [
+                _at_user(ev),
+                MessageSegment.text(f"\n{_login_hint(ev.user_id)}"),
+            ]
         )
         ready = await _wait_for_confirm(bot, ev, session, challenge["interval"])
 
