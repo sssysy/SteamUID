@@ -285,6 +285,29 @@ class PriceOverview(TypedDict, total=False):
     final_formatted: str
 
 
+class AugmentedPriceAmount(TypedDict):
+    amount: float
+    amountInt: int
+    currency: str
+
+
+class AugmentedDeal(TypedDict, total=False):
+    price: AugmentedPriceAmount
+    regular: AugmentedPriceAmount
+    cut: int
+    timestamp: str
+    expiry: str | None
+
+
+class AugmentedGamePrices(TypedDict, total=False):
+    current: AugmentedDeal
+    lowest: AugmentedDeal | None
+
+
+class AugmentedPricesResponse(TypedDict, total=False):
+    prices: dict[str, AugmentedGamePrices]
+
+
 class Recommendations(TypedDict, total=False):
     total: int
 

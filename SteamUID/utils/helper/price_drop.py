@@ -3,7 +3,7 @@
 只做纯计算与编解码，不碰数据库、网络与渲染，便于直接单测。
 """
 
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import msgspec
 
@@ -17,6 +17,13 @@ BASELINE_TASK = "降价轮询"
 _BASELINE_PREFIX = "price:"
 
 
+PriceMode = Literal["price", "history"]
+
+
+class PriceSubscriptionData(TypedDict):
+    mode: PriceMode
+
+
 class PriceBaseline(TypedDict, total=False):
     """一条价格基线，只存比对与文案需要的字段。"""
 
@@ -25,6 +32,18 @@ class PriceBaseline(TypedDict, total=False):
     discount_percent: int
     initial_formatted: str
     final_formatted: str
+
+
+def subscription_mode(extra_data: str | None) -> PriceMode:
+    """订阅模式：旧订阅没有附加数据时按降价处理。"""
+    if not extra_data:
+        return "price"
+    payload = msgspec.json.decode(extra_data, type=PriceSubscriptionData)
+    return payload["mode"]
+
+
+def subscription_data(mode: PriceMode) -> str:
+    return msgspec.json.encode(PriceSubscriptionData(mode=mode)).decode()
 
 
 def baseline_key(appid: str) -> str:

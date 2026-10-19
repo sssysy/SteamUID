@@ -12,6 +12,7 @@ from ..steam_config import SteamConfig
 from .cache_services import clear_cache
 from ..utils.downloader import clean_cache_files
 from ..utils.helper.command import command_guard
+from ..utils.helper.history_low import HISTORY_LOW_CACHE_TYPE
 from ..utils.database.model_cache import SteamCache
 
 _TAG = "[Steam·缓存清理]"
@@ -37,6 +38,6 @@ if _CLEAN_DAYS > 0:
     @scheduler.scheduled_job("interval", days=_CLEAN_DAYS)
     async def clean_steam_cache_job() -> None:
         cutoff = int(time.time()) - _CLEAN_DAYS * 86400
-        deleted = await SteamCache.delete_expired(cutoff)
+        deleted = await SteamCache.delete_expired(cutoff, exclude_types=(HISTORY_LOW_CACHE_TYPE,))
         removed = await clean_cache_files(cutoff)
         logger.info(f"{_TAG} 清理 {_CLEAN_DAYS} 天前的缓存，删除 {deleted} 行 / {removed} 个文件")

@@ -1,6 +1,7 @@
 """Steam 数据库缓存表与全部处理逻辑。"""
 
 from typing import TypeVar, Optional
+from collections.abc import Sequence
 
 from sqlmodel import Field, col, select
 from sqlalchemy import UniqueConstraint, delete
@@ -111,11 +112,14 @@ class SteamCache(BaseIDModel, table=True):
         session: AsyncSession,
         before_ts: int,
         cache_type: Optional[str] = None,
+        exclude_types: Sequence[str] = (),
     ) -> int:
-        """删除 updated_at 早于 before_ts 的缓存；cache_type 为空表示不限类型。"""
+        """删除过期缓存；排除类型用于长期保留的史低数据。"""
         stmt = delete(cls).where(col(cls.updated_at) < before_ts)
         if cache_type is not None:
             stmt = stmt.where(col(cls.cache_type) == cache_type)
+        elif exclude_types:
+            stmt = stmt.where(col(cls.cache_type).not_in(exclude_types))
         result = await session.execute(stmt)
         return result.rowcount if isinstance(result, CursorResult) else 0
 

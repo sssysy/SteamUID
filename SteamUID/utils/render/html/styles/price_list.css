@@ -35,8 +35,22 @@
   margin-top: 10px;
 }
 
+.col-mode,
+.push-mode-cell {
+  width: 76px;
+  flex: 0 0 76px;
+  text-align: center;
+}
+
+.col-mode {
+  font-size: 14px;
+  font-weight: 700;
+  color: #8f98a0;
+}
+
 .col-price {
   width: 150px;
+  flex: 0 0 150px;
   text-align: right;
   font-size: 14px;
   font-weight: 700;
@@ -53,7 +67,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 8px 5px 0;
+  padding: 5px 0;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.04);
 }
@@ -120,6 +134,38 @@
 }
 
 /* 行内数值列比表头列更大更亮 */
+.push-mode-cell {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.push-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border: 0;
+  outline: 0;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.price-tag {
+  background: #2f6b32;
+  color: #ffffff;
+}
+
+.history-tag {
+  background: #f2c94c;
+  color: #000000;
+}
+
 .price-item .col-price {
   display: flex;
   align-items: center;

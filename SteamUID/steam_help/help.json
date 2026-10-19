@@ -289,6 +289,24 @@
         "need_admin": false
       },
       {
+        "name": "订阅史低",
+        "desc": "订阅指定游戏的史低提醒",
+        "eg": "订阅史低黑神话",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "取消订阅史低",
+        "desc": "取消该游戏的史低提醒",
+        "eg": "取消订阅史低黑神话",
+        "highlight": 6,
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
         "name": "订阅降价查看",
         "desc": "查看本人订阅的降价与当前售价",
         "eg": "订阅降价查看",

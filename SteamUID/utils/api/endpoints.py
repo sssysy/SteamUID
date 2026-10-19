@@ -9,6 +9,7 @@ MEDIA_BASE_DEFAULT = "https://media.steampowered.com"
 SHARED_CDN_BASE_DEFAULT = "https://shared.fastly.steamstatic.com"
 STEAMCMD_INFO_URL = "https://api.steamcmd.net/v1/info/{appid}"
 GRIDDB_API_BASE = "https://www.steamgriddb.com/api/v2"
+AUGMENTED_STORE_LOW_URL = "https://api.augmentedsteam.com/prices/v2"
 
 # IAuthenticationService / IWishlistService
 AUTH_BEGIN_QR = "/IAuthenticationService/BeginAuthSessionViaQR/v1"

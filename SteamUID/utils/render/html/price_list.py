@@ -8,6 +8,7 @@ from .render import read_styles, render_html, get_template
 from .card_footer import footer_html
 from .static_assets import get_bg_url
 from ...helper.price import PriceKind
+from ...helper.price_drop import PriceMode
 
 # 背景与「查看」卡片同款：压暗渐变 + 底图（自定义背景优先）
 _CANVAS_WIDTH = 880
@@ -27,6 +28,7 @@ class PriceEntry:
     price_text: str
     price_kind: PriceKind
     discount_percent: int
+    mode: PriceMode = "price"
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,12 @@ def _price_html(entry: PriceEntry) -> str:
     return f'<span class="price-text">{html.escape(entry.price_text)}</span>'
 
 
+def _mode_html(mode: PriceMode) -> str:
+    if mode == "history":
+        return '<span class="push-tag history-tag">史低</span>'
+    return '<span class="push-tag price-tag">降价</span>'
+
+
 def _row_html(entry: PriceEntry) -> str:
     cover_html = ""
     if entry.cover_url:
@@ -65,6 +73,7 @@ def _row_html(entry: PriceEntry) -> str:
         f'<div class="item-appid">AppID: {html.escape(entry.appid)}</div>'
         "</div>"
         "</div>"
+        f'<div class="push-mode-cell">{_mode_html(entry.mode)}</div>'
         f'<div class="col-price">{_price_html(entry)}</div>'
         "</div>"
     )

@@ -1,6 +1,7 @@
-"""降价订阅命令：订阅增删的校验写入与订阅列表卡片装配。"""
+"""降价 / 史低订阅命令：模式覆盖、取消与列表卡片装配。"""
 
 import asyncio
+from datetime import datetime, timezone
 from collections.abc import Sequence
 
 from gsuid_core.bot import Bot
@@ -28,12 +29,23 @@ from ..utils.helper.game_cover import resolve_cover_names
 from ..utils.helper.price_drop import (
     BASELINE_TASK,
     SUBSCRIBE_TASK,
+    PriceMode,
+    PriceBaseline,
     to_baseline,
     baseline_key,
     baseline_to_json,
+    subscription_data,
+    subscription_mode,
 )
 from ..utils.helper.game_detail import load_store_detail, resolve_game_names
+from ..utils.helper.history_low import (
+    HISTORY_LOW_CACHE_TYPE,
+    history_low_key,
+    history_low_to_json,
+    history_low_from_json,
+)
 from ..utils.database.model_poll import SteamPoll
+from ..utils.database.model_cache import SteamCache
 from ..utils.render.html.price_list import (
     PriceEntry,
     PriceListCard,
@@ -41,9 +53,9 @@ from ..utils.render.html.price_list import (
 )
 from ..utils.render.html.static_assets import get_img_cache_url
 
-_WRITE_USAGE = "steam订阅降价 艾尔登法环 或 steam取消订阅降价 730"
+_WRITE_USAGE = "steam订阅降价 艾尔登法环 或 steam订阅史低 艾尔登法环"
 _FETCH_FAILED = "获取该游戏价格失败，请确认该游戏在当前地区是否锁区"
-_NO_PRICE = "该游戏无可用价格（免费或未发售），无法订阅降价提醒"
+_NO_PRICE = "该游戏无可用价格（免费或未发售），无法订阅价格提醒"
 
 # 商店详情逐游戏请求，分批并发与封面解析保持一致
 _DETAIL_BATCH = 10
@@ -56,6 +68,14 @@ def _appids_of(rows: Sequence[Subscribe]) -> list[str]:
         if row.uid and row.uid not in appids:
             appids.append(row.uid)
     return appids
+
+
+def _modes_of(rows: Sequence[Subscribe]) -> dict[str, PriceMode]:
+    modes: dict[str, PriceMode] = {}
+    for row in rows:
+        if row.uid and row.uid not in modes:
+            modes[row.uid] = subscription_mode(row.extra_data)
+    return modes
 
 
 async def _load_details(appids: Sequence[str], cc: str) -> list[AppDetailsEntry | None]:
@@ -81,9 +101,47 @@ async def _resolve_ref(bot: Bot, ev: Event) -> GameRef:
     return ref
 
 
-async def _is_subscribed(ev: Event, appid: str) -> bool:
-    """当前会话是否已订阅该 appid 的降价提醒。"""
-    return bool(await scope_subscribe_rows(ev, SUBSCRIBE_TASK, appid))
+def _mode_label(mode: PriceMode) -> str:
+    return "史低提醒" if mode == "history" else "降价提醒"
+
+
+async def _initialize_history_mode(appid: str, baseline: PriceBaseline) -> None:
+    """首次建立史低订阅时吸收当前史低，不触发轮询推送。"""
+    if "final" not in baseline:
+        return
+    key = history_low_key(appid, region_cc())
+    raw = await SteamCache.get_value(HISTORY_LOW_CACHE_TYPE, key)
+    if not raw:
+        return
+
+    cache = history_low_from_json(raw)
+    if cache["status"] != "ok" or cache["lowest"] is None:
+        return
+
+    final = baseline["final"]
+    changed = False
+    if final < cache["lowest"]:
+        cache["lowest"] = final
+        if "currency" in baseline:
+            cache["currency"] = baseline["currency"]
+        cache["timestamp"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        changed = True
+    if final <= cache["lowest"]:
+        if not cache["at_low_notified"]:
+            cache["at_low_notified"] = True
+            changed = True
+    elif cache["at_low_notified"]:
+        cache["at_low_notified"] = False
+        changed = True
+
+    if changed:
+        cache["checked_at"] = int(datetime.now(timezone.utc).timestamp())
+        await SteamCache.upsert(
+            HISTORY_LOW_CACHE_TYPE,
+            key,
+            history_low_to_json(cache),
+            cache["checked_at"],
+        )
 
 
 def _entry(
@@ -92,6 +150,7 @@ def _entry(
     live: AppDetailsEntry | None,
     cover_url: str,
     name: str,
+    mode: PriceMode,
     *,
     currency: str,
 ) -> PriceEntry:
@@ -105,13 +164,15 @@ def _entry(
         price_text=text,
         price_kind=kind,
         discount_percent=percent,
+        mode=mode,
     )
 
 
-async def subscribe_price(bot: Bot, ev: Event) -> None:
-    """steam订阅降价<游戏名/AppID>：订阅该游戏的降价提醒。"""
+async def _subscribe(bot: Bot, ev: Event, mode: PriceMode) -> None:
     ref = await _resolve_ref(bot, ev)
-    if await _is_subscribed(ev, ref.appid):
+    rows = await scope_subscribe_rows(ev, SUBSCRIBE_TASK, ref.appid)
+    old_mode = subscription_mode(rows[0].extra_data) if rows else None
+    if old_mode == mode:
         await bot.send(f"{scope_name(ev)}已订阅该游戏：{ref.name}({ref.appid})")
         return
 
@@ -119,34 +180,71 @@ async def subscribe_price(bot: Bot, ev: Event) -> None:
     entry = prices[ref.appid] if ref.appid in prices else None
     if entry is None or "success" not in entry or not entry["success"]:
         raise ValueError(_FETCH_FAILED)
+    data = entry_data(entry)
+    if data is not None and "is_free" in data and data["is_free"]:
+        raise ValueError(_NO_PRICE)
     overview = price_overview(entry)
     if overview is None:
         raise ValueError(_NO_PRICE)
 
-    await add_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
+    await add_scope_subscribe(
+        ev,
+        SUBSCRIBE_TASK,
+        ref.appid,
+        extra_data=subscription_data(mode),
+    )
     baseline = to_baseline(overview)
     await SteamPoll.upsert(BASELINE_TASK, baseline_key(ref.appid), baseline_to_json(baseline))
-    await bot.send(
-        f"已为{scope_name(ev)}订阅【{ref.name}】({ref.appid}) 降价提醒，当前售价 {format_price(overview, region().currency)}"
-    )
+    if mode == "history":
+        await _initialize_history_mode(ref.appid, baseline)
+
+    price = format_price(overview, region().currency)
+    if old_mode is None:
+        message = f"已为{scope_name(ev)}订阅【{ref.name}】({ref.appid}) {_mode_label(mode)}，当前售价 {price}"
+    else:
+        message = (
+            f"已将{scope_name(ev)}对【{ref.name}】({ref.appid})的推送模式改为{_mode_label(mode)}，当前售价 {price}"
+        )
+    await bot.send(message)
 
 
-async def unsubscribe_price(bot: Bot, ev: Event) -> None:
-    """steam取消订阅降价<游戏名/AppID>：取消订阅该游戏的降价提醒。"""
+async def subscribe_price(bot: Bot, ev: Event) -> None:
+    """steam订阅降价<游戏名/AppID>：订阅或覆盖为降价提醒。"""
+    await _subscribe(bot, ev, "price")
+
+
+async def subscribe_history(bot: Bot, ev: Event) -> None:
+    """steam订阅史低<游戏名/AppID>：订阅或覆盖为史低提醒。"""
+    await _subscribe(bot, ev, "history")
+
+
+async def _unsubscribe(bot: Bot, ev: Event, mode: PriceMode) -> None:
     ref = await _resolve_ref(bot, ev)
-    if not await _is_subscribed(ev, ref.appid):
+    rows = await scope_subscribe_rows(ev, SUBSCRIBE_TASK, ref.appid)
+    if not rows or subscription_mode(rows[0].extra_data) != mode:
         await bot.send(f"{scope_name(ev)}未订阅该游戏：{ref.name}({ref.appid})")
         return
     await delete_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
-    await bot.send(f"已取消{scope_name(ev)}订阅的【{ref.name}】({ref.appid}) 降价提醒")
+    await bot.send(f"已取消{scope_name(ev)}订阅的【{ref.name}】({ref.appid}) {_mode_label(mode)}")
+
+
+async def unsubscribe_price(bot: Bot, ev: Event) -> None:
+    """steam取消订阅降价<游戏名/AppID>：只取消降价模式。"""
+    await _unsubscribe(bot, ev, "price")
+
+
+async def unsubscribe_history(bot: Bot, ev: Event) -> None:
+    """steam取消订阅史低<游戏名/AppID>：只取消史低模式。"""
+    await _unsubscribe(bot, ev, "history")
 
 
 async def build_price_list_card(ev: Event) -> bytes:
-    """steam订阅降价查看：本会话订阅的降价与当前售价渲染成卡片。"""
+    """steam订阅降价查看：本会话订阅、推送模式与当前售价渲染成卡片。"""
     rows = await scope_task_rows(ev, SUBSCRIBE_TASK)
     appids = _appids_of(rows)
     if not appids:
-        raise ValueError(f"{scope_name(ev)}当前没有订阅任何降价提醒")
+        raise ValueError(f"{scope_name(ev)}当前没有订阅任何价格提醒")
+    modes = _modes_of(rows)
 
     cc = region_cc()
     prices, covers, details = await asyncio.gather(
@@ -163,6 +261,7 @@ async def build_price_list_card(ev: Event) -> bytes:
             prices[appid] if appid in prices else None,
             get_img_cache_url(covers[appid]) if appid in covers else "",
             names[appid] if appid in names else appid,
+            modes[appid] if appid in modes else "price",
             currency=currency,
         )
         for index, appid in enumerate(appids)

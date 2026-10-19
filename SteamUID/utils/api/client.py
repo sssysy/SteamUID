@@ -89,6 +89,7 @@ async def request_response(
     tag: str,
     params: Mapping[str, str | int | float | bool] | None = None,
     data: Mapping[str, str | int | float] | None = None,
+    content: bytes | None = None,
     headers: Mapping[str, str] | None = None,
     timeout: float | None = None,
 ) -> httpx.Response:
@@ -98,6 +99,7 @@ async def request_response(
         url,
         params=params,
         data=data,
+        content=content,
         headers=headers,
         timeout=timeout,
     )
@@ -114,6 +116,7 @@ async def request_ok_response(
     tag: str,
     params: Mapping[str, str | int | float | bool] | None = None,
     data: Mapping[str, str | int | float] | None = None,
+    content: bytes | None = None,
     headers: Mapping[str, str] | None = None,
     timeout: float | None = None,
 ) -> httpx.Response:
@@ -125,6 +128,7 @@ async def request_ok_response(
         tag=tag,
         params=params,
         data=data,
+        content=content,
         headers=headers,
         timeout=timeout,
     )
