@@ -1,7 +1,7 @@
 """Steam Web API Key 池：每日用量记账、429 冷却、被拒废弃与轮换选取。
 
 与具体接口无关：调用方给出 Key 列表与一次请求动作，本模块负责选 Key 与换 Key 重试。
-Key 被 Steam 拒绝（401 / 403）后在本进程内废弃，重启 / 插件重载即清空。
+401 立即废弃；403 达到重试上限后废弃，避免临时抖动误伤。
 """
 
 import datetime
@@ -21,10 +21,6 @@ _T = TypeVar("_T")
 DAILY_BUDGET = 50000
 # 429 惩罚计数，降低该 Key 后续被选中的概率
 LIMIT_PENALTY = 1000
-# 429 与被拒换 Key 共享的最大尝试次数
-MAX_ATTEMPTS = 3
-# Steam 拒绝 Key 的状态码，命中即进程内废弃
-_KEY_INVALID_CODES = frozenset({httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN})
 # 池内无可选 Key 时的用户可见提示
 _NO_KEY_HINT = "请先配置 Steam API Key"
 _EXHAUSTED_HINT = "Steam API Key 均失效，请检查配置"
@@ -35,6 +31,8 @@ _cooldown_until: defaultdict[str, float] = defaultdict(float)
 _usage_date: str = ""
 # 进程内废弃的 Key：跨天不清，只随重启 / 插件重载清空
 _abandoned: set[str] = set()
+# 403 连续失败计数：成功或切换异常后清零，达到重试上限才废弃
+_forbidden_failures: defaultdict[str, int] = defaultdict(int)
 # 全废私信只发一次，与废弃集合同生命周期
 _all_dead_notified: bool = False
 
@@ -54,6 +52,15 @@ def normalize_keys(raw: Sequence[str]) -> list[str]:
 def has_api_key(raw: Sequence[str]) -> bool:
     """池中是否至少存在一个非空 Key。"""
     return bool(normalize_keys(raw))
+
+
+def has_available_api_key(raw: Sequence[str]) -> bool:
+    """池中是否存在未废弃 Key；冷却与每日额度不计入判断。"""
+    keys = normalize_keys(raw)
+    if not keys:
+        return False
+    with _lock:
+        return any(key not in _abandoned for key in keys)
 
 
 def _ensure_day() -> None:
@@ -118,6 +125,8 @@ def mark_key_limited(key: str, cooldown_seconds: int) -> None:
     with _lock:
         _cooldown_until[key] = now + cooldown_seconds
         _usage[key] += LIMIT_PENALTY
+        if key in _forbidden_failures:
+            del _forbidden_failures[key]
     logger.warning(f"[Steam·密钥池] API Key 触发 429，冷却 {cooldown_seconds}s: {_mask(key)}")
 
 
@@ -128,7 +137,35 @@ def mark_key_invalid(key: str) -> None:
 
     with _lock:
         _abandoned.add(key)
+        if key in _forbidden_failures:
+            del _forbidden_failures[key]
     logger.warning(f"[Steam·密钥池] API Key 被拒绝，本进程内废弃: {_mask(key)}")
+
+
+def _clear_forbidden_failures(key: str) -> None:
+    with _lock:
+        if key in _forbidden_failures:
+            del _forbidden_failures[key]
+
+
+def _record_forbidden(key: str, limit: int) -> None:
+    """累计连续 403；达到 limit 时废弃该 Key。"""
+    with _lock:
+        failures = _forbidden_failures[key] + 1
+        if failures < limit:
+            _forbidden_failures[key] = failures
+            return
+        _abandoned.add(key)
+        if key in _forbidden_failures:
+            del _forbidden_failures[key]
+    logger.warning(f"[Steam·密钥池] API Key 连续 403 达到 {limit} 次，本进程内废弃: {_mask(key)}")
+
+
+def _key_retry_count() -> int:
+    """读取用户配置的额外重试次数；0 表示只发首次请求。"""
+    from ..steam_config import SteamConfig
+
+    return max(0, SteamConfig.get_config("KeyRetryCount").data)
 
 
 def _notify_enabled() -> bool:
@@ -159,21 +196,24 @@ async def request_with_api_key(
     *,
     cooldown_seconds: int,
     preferred_key: str = "",
-    max_attempts: int = MAX_ATTEMPTS,
+    retry_count: int | None = None,
 ) -> _T:
-    """按池取 Key 发请求；429 冷却换 Key，Key 被拒则废弃换 Key，最多尝试 max_attempts 次。
+    """按池取 Key 发请求；403 / 429 按配置重试，401 立即废弃。
 
     preferred_key 只用于首次尝试，不重复计入池用量（调用方通常已从池中取出）。
-    池内 Key 全部废弃时不再发请求，直接抛出错误。
+    retry_count 为空时读取用户配置；0 表示只发首次请求。
     """
     keys = normalize_keys(raw)
     if not keys:
         raise ValueError(_NO_KEY_HINT)
 
+    retries = _key_retry_count() if retry_count is None else retry_count
+    retries = max(0, retries)
+    forbidden_limit = retries + 1
     last_error: httpx.HTTPStatusError | None = None
     used_preferred = False
 
-    for _ in range(max(1, max_attempts)):
+    for _ in range(retries + 1):
         if preferred_key and not used_preferred and preferred_key not in _abandoned:
             key = preferred_key
             used_preferred = True
@@ -185,20 +225,31 @@ async def request_with_api_key(
             raise ValueError(_EXHAUSTED_HINT)
 
         try:
-            return await do_request(key)
+            result = await do_request(key)
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
-            if status in _KEY_INVALID_CODES:
+            if status == httpx.codes.UNAUTHORIZED:
                 last_error = e
                 mark_key_invalid(key)
+                await _notify_all_exhausted(keys)
+                continue
+            if status == httpx.codes.FORBIDDEN:
+                last_error = e
+                _record_forbidden(key, forbidden_limit)
                 await _notify_all_exhausted(keys)
                 continue
             if status == httpx.codes.TOO_MANY_REQUESTS:
                 last_error = e
                 mark_key_limited(key, cooldown_seconds)
                 continue
+            _clear_forbidden_failures(key)
             raise
+        _clear_forbidden_failures(key)
+        return result
 
     if last_error is None:
         raise RuntimeError("Steam API Key 池不可用")
+    if not has_available_api_key(keys):
+        await _notify_all_exhausted(keys)
+        raise ValueError(_EXHAUSTED_HINT)
     raise last_error

@@ -73,6 +73,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "单个 Key 触发请求过多后的冷却秒数",
         600,
     ),
+    "KeyRetryCount": GsIntConfig(
+        "API Key 重试次数",
+        "轮询任务出错时额外重试次数，0 表示不重试",
+        5,
+    ),
     "NotifyKeyExhausted": GsBoolConfig(
         "Key 全失效时私信主人",
         "开启后，所有 Steam API Key 判定失效时私信主人",

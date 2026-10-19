@@ -8,6 +8,7 @@ import httpx
 from gsuid_core.logger import logger
 
 from ..steam_config import SteamConfig
+from ..utils.key_pool import has_available_api_key
 from ..utils.render.push import dispatch_events
 from ..utils.helper.config import push_options
 from ..utils.helper.status import (
@@ -74,15 +75,14 @@ async def _record_play_sessions(
 
 
 async def _poll_once() -> None:
+    keys = SteamConfig.get_config("SteamAPIKey").data
+    if not has_available_api_key(keys):
+        return
+
     baselines = await _load_baselines()
     steamids = await SteamBind.get_all_steamids()
     await _prune_baselines(set(steamids), baselines)
     if not steamids:
-        return
-
-    keys = SteamConfig.get_config("SteamAPIKey").data
-    if not keys:
-        logger.warning(f"{_TAG} 未配置 Steam API Key，跳过本轮轮询")
         return
 
     players = await fetch_player_summaries(steamids, keys=keys, cooldown=SteamConfig.get_config("KeyPoolCooldown").data)
