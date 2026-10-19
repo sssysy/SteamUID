@@ -38,6 +38,8 @@ from ..utils.render.html.static_assets import get_img_cache_url
 
 _TAG = "[Steam·降价轮询]"
 _NO_DESC = "暂无游戏简介"
+# 启动或重载后首次观测到的订阅只更新基线，不补推停机期间降价
+_startup_pending: set[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -93,24 +95,28 @@ async def _prune_baselines(appids: set[str], baselines: dict[str, PriceBaseline]
 async def _collect(
     appids: Sequence[str],
     baselines: dict[str, PriceBaseline],
-) -> tuple[list[_Drop], dict[str, PriceBaseline]]:
-    """拉取一轮价格并与基线比对，返回降价项与需要回写的基线。"""
+    *,
+    startup_pending: set[str],
+) -> tuple[list[_Drop], dict[str, PriceBaseline], set[str]]:
+    """拉取一轮价格并与基线比对，返回降价项、回写基线与已观测 appid。"""
     prices = await fetch_price_overviews(appids, cc=region_cc())
     drops: list[_Drop] = []
     changed: dict[str, PriceBaseline] = {}
+    observed: set[str] = set()
     for appid in appids:
         entry = prices[appid] if appid in prices else None
         overview = price_overview(entry)
         # 免费 / 无价 / 锁区本轮拿不到价：跳过，保留原基线
         if overview is None:
             continue
+        observed.add(appid)
         current = to_baseline(overview)
         previous = baselines[appid] if appid in baselines else None
-        if previous is not None and is_drop(previous, current):
+        if previous is not None and appid not in startup_pending and is_drop(previous, current):
             drops.append(_Drop(appid=appid, previous=previous, current=current))
         if previous is None or previous != current:
             changed[appid] = current
-    return drops, changed
+    return drops, changed, observed
 
 
 async def _drop_card(drop: _Drop) -> PriceDropCard:
@@ -162,15 +168,23 @@ async def _push_drop(drop: _Drop, subs: Sequence[Subscribe]) -> None:
 
 
 async def _poll_once() -> None:
+    global _startup_pending
+
     subs_by_appid = _subscribers_by_appid(_subscribe_rows(await gs_subscribe.get_subscribe(SUBSCRIBE_TASK)))
     baselines = await _load_baselines()
     await _prune_baselines(set(subs_by_appid), baselines)
+    if _startup_pending is None:
+        _startup_pending = set(subs_by_appid)
+    else:
+        _startup_pending.intersection_update(subs_by_appid)
     if not subs_by_appid:
         return
+    pending = _startup_pending
 
     appids = sorted(subs_by_appid)
-    drops, changed = await _collect(appids, baselines)
+    drops, changed, observed = await _collect(appids, baselines, startup_pending=pending)
     await _save_baselines(changed)
+    pending.difference_update(observed)
 
     if not SteamConfig.get_config("PriceNotifySwitch").data:
         return

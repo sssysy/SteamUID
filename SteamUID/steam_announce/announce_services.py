@@ -54,6 +54,8 @@ _TAG = "[Steam·公告订阅]"
 _LANG = "schinese"
 _WRITE_USAGE = "steam订阅公告 异环 或 steam取消订阅公告 4508340"
 _NO_ANNOUNCE = "拉取不到该游戏的公告，请确认游戏名或 AppID"
+# 启动或重载后首次观测到的订阅只更新基线，不补推停机期间公告
+_startup_pending: set[str] | None = None
 
 
 def _griddb_key() -> str:
@@ -238,19 +240,30 @@ async def _prune_baselines(appids: set[str], baselines: dict[str, AnnounceBaseli
 
 
 async def _poll_once() -> None:
+    global _startup_pending
+
     subs_by_appid = _subscribers_by_appid(_subscribe_rows(await gs_subscribe.get_subscribe(SUBSCRIBE_TASK)))
     baselines = await _load_baselines()
     await _prune_baselines(set(subs_by_appid), baselines)
+    if _startup_pending is None:
+        _startup_pending = set(subs_by_appid)
+    else:
+        _startup_pending.intersection_update(subs_by_appid)
     if not subs_by_appid:
         return
+    pending = _startup_pending
 
     for appid in sorted(subs_by_appid):
         latest = await _latest(appid)
         if latest is None:
             continue
         current = baseline_of(latest)
+        if appid in pending:
+            await SteamPoll.upsert(BASELINE_TASK, appid, baseline_to_json(current))
+            pending.discard(appid)
+            continue
+
         previous = baselines[appid] if appid in baselines else None
-        # 首轮只记基线不推送，之后 gid 变化才算新公告
         if is_new_announcement(previous, current):
             await _push_announce(appid, latest, subs_by_appid[appid])
         if previous is None or previous != current:

@@ -55,6 +55,8 @@ _QUERY_TAG = "[Steam·游戏成就]"
 # 未精确命中本体游戏时的提示，由命令层在出图前发给用户
 _FALLBACK_HINT = "未精确匹配到本体游戏，已使用最接近的结果 {name}({appid})，如有错误请使用 appid 精确匹配游戏"
 TASK_NAME = "成就轮询"
+# 启动或重载后首次观测到的会话只更新基线，不补推停机期间解锁
+_startup_pending: set[tuple[str, str]] | None = None
 
 
 def _baseline_key(steamid64: str, appid: str) -> str:
@@ -133,6 +135,8 @@ def _unlock_times(entries: list[PlayerAchievement]) -> dict[str, int]:
 
 
 async def _poll_once() -> None:
+    global _startup_pending
+
     # 成就只为推送存在，总开关关闭时整轮跳过
     if not SteamConfig.get_config("NotifySwitch").data:
         return
@@ -144,8 +148,13 @@ async def _poll_once() -> None:
     records = [record for record in records if record.steamid64 in bound]
     alive = {(record.steamid64, record.appid) for record in records}
     await _prune_baselines(alive, baselines)
+    if _startup_pending is None:
+        _startup_pending = set(alive)
+    else:
+        _startup_pending.intersection_update(alive)
     if not records:
         return
+    pending = _startup_pending
 
     keys = SteamConfig.get_config("SteamAPIKey").data
     if not keys:
@@ -158,6 +167,7 @@ async def _poll_once() -> None:
 
     now = int(time.time())
     events: list[UserStatusEvent] = []
+    observed: set[tuple[str, str]] = set()
 
     for record in records:
         pair = (record.steamid64, record.appid)
@@ -167,8 +177,13 @@ async def _poll_once() -> None:
             continue
         entries = payload["achievements"] if "achievements" in payload else []
 
-        previous = baselines[pair] if pair in baselines else None
         unlocked = unlocked_names(entries)
+        if pair in pending:
+            await _save_baseline(record.steamid64, record.appid, unlocked)
+            observed.add(pair)
+            continue
+
+        previous = baselines[pair] if pair in baselines else None
         if previous is None or set(previous) != set(unlocked):
             await _save_baseline(record.steamid64, record.appid, unlocked)
         if previous is None:
@@ -198,6 +213,7 @@ async def _poll_once() -> None:
                 )
             )
 
+    pending.difference_update(observed)
     await dispatch_events(events, options=push_options())
 
 

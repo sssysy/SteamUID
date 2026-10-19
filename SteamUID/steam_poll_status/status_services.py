@@ -27,6 +27,8 @@ from ..utils.database.model_play_record import SteamPlayRecord
 _TAG = "[Steam·状态轮询]"
 TASK_NAME = "用户状态轮询"
 _BASELINE_PREFIX = "status:"
+# 启动或重载后首次观测到的账号只更新基线，不补推停机期间变化
+_startup_pending: set[str] | None = None
 
 
 def _baseline_key(steamid64: str) -> str:
@@ -75,6 +77,8 @@ async def _record_play_sessions(
 
 
 async def _poll_once() -> None:
+    global _startup_pending
+
     keys = SteamConfig.get_config("SteamAPIKey").data
     if not has_available_api_key(keys):
         return
@@ -82,8 +86,13 @@ async def _poll_once() -> None:
     baselines = await _load_baselines()
     steamids = await SteamBind.get_all_steamids()
     await _prune_baselines(set(steamids), baselines)
+    if _startup_pending is None:
+        _startup_pending = set(steamids)
+    else:
+        _startup_pending.intersection_update(steamids)
     if not steamids:
         return
+    pending = _startup_pending
 
     players = await fetch_player_summaries(steamids, keys=keys, cooldown=SteamConfig.get_config("KeyPoolCooldown").data)
 
@@ -105,6 +114,8 @@ async def _poll_once() -> None:
         if steamid64 not in baselines or baselines[steamid64] != snapshot:
             changed[steamid64] = snapshot
     await _save_baselines(changed)
+    silent_steamids = pending.intersection(current)
+    pending.difference_update(current)
 
     seeds: list[tuple[str, str]] = []
     for steamid64, snapshot in current.items():
@@ -116,8 +127,9 @@ async def _poll_once() -> None:
 
     await _record_play_sessions(events, seeds, now)
 
-    if SteamConfig.get_config("NotifySwitch").data:
-        await dispatch_events(events, options=push_options())
+    notify_events = [event for event in events if event.steamid64 not in silent_steamids]
+    if notify_events and SteamConfig.get_config("NotifySwitch").data:
+        await dispatch_events(notify_events, options=push_options())
 
 
 async def poll_status_once() -> None:
