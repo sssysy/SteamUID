@@ -79,3 +79,11 @@ def price_text(baseline: PriceBaseline) -> str:
     currency = baseline["currency"] if "currency" in baseline else ""
     final = baseline["final"] if "final" in baseline else 0
     return f"{currency} {final / 100:.2f}"
+
+
+def discount_label(percent: int) -> str:
+    """折扣文案：25% 优惠显示 75折，20% 优惠显示 8折。"""
+    remaining = 100 - percent
+    if remaining % 10 == 0:
+        return f"{remaining // 10}折"
+    return f"{remaining}折"

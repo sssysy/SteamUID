@@ -212,14 +212,17 @@ async def _push_announce(appid: str, item: AnnounceItem, subs: Sequence[Subscrib
     card = await _build_card(item)
     image = await render_announce_push_card(card)
     for sub in subs:
-        message = [
-            MessageSegment.at(sub.user_id),
-            MessageSegment.text(f"\n[Steam 公告订阅] {card.game_name} 发布了新公告\n"),
-            MessageSegment.image(image),
-            MessageSegment.text(f"公告链接：{announce_url(appid, item.gid)}"),
-        ]
         try:
-            await sub.send(message)
+            await sub.send(MessageSegment.image(image))
+            await sub.send(
+                [
+                    MessageSegment.at(sub.user_id),
+                    MessageSegment.text(
+                        f"\n[Steam · 公告订阅] 你订阅的 {card.game_name} 发布了新公告\n"
+                        f"公告链接：{announce_url(appid, item.gid)}"
+                    ),
+                ]
+            )
         except Exception as error:
             logger.warning(f"{_TAG} 推送失败 appid={appid} user={sub.user_id}: {type(error).__name__}")
 

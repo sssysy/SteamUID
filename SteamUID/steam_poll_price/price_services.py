@@ -23,6 +23,7 @@ from ..utils.helper.price_drop import (
     to_baseline,
     appid_of_key,
     baseline_key,
+    discount_label,
     baseline_to_json,
     baseline_from_json,
 )
@@ -154,15 +155,23 @@ async def _push_drop(drop: _Drop, subs: Sequence[Subscribe]) -> None:
     """向该游戏的全部订阅者推送降价卡；单个会话失败只记日志、不打断其余。"""
     card = await _drop_card(drop)
     image = await render_price_drop_card(card)
+    percent = drop.current["discount_percent"] if "discount_percent" in drop.current else 0
+    if percent > 0:
+        change_text = f"现在打 {discount_label(percent)}，现价 {price_text(drop.current)}"
+    else:
+        change_text = f"现在降价，现价 {price_text(drop.current)}"
     for sub in subs:
-        message = [
-            MessageSegment.at(sub.user_id),
-            MessageSegment.text(f"\n[Steam 降价提醒] {card.name} 降价了！\n"),
-            MessageSegment.image(image),
-            MessageSegment.text(f"商店链接：https://store.steampowered.com/app/{drop.appid}"),
-        ]
         try:
-            await sub.send(message)
+            await sub.send(MessageSegment.image(image))
+            await sub.send(
+                [
+                    MessageSegment.at(sub.user_id),
+                    MessageSegment.text(
+                        f"\n[Steam · 降价提醒] 你订阅的 {card.name} {change_text}\n"
+                        f"商店链接：https://store.steampowered.com/app/{drop.appid}"
+                    ),
+                ]
+            )
         except Exception as error:
             logger.warning(f"{_TAG} 推送失败 appid={drop.appid} user={sub.user_id}: {type(error).__name__}")
 
