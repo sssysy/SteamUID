@@ -9,7 +9,7 @@ from ..maps import (
 )
 from .status import PushOptions
 from ..utils.mask import mask_id
-from ...steam_config import DATA_DIR, SteamConfig
+from ...steam_config import DATA_DIR, SteamConfig, configured_proxy_url
 from ..api.endpoints import (
     API_BASE_DEFAULT,
     STORE_BASE_DEFAULT,
@@ -22,8 +22,15 @@ def base_url() -> str:
     return SteamConfig.get_config("GsCoreBaseURL").data.strip().rstrip("/")
 
 
+def use_forward_proxy() -> bool:
+    """正向代理是否已开启且配置了 URL。"""
+    return configured_proxy_url() is not None
+
+
 def _base_or_default(raw: str, default: str) -> str:
-    """反代基址去空白；未配置时回落官方默认域名。"""
+    """反向代理基址；正向代理生效时强制使用官方默认域名。"""
+    if use_forward_proxy():
+        return default
     return raw.strip() or default
 
 

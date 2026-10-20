@@ -1,10 +1,10 @@
 """Steam HTTP 客户端与请求原语。
 
-只负责组装 httpx.AsyncClient 与收发请求，代理、密钥、超时全部由调用方注入，
-本模块不读取任何配置。
+只负责组装 httpx.AsyncClient 与收发请求；配置层通过 provider 注入默认代理，
+本模块不直接读取配置文件。
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Callable, Sequence
 
 import httpx
 
@@ -31,6 +31,20 @@ STEAM_STORE_COOKIES: dict[str, str] = {
 
 _PROXY_SCHEMES = ("http://", "https://", "socks5://", "socks5h://")
 
+ProxyProvider = Callable[[], str | None]
+
+_proxy_provider: ProxyProvider | None = None
+
+
+def set_proxy_provider(provider: ProxyProvider) -> None:
+    """注册默认代理来源；未显式传 proxy 的客户端都由它解析。"""
+    global _proxy_provider
+    _proxy_provider = provider
+
+
+def _default_proxy() -> str | None:
+    return _proxy_provider() if _proxy_provider is not None else None
+
 
 def normalize_proxy(raw: str | None) -> str | None:
     """把 host:port 形式的代理补成带 scheme 的 URL，空值返回 None。"""
@@ -53,7 +67,7 @@ def make_async_client(
     cookies: Mapping[str, str] | None = None,
     follow_redirects: bool = False,
 ) -> httpx.AsyncClient:
-    """统一客户端工厂：内置默认 UA / 语言，代理由调用方显式传入。"""
+    """统一客户端工厂：显式代理优先，未传时使用配置层注册的默认代理。"""
     merged_headers = {
         "User-Agent": DEFAULT_USER_AGENT,
         "Accept-Language": DEFAULT_ACCEPT_LANGUAGE,
@@ -61,9 +75,10 @@ def make_async_client(
     if headers is not None:
         merged_headers.update(headers)
 
+    resolved_proxy = proxy if proxy is not None else _default_proxy()
     return httpx.AsyncClient(
         headers=merged_headers,
-        proxy=normalize_proxy(proxy),
+        proxy=normalize_proxy(resolved_proxy),
         timeout=timeout,
         cookies=dict(cookies) if cookies is not None else None,
         follow_redirects=follow_redirects,

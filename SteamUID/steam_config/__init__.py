@@ -17,6 +17,7 @@ from ..utils.maps import (
     DEFAULT_REGION,
     SUPPORTED_REGIONS,
 )
+from ..utils.api.client import set_proxy_provider
 from ..utils.api.endpoints import (
     API_BASE_DEFAULT,
     STORE_BASE_DEFAULT,
@@ -30,11 +31,22 @@ from ..utils.helper.status import (
 
 DATA_DIR = get_res_path("SteamUID")
 CONFIG_PATH = DATA_DIR / "config.json"
+FORWARD_PROXY_URL_DEFAULT = "http://127.0.0.1:7890"
 
 CONFIG_DEFAULT: dict[str, GSC] = {
     "_NetworkDivider": GsDivider(
         "网络请求和代理配置",
         "",
+    ),
+    "UseForwardProxy": GsBoolConfig(
+        "使用正向代理",
+        "开启后忽略三个反代 URL，所有插件出站请求统一通过正向代理",
+        False,
+    ),
+    "ForwardProxyURL": GsStrConfig(
+        "正向代理 URL",
+        "正向代理 URL",
+        FORWARD_PROXY_URL_DEFAULT,
     ),
     "GsCoreBaseURL": GsStrConfig(
         "GsCore 公网地址",
@@ -221,3 +233,20 @@ CONFIG_DEFAULT: dict[str, GSC] = {
 
 
 SteamConfig = StringConfig("SteamUID", CONFIG_PATH, CONFIG_DEFAULT)
+
+
+def configured_proxy_url() -> str | None:
+    """当前生效的正向代理；开关关闭或 URL 为空时返回 None。"""
+    enabled = SteamConfig.get_config("UseForwardProxy")
+    if not isinstance(enabled, GsBoolConfig):
+        raise TypeError("UseForwardProxy 配置类型异常")
+    if not enabled.data:
+        return None
+
+    proxy = SteamConfig.get_config("ForwardProxyURL")
+    if not isinstance(proxy, GsStrConfig):
+        raise TypeError("ForwardProxyURL 配置类型异常")
+    return proxy.data.strip() or None
+
+
+set_proxy_provider(configured_proxy_url)

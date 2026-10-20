@@ -10,6 +10,8 @@ from gsuid_core.logger import logger
 from gsuid_core.data_store import get_res_path
 from gsuid_core.utils.download_resource.download_file import download as download_file
 
+from .api.client import make_async_client
+
 DATA_DIR: Path = get_res_path("SteamUID")
 # 图片统一落 img_cache（已挂载直链）；其它文件落 cache
 CACHE_DIR: Path = DATA_DIR / "cache"
@@ -89,7 +91,7 @@ async def clear_cache_files(kind: ResourceKind) -> int:
 
 def _new_client(timeout: float) -> httpx.AsyncClient:
     """框架 download 默认不跟随重定向，而 Steam 图床常见 302，需显式打开。"""
-    return httpx.AsyncClient(timeout=timeout, follow_redirects=True)
+    return make_async_client(timeout=timeout, follow_redirects=True)
 
 
 async def _download_single(
