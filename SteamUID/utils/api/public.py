@@ -3,6 +3,7 @@
 每个函数只发一次请求并返回原始响应结构，缓存、批量分批与降级重试由调用方编排。
 """
 
+import json
 from collections.abc import Sequence
 
 from .client import STEAM_STORE_COOKIES, make_async_client, request_ok_response
@@ -10,9 +11,12 @@ from .models import (
     PlayerBan,
     StoreEvent,
     FriendEntry,
+    StoreItemID,
     WishlistItem,
     PlayerSummary,
     AppDetailsEntry,
+    StoreBrowseItem,
+    StoreItemsQuery,
     StoreSearchItem,
     WishlistResponse,
     OwnedGamesPayload,
@@ -23,6 +27,7 @@ from .models import (
     MiniprofilePayload,
     OwnedGamesResponse,
     PlayerStatsPayload,
+    StoreItemsResponse,
     YearReviewResponse,
     StoreSearchResponse,
     CurrentPlayersPayload,
@@ -56,6 +61,7 @@ from .endpoints import (
     STORE_GET_GAME_DETAILS,
     API_GET_SCHEMA_FOR_GAME,
     API_GET_PLAYER_SUMMARIES,
+    API_STORE_BROWSE_GET_ITEMS,
     API_GET_PLAYER_ACHIEVEMENTS,
     API_GET_RECENTLY_PLAYED_GAMES,
     STORE_EVENTS_PARTNER_PAGEABLE,
@@ -362,6 +368,39 @@ async def search_store(
 
     payload: StoreSearchResponse = resp.json()
     return payload["items"] if "items" in payload else []
+
+
+async def get_store_items(
+    appids: Sequence[str],
+    *,
+    lang: str,
+    cc: str,
+    key: str | None = None,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> list[StoreBrowseItem]:
+    """批量查询商店条目类型与基础信息；调用方负责控制在 50 条内。"""
+    if not appids:
+        return []
+
+    ids: list[StoreItemID] = [{"appid": int(appid)} for appid in appids]
+    query: StoreItemsQuery = {
+        "ids": ids,
+        "context": {"language": lang, "country_code": cc},
+        "data_request": {"include_basic_info": True},
+    }
+    params = {"input_json": json.dumps(query, ensure_ascii=False)}
+    if key is not None:
+        params["key"] = key
+
+    url = f"{base_url.rstrip('/')}{API_STORE_BROWSE_GET_ITEMS}"
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+
+    payload: StoreItemsResponse = resp.json()
+    response = payload["response"] if "response" in payload else {}
+    return response["store_items"] if "store_items" in response else []
 
 
 async def get_game_announcements(

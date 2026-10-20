@@ -538,18 +538,46 @@ class StorePurchaseOption(TypedDict, total=False):
     discount_pct: int
 
 
+class StoreRelatedItems(TypedDict, total=False):
+    parent_appid: int
+
+
 class StoreBrowseItem(TypedDict, total=False):
-    """StoreBrowse 条目：三个榜单接口共用同一结构。"""
+    """StoreBrowse 条目：榜单与批量条目详情共用同一结构。"""
 
     id: int
     appid: int
     name: str
+    item_type: int
     type: int
+    success: int
+    visible: bool
     is_free: bool
+    related_items: StoreRelatedItems
     basic_info: StoreItemBasicInfo
     assets: StoreItemAssets
     # 区域不可售与免费游戏会返回 null，取价时要先判空
     best_purchase_option: StorePurchaseOption | None
+
+
+class StoreItemID(TypedDict, total=False):
+    appid: int
+    packageid: int
+    bundleid: int
+
+
+class StoreItemsQuery(TypedDict, total=False):
+    ids: list[StoreItemID]
+    context: StoreBrowseContext
+    data_request: StoreItemDataRequest
+
+
+class StoreItemsPayload(TypedDict, total=False):
+    store_items: list[StoreBrowseItem]
+
+
+class StoreItemsResponse(TypedDict, total=False):
+    response: StoreItemsPayload
 
 
 class WeeklyTopSellerRank(TypedDict, total=False):

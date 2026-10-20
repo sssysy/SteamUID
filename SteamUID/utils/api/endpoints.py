@@ -38,6 +38,9 @@ API_GET_WISHLIST = "/IWishlistService/GetWishlist/v1/"
 API_GET_USER_YEAR_IN_REVIEW_SHARE_IMAGE = "/ISaleFeatureService/GetUserYearInReviewShareImage/v1"
 API_GET_SERVER_INFO = "/ISteamWebAPIUtil/GetServerInfo/v1"
 
+# IStoreBrowseService，批量条目详情只接受 GET + input_json
+API_STORE_BROWSE_GET_ITEMS = "/IStoreBrowseService/GetItems/v1/"
+
 # IStoreTopSellersService / ISteamChartsService，只接受 GET + input_json
 API_GET_WEEKLY_TOP_SELLERS = "/IStoreTopSellersService/GetWeeklyTopSellers/v1/"
 API_GET_GAMES_BY_CONCURRENT_PLAYERS = "/ISteamChartsService/GetGamesByConcurrentPlayers/v1/"
