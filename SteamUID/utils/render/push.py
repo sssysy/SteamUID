@@ -238,6 +238,7 @@ def _achievement_item(
                 description=unlock.description,
                 icon_url=icon_url,
                 unlocked_at=unlocked_at,
+                global_percent=unlock.global_percent,
             )
         )
     return AchievementItem(

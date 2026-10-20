@@ -214,6 +214,22 @@
   white-space: nowrap;
 }
 
+.game-status-card .achievement-meta {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.game-status-card .achievement-percent {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
 /* 成就过多时折叠成一行汇总 */
 .game-status-card .achievement-more {
   padding: 9px 0 0;

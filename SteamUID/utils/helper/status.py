@@ -66,6 +66,7 @@ class AchievementUnlock:
     name: str = ""
     description: str = ""
     icon: str = ""
+    global_percent: str = ""
     time: int = 0
 
 

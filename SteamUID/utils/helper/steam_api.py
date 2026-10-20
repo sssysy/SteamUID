@@ -1,5 +1,6 @@
 """带密钥池的 Steam API 调用封装：分批、429 换 Key 与类型收窄。"""
 
+import re
 import time
 from functools import partial
 from collections.abc import Sequence
@@ -28,6 +29,7 @@ from ..api.public import (
     get_achievement_schema,
     get_player_achievements,
     get_recently_played_games,
+    get_global_achievement_percentages,
 )
 from ..database.model_cache import SteamCache
 
@@ -35,6 +37,7 @@ from ..database.model_cache import SteamCache
 SUMMARY_CHUNK = 50
 _LANG = "schinese"
 _SCHEMA_CACHE_TYPE = "achievement_schema"
+_PERCENT_PATTERN = re.compile(r"\d+(?:\.\d+)?")
 
 
 async def _request_summaries(chunk: list[str], key: str) -> list[PlayerSummary]:
@@ -184,6 +187,28 @@ async def fetch_achievement_schema(
         encoded = msgspec.json.encode(entries).decode("utf-8")
         await SteamCache.upsert(_SCHEMA_CACHE_TYPE, appid, encoded, int(time.time()))
     return entries
+
+
+def _normalize_global_percent(raw: str) -> str:
+    if _PERCENT_PATTERN.fullmatch(raw) is None:
+        return ""
+    value = float(raw)
+    if value < 0 or value > 100:
+        return ""
+    return f"{value:.1f}"
+
+
+async def fetch_global_achievement_percentages(appid: str) -> dict[str, str]:
+    """查询并规范化全球成就百分比；单条非法值直接略过。"""
+    entries = await get_global_achievement_percentages(appid, base_url=api_base())
+    percentages: dict[str, str] = {}
+    for entry in entries:
+        if "name" not in entry or "percent" not in entry:
+            continue
+        percent = _normalize_global_percent(entry["percent"])
+        if percent:
+            percentages[entry["name"]] = percent
+    return percentages
 
 
 async def _request_vanity_steamid64(vanity: str, key: str) -> str | None:

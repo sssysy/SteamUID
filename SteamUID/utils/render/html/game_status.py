@@ -47,6 +47,7 @@ class AchievementRow:
     description: str
     icon_url: str
     unlocked_at: int
+    global_percent: str = ""
 
 
 @dataclass(frozen=True)
@@ -155,6 +156,17 @@ def _achievement_row_html(row: AchievementRow) -> str:
     desc_html = ""
     if row.description:
         desc_html = f'<div class="achievement-desc">{html.escape(row.description)}</div>'
+    time_text = _format_time(row.unlocked_at)
+    if row.global_percent:
+        percent = html.escape(row.global_percent)
+        meta_html = (
+            '<div class="achievement-meta">'
+            f'<div class="achievement-time">{time_text}</div>'
+            f'<div class="achievement-percent">{percent}%</div>'
+            "</div>"
+        )
+    else:
+        meta_html = f'<div class="achievement-time">{time_text}</div>'
     return (
         '<div class="achievement-row">'
         f'<div class="achievement-icon-box">{icon_html}</div>'
@@ -162,7 +174,7 @@ def _achievement_row_html(row: AchievementRow) -> str:
         f'<div class="achievement-name">{html.escape(row.name)}</div>'
         f"{desc_html}"
         "</div>"
-        f'<div class="achievement-time">{_format_time(row.unlocked_at)}</div>'
+        f"{meta_html}"
         "</div>"
     )
 

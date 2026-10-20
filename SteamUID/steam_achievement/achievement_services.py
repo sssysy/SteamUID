@@ -35,6 +35,7 @@ from ..utils.helper.steam_api import (
     fetch_player_summaries,
     fetch_achievement_schema,
     fetch_player_achievements,
+    fetch_global_achievement_percentages,
 )
 from ..utils.helper.game_cover import resolve_cover_name
 from ..utils.helper.game_detail import pics_game_meta, pics_game_name, load_store_detail, store_detail_name
@@ -110,9 +111,21 @@ async def _load_players(steamids: Sequence[str], *, keys: Sequence[str], cooldow
     return infos
 
 
+async def _load_global_percentages(appid: str, *, tag: str) -> dict[str, str]:
+    """全球百分比失败时返回空表，让卡片按行回退现有样式。"""
+    (result,) = await asyncio.gather(fetch_global_achievement_percentages(appid), return_exceptions=True)
+    if isinstance(result, BaseException):
+        logger.warning(f"{tag} 全球成就百分比获取失败: {type(result).__name__}")
+        return {}
+    return result
+
+
 async def _load_unlocks(appid: str, *, keys: Sequence[str], cooldown: int) -> dict[str, AchievementUnlock]:
-    """apiname 到成就定义的映射，缺项由调用方回落 apiname。"""
-    entries = await fetch_achievement_schema(appid, keys=keys, cooldown=cooldown)
+    """合并成就定义与全球百分比，缺项由调用方回落现有样式。"""
+    entries, percentages = await asyncio.gather(
+        fetch_achievement_schema(appid, keys=keys, cooldown=cooldown),
+        _load_global_percentages(appid, tag=_TAG),
+    )
     unlocks: dict[str, AchievementUnlock] = {}
     for entry in entries:
         if "name" not in entry:
@@ -121,6 +134,7 @@ async def _load_unlocks(appid: str, *, keys: Sequence[str], cooldown: int) -> di
             name=entry["displayName"] if "displayName" in entry else entry["name"],
             description=entry["description"] if "description" in entry else "",
             icon=entry["icon"] if "icon" in entry else "",
+            global_percent=percentages[entry["name"]] if entry["name"] in percentages else "",
         )
     return unlocks
 
@@ -168,6 +182,7 @@ async def _poll_once() -> None:
     now = int(time.time())
     events: list[UserStatusEvent] = []
     observed: set[tuple[str, str]] = set()
+    unlock_cache: dict[str, dict[str, AchievementUnlock]] = {}
 
     for record in records:
         pair = (record.steamid64, record.appid)
@@ -193,7 +208,11 @@ async def _poll_once() -> None:
         if not fresh:
             continue
 
-        unlocks = await _load_unlocks(record.appid, keys=keys, cooldown=cooldown)
+        if record.appid in unlock_cache:
+            unlocks = unlock_cache[record.appid]
+        else:
+            unlocks = await _load_unlocks(record.appid, keys=keys, cooldown=cooldown)
+            unlock_cache[record.appid] = unlocks
         info = infos[record.steamid64] if record.steamid64 in infos else _PlayerInfo("", "", "")
         title = info.title or (payload["gameName"] if "gameName" in payload else "")
         times = _unlock_times(entries)
@@ -260,7 +279,9 @@ async def _game_icon_url(steamid64: str, appid: str, *, keys: Sequence[str], coo
 
 
 def _achievement_slots(
-    entries: Sequence[PlayerAchievement], schema: Sequence[AchievementSchemaEntry]
+    entries: Sequence[PlayerAchievement],
+    schema: Sequence[AchievementSchemaEntry],
+    global_percentages: dict[str, str],
 ) -> list[AchievementSlot]:
     """合并玩家进度与成就定义：已解锁在前按解锁时间倒序，未解锁保持原序。"""
     definitions: dict[str, AchievementSchemaEntry] = {}
@@ -299,6 +320,7 @@ def _achievement_slots(
             icon_url=icon,
             achieved=achieved,
             unlocked_at=unlocktime if achieved else 0,
+            global_percent=global_percentages[apiname] if apiname in global_percentages else "",
         )
         if achieved:
             unlocked.append(slot)
@@ -347,15 +369,16 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
 
     griddb_key = griddb_cover_key()
     lang = region_lang()
-    schema, detail, profile, cover_name, icon_raw = await asyncio.gather(
+    schema, detail, profile, cover_name, icon_raw, global_percentages = await asyncio.gather(
         fetch_achievement_schema(ref.appid, keys=keys, cooldown=cooldown),
         load_store_detail(ref.appid, None),
         load_profile_assets(steamid64),
         resolve_cover_name(ref.appid, country=region_cc(), lang=lang, griddb_key=griddb_key),
         _game_icon_url(steamid64, ref.appid, keys=keys, cooldown=cooldown, lang=lang),
+        _load_global_percentages(ref.appid, tag=_QUERY_TAG),
     )
 
-    slots = _achievement_slots(entries, schema)
+    slots = _achievement_slots(entries, schema, global_percentages)
     links = await _image_links([icon_raw] + [slot.icon_url for slot in displayed_slots(slots)])
     achievements = tuple(
         replace(slot, icon_url=links[slot.icon_url] if slot.icon_url in links else "") for slot in slots

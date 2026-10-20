@@ -214,6 +214,19 @@ class AchievementSchemaEntry(TypedDict, total=False):
     icongray: str
 
 
+class GlobalAchievementPercentage(TypedDict, total=False):
+    name: str
+    percent: str
+
+
+class AchievementPercentagesPayload(TypedDict, total=False):
+    achievements: list[GlobalAchievementPercentage]
+
+
+class AchievementPercentagesResponse(TypedDict, total=False):
+    achievementpercentages: AchievementPercentagesPayload
+
+
 class AvailableGameStats(TypedDict, total=False):
     achievements: list[AchievementSchemaEntry]
 

@@ -36,6 +36,7 @@ class AchievementSlot:
     icon_url: str
     achieved: bool
     unlocked_at: int = 0
+    global_percent: str = ""
     overflow: bool = False
 
 
@@ -116,11 +117,17 @@ def _slot_html(slot: AchievementSlot, default_icon: str) -> str:
         return f'<div class="ach-card"><div class="ach-icon-box overflow-icon">?</div>{info}</div>'
 
     icon = f'<div class="ach-icon-box">{_icon_image_html(slot.icon_url, default_icon)}</div>'
-    if not slot.achieved:
-        return f'<div class="ach-card locked">{icon}{info}</div>'
-
     unlock = _unlock_text(slot.unlocked_at)
     time_html = f'<div class="ach-time">{html.escape(unlock)}</div>' if unlock else ""
+    if slot.global_percent:
+        percent = html.escape(slot.global_percent)
+        fill = f'<div class="ach-fill" style="width: {percent}%;"></div>'
+        stats = f'<div class="ach-stats">{time_html}<div class="ach-percent">{percent}%</div></div>'
+        locked = " locked" if not slot.achieved else ""
+        return f'<div class="ach-card has-global-rate{locked}">{fill}{icon}{info}{stats}</div>'
+
+    if not slot.achieved:
+        return f'<div class="ach-card locked">{icon}{info}</div>'
     return f'<div class="ach-card">{icon}{info}{time_html}</div>'
 
 

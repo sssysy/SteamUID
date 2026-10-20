@@ -34,9 +34,11 @@ from .models import (
     PlayerSummariesResponse,
     PlayerAchievementsResponse,
     RecentlyPlayedGamesPayload,
+    GlobalAchievementPercentage,
     ProfileItemsEquippedPayload,
     RecentlyPlayedGamesResponse,
     ProfileItemsEquippedResponse,
+    AchievementPercentagesResponse,
 )
 from .endpoints import (
     STORE_SEARCH,
@@ -59,6 +61,7 @@ from .endpoints import (
     STORE_EVENTS_PARTNER_PAGEABLE,
     API_GET_PROFILE_ITEMS_EQUIPPED,
     API_GET_NUMBER_OF_CURRENT_PLAYERS,
+    API_GET_GLOBAL_ACHIEVEMENT_PERCENTAGES,
     API_GET_USER_YEAR_IN_REVIEW_SHARE_IMAGE,
 )
 
@@ -274,6 +277,25 @@ async def get_achievement_schema(
     game = payload["game"]
     stats = game["availableGameStats"] if "availableGameStats" in game else {}
     return stats["achievements"] if "achievements" in stats else []
+
+
+async def get_global_achievement_percentages(
+    appid: str,
+    *,
+    base_url: str = API_BASE_DEFAULT,
+    proxy: str | None = None,
+    timeout: float = 10.0,
+) -> list[GlobalAchievementPercentage]:
+    """查询指定游戏各成就的全球解锁百分比。"""
+    url = f"{base_url.rstrip('/')}{API_GET_GLOBAL_ACHIEVEMENT_PERCENTAGES}"
+    params = {"gameid": appid}
+
+    async with make_async_client(proxy=proxy, timeout=timeout) as client:
+        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+
+    payload: AchievementPercentagesResponse = resp.json()
+    data = payload["achievementpercentages"] if "achievementpercentages" in payload else {}
+    return data["achievements"] if "achievements" in data else []
 
 
 async def get_profile_items_equipped(
