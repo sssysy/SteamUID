@@ -1,4 +1,4 @@
-"""成就查询与轮询：查询命令出图，轮询对进行中的游玩会话比对成就并通知。"""
+"""成就查询与轮询：查询命令出图，轮询按任务表比对成就并通知。"""
 
 import time
 import asyncio
@@ -22,6 +22,7 @@ from ..utils.helper.config import (
     griddb_cover_key,
 )
 from ..utils.helper.status import (
+    ACHIEVEMENT_KIND,
     UserStatusEvent,
     AchievementUnlock,
     names_to_json,
@@ -39,11 +40,15 @@ from ..utils.helper.steam_api import (
 )
 from ..utils.helper.game_cover import resolve_cover_name
 from ..utils.helper.game_detail import pics_game_meta, pics_game_name, load_store_detail, store_detail_name
-from ..utils.database.model_bind import SteamBind
 from ..utils.database.model_poll import SteamPoll
+from ..utils.helper.achievement_task import (
+    ACHIEVEMENT_TASK_NAME,
+    achievement_task_key,
+    delete_achievement_task,
+    parse_achievement_task_key,
+)
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
-from ..utils.database.model_play_record import SteamPlayRecord
 from ..utils.render.html.achievement_card import (
     AchievementCard,
     AchievementSlot,
@@ -55,36 +60,24 @@ _TAG = "[Steam·成就轮询]"
 _QUERY_TAG = "[Steam·游戏成就]"
 # 未精确命中本体游戏时的提示，由命令层在出图前发给用户
 _FALLBACK_HINT = "未精确匹配到本体游戏，已使用最接近的结果 {name}({appid})，如有错误请使用 appid 精确匹配游戏"
-TASK_NAME = "成就轮询"
-# 启动或重载后首次观测到的会话只更新基线，不补推停机期间解锁
+# 启动或重载后首次读取到的任务只更新基线，不补推停机期间解锁
 _startup_pending: set[tuple[str, str]] | None = None
 
 
-def _baseline_key(steamid64: str, appid: str) -> str:
-    return f"{steamid64}:{appid}"
-
-
-async def _load_baselines() -> dict[tuple[str, str], list[str]]:
-    """一次取回全部成就基线，键为 (steamid64, appid)。"""
-    rows = await SteamPoll.get_all(TASK_NAME)
-    baselines: dict[tuple[str, str], list[str]] = {}
+async def _load_baselines() -> dict[tuple[str, str], list[str] | None]:
+    """读取成就任务；空 value 表示任务尚未建立基线。"""
+    rows = await SteamPoll.get_all(ACHIEVEMENT_TASK_NAME)
+    baselines: dict[tuple[str, str], list[str] | None] = {}
     for row in rows:
-        steamid64, _, appid = row.key.partition(":")
-        if not steamid64 or not appid:
+        parsed = parse_achievement_task_key(row.key)
+        if parsed is None:
             continue
-        baselines[(steamid64, appid)] = names_from_json(row.value)
+        baselines[parsed] = None if not row.value else names_from_json(row.value)
     return baselines
 
 
 async def _save_baseline(steamid64: str, appid: str, names: list[str]) -> None:
-    await SteamPoll.upsert(TASK_NAME, _baseline_key(steamid64, appid), names_to_json(names))
-
-
-async def _prune_baselines(alive: set[tuple[str, str]], baselines: dict[tuple[str, str], list[str]]) -> None:
-    """清掉已结束会话的成就基线。"""
-    for steamid64, appid in baselines:
-        if (steamid64, appid) not in alive:
-            await SteamPoll.delete_row(TASK_NAME, _baseline_key(steamid64, appid))
+    await SteamPoll.upsert(ACHIEVEMENT_TASK_NAME, achievement_task_key(steamid64, appid), names_to_json(names))
 
 
 @dataclass(frozen=True)
@@ -154,19 +147,16 @@ async def _poll_once() -> None:
     # 成就只为推送存在，总开关关闭时整轮跳过
     if not SteamConfig.get_config("NotifySwitch").data:
         return
+    if ACHIEVEMENT_KIND not in SteamConfig.get_config("NotifyTypes").data:
+        return
 
     baselines = await _load_baselines()
-    records = await SteamPlayRecord.get_open_records()
-    # 只跟进仍有绑定的账号，解绑后的残留会话不再消耗接口
-    bound = set(await SteamBind.get_all_steamids())
-    records = [record for record in records if record.steamid64 in bound]
-    alive = {(record.steamid64, record.appid) for record in records}
-    await _prune_baselines(alive, baselines)
+    task_keys = set(baselines)
     if _startup_pending is None:
-        _startup_pending = set(alive)
+        _startup_pending = set(task_keys)
     else:
-        _startup_pending.intersection_update(alive)
-    if not records:
+        _startup_pending.intersection_update(task_keys)
+    if not baselines:
         return
     pending = _startup_pending
 
@@ -176,44 +166,43 @@ async def _poll_once() -> None:
         return
     cooldown = SteamConfig.get_config("KeyPoolCooldown").data
 
-    steamids = sorted({record.steamid64 for record in records})
+    steamids = sorted({steamid64 for steamid64, _ in baselines})
     infos = await _load_players(steamids, keys=keys, cooldown=cooldown)
 
     now = int(time.time())
     events: list[UserStatusEvent] = []
-    observed: set[tuple[str, str]] = set()
+    finished: set[tuple[str, str]] = set()
     unlock_cache: dict[str, dict[str, AchievementUnlock]] = {}
 
-    for record in records:
-        pair = (record.steamid64, record.appid)
-
-        payload = await fetch_player_achievements(record.appid, record.steamid64, keys=keys, cooldown=cooldown)
+    for pair, baseline in baselines.items():
+        steamid64, appid = pair
+        payload = await fetch_player_achievements(appid, steamid64, keys=keys, cooldown=cooldown)
         if "success" in payload and not payload["success"]:
+            reason = payload["error"] if "error" in payload and payload["error"] else "success=false"
+            logger.warning(f"{_TAG} 查询 {steamid64}/{appid} 成就失败，已移出轮询: {reason}")
+            await delete_achievement_task(steamid64, appid)
+            finished.add(pair)
             continue
+
         entries = payload["achievements"] if "achievements" in payload else []
-
         unlocked = unlocked_names(entries)
-        if pair in pending:
-            await _save_baseline(record.steamid64, record.appid, unlocked)
-            observed.add(pair)
+        if pair in pending or baseline is None:
+            await _save_baseline(steamid64, appid, unlocked)
+            finished.add(pair)
             continue
 
-        previous = baselines[pair] if pair in baselines else None
-        if previous is None or set(previous) != set(unlocked):
-            await _save_baseline(record.steamid64, record.appid, unlocked)
-        if previous is None:
-            continue
-
-        fresh = diff_achievements(set(previous), entries)
+        if set(baseline) != set(unlocked):
+            await _save_baseline(steamid64, appid, unlocked)
+        fresh = diff_achievements(set(baseline), entries)
         if not fresh:
             continue
 
-        if record.appid in unlock_cache:
-            unlocks = unlock_cache[record.appid]
+        if appid in unlock_cache:
+            unlocks = unlock_cache[appid]
         else:
-            unlocks = await _load_unlocks(record.appid, keys=keys, cooldown=cooldown)
-            unlock_cache[record.appid] = unlocks
-        info = infos[record.steamid64] if record.steamid64 in infos else _PlayerInfo("", "", "")
+            unlocks = await _load_unlocks(appid, keys=keys, cooldown=cooldown)
+            unlock_cache[appid] = unlocks
+        info = infos[steamid64] if steamid64 in infos else _PlayerInfo("", "", "")
         title = info.title or (payload["gameName"] if "gameName" in payload else "")
         times = _unlock_times(entries)
         for apiname in fresh:
@@ -221,18 +210,18 @@ async def _poll_once() -> None:
             unlocked_at = times[apiname] if apiname in times else now
             events.append(
                 UserStatusEvent(
-                    kind="获得成就",
-                    steamid64=record.steamid64,
+                    kind=ACHIEVEMENT_KIND,
+                    steamid64=steamid64,
                     ts=now,
                     nickname=info.nickname,
-                    appid=record.appid,
+                    appid=appid,
                     game_name=title,
                     avatar=info.avatar,
                     achievement=replace(unlock, time=unlocked_at),
                 )
             )
 
-    pending.difference_update(observed)
+    pending.difference_update(finished)
     await dispatch_events(events, options=push_options())
 
 

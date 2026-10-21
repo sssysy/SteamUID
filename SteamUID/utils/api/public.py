@@ -6,7 +6,10 @@
 import json
 from collections.abc import Sequence
 
-from .client import STEAM_STORE_COOKIES, make_async_client, request_ok_response
+import httpx
+import msgspec
+
+from .client import STEAM_STORE_COOKIES, request_response, make_async_client, request_ok_response
 from .models import (
     PlayerBan,
     StoreEvent,
@@ -242,6 +245,26 @@ async def get_recently_played_games(
     return payload["response"]
 
 
+def _decode_player_achievements(resp: httpx.Response) -> PlayerStatsPayload:
+    payload: PlayerAchievementsResponse = msgspec.json.decode(resp.content, type=PlayerAchievementsResponse)
+    return payload["playerstats"]
+
+
+def _player_achievement_failure(resp: httpx.Response) -> PlayerStatsPayload | None:
+    """错误响应若是 Steam 的结构化 success=false，则交给上层重试或丢弃。"""
+    if resp.status_code < 400 or "content-type" not in resp.headers:
+        return None
+    if "application/json" not in resp.headers["content-type"]:
+        return None
+    try:
+        playerstats = _decode_player_achievements(resp)
+    except (msgspec.DecodeError, msgspec.ValidationError):
+        return None
+    if "success" in playerstats and not playerstats["success"]:
+        return playerstats
+    return None
+
+
 async def get_player_achievements(
     appid: str,
     steamid: str,
@@ -252,15 +275,19 @@ async def get_player_achievements(
     proxy: str | None = None,
     timeout: float = 10.0,
 ) -> PlayerStatsPayload:
-    """查询玩家在指定游戏的成就进度。"""
+    """查询玩家在指定游戏的成就进度；私密资料保留 success=false 供上层处理。"""
     url = f"{base_url.rstrip('/')}{API_GET_PLAYER_ACHIEVEMENTS}"
     params = {"key": key, "appid": appid, "steamid": steamid, "l": lang}
 
     async with make_async_client(proxy=proxy, timeout=timeout) as client:
-        resp = await request_ok_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
+        resp = await request_response(client, "GET", url, tag=_TAG, params=params, timeout=timeout)
 
-    payload: PlayerAchievementsResponse = resp.json()
-    return payload["playerstats"]
+    failure = _player_achievement_failure(resp)
+    if failure is not None:
+        return failure
+
+    resp.raise_for_status()
+    return _decode_player_achievements(resp)
 
 
 async def get_achievement_schema(

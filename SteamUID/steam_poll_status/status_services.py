@@ -22,6 +22,11 @@ from ..utils.helper.status import (
 from ..utils.helper.steam_api import fetch_player_summaries
 from ..utils.database.model_bind import SteamBind
 from ..utils.database.model_poll import SteamPoll
+from ..utils.helper.achievement_task import (
+    delete_achievement_task,
+    ensure_achievement_task,
+    prune_achievement_tasks,
+)
 from ..utils.database.model_play_record import SteamPlayRecord
 
 _TAG = "[Steam·状态轮询]"
@@ -69,11 +74,14 @@ async def _record_play_sessions(
     """
     for steamid64, appid in seeds:
         await SteamPlayRecord.start_record(steamid64, appid, now)
+        await ensure_achievement_task(steamid64, appid)
     for event in events:
         if event.kind == "开始游戏":
             await SteamPlayRecord.start_record(event.steamid64, event.appid, now)
+            await ensure_achievement_task(event.steamid64, event.appid)
         elif event.kind == "结束游戏":
             await SteamPlayRecord.end_record(event.steamid64, event.appid, now)
+            await delete_achievement_task(event.steamid64, event.appid)
 
 
 async def _poll_once() -> None:
@@ -85,7 +93,9 @@ async def _poll_once() -> None:
 
     baselines = await _load_baselines()
     steamids = await SteamBind.get_all_steamids()
-    await _prune_baselines(set(steamids), baselines)
+    bound = set(steamids)
+    await _prune_baselines(bound, baselines)
+    await prune_achievement_tasks(bound)
     if _startup_pending is None:
         _startup_pending = set(steamids)
     else:
@@ -115,6 +125,12 @@ async def _poll_once() -> None:
             changed[steamid64] = snapshot
     await _save_baselines(changed)
     silent_steamids = pending.intersection(current)
+    startup_games: list[tuple[str, str]] = []
+    for steamid64 in silent_steamids:
+        snapshot = current[steamid64]
+        gameid = snapshot["gameid"] if "gameid" in snapshot else ""
+        if gameid and steamid64 in baselines:
+            startup_games.append((steamid64, gameid))
     pending.difference_update(current)
 
     seeds: list[tuple[str, str]] = []
@@ -125,6 +141,8 @@ async def _poll_once() -> None:
         if gameid:
             seeds.append((steamid64, gameid))
 
+    for steamid64, appid in startup_games:
+        await ensure_achievement_task(steamid64, appid)
     await _record_play_sessions(events, seeds, now)
 
     notify_events = [event for event in events if event.steamid64 not in silent_steamids]

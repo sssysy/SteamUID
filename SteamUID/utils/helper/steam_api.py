@@ -31,6 +31,7 @@ from ..api.public import (
     get_recently_played_games,
     get_global_achievement_percentages,
 )
+from ...steam_config import SteamConfig
 from ..database.model_cache import SteamCache
 
 # GetPlayerSummaries 单次请求的 steamid 上限，写死不再配置
@@ -160,11 +161,20 @@ async def fetch_player_achievements(
     keys: Sequence[str],
     cooldown: int,
 ) -> PlayerStatsPayload:
-    return await request_with_api_key(
-        partial(_request_achievements, appid, steamid64),
-        keys,
-        cooldown_seconds=cooldown,
-    )
+    """查询成就；success=false 按 KeyRetryCount 额外重试。"""
+    retries = max(0, SteamConfig.get_config("KeyRetryCount").data)
+    payload: PlayerStatsPayload | None = None
+    for _ in range(retries + 1):
+        payload = await request_with_api_key(
+            partial(_request_achievements, appid, steamid64),
+            keys,
+            cooldown_seconds=cooldown,
+        )
+        if "success" not in payload or payload["success"]:
+            return payload
+    if payload is None:
+        raise RuntimeError("成就请求未执行")
+    return payload
 
 
 async def _request_schema(appid: str, key: str) -> list[AchievementSchemaEntry]:
