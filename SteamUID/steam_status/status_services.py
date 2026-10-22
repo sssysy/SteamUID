@@ -1,5 +1,7 @@
 """steam状态：汇总摘要 / 状态 / 装扮，渲染静态或动态迷你资料卡。"""
 
+from gsuid_core.ai_core.trigger_bridge import ai_return
+
 from ..steam_config import SteamConfig
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import is_logged_in
@@ -46,6 +48,16 @@ def _is_private(player: PlayerSummary) -> bool:
     return player["communityvisibilitystate"] == _VISIBILITY_PRIVATE
 
 
+def _ai_return_status(player: PlayerSummary, *, level: int, status_text: str) -> None:
+    """把状态卡读取到的关键字段以文本交给 AI。"""
+    lines = ["[Steam] 账号状态："]
+    if "personaname" in player and player["personaname"]:
+        lines.append(f"昵称：{player['personaname']}")
+    lines.append(f"状态：{status_text}")
+    lines.append(f"Steam 等级：{level}")
+    ai_return("\n".join(lines))
+
+
 async def build_status_image(steamid64: str) -> bytes:
     """出图入口：摘要 → 私密校验 → 装扮素材 → 静态或动态渲染。"""
     keys = SteamConfig.get_config("SteamAPIKey").data
@@ -65,6 +77,7 @@ async def build_status_image(steamid64: str) -> bytes:
     assets = await load_status_assets(steamid64, fallback_avatar_url=fallback_avatar)
     badge = await load_level_badge(assets.level)
     status_text, status_tone = _presence(player)
+    _ai_return_status(player, level=assets.level, status_text=status_text)
 
     card = StatusCard(
         name=player["personaname"] if "personaname" in player else "",

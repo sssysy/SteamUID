@@ -4,11 +4,13 @@ import asyncio
 from collections.abc import Sequence
 
 from gsuid_core.logger import logger
+from gsuid_core.ai_core.trigger_bridge import ai_return
 
 from ..steam_config import SteamConfig
 from ..utils.api.models import RecentlyPlayedGame
 from ..utils.helper.config import region_cc, region_lang, griddb_cover_key
 from ..utils.helper.profile import load_profile_assets, load_card_background_name
+from ..utils.helper.ranking import format_duration
 from ..utils.helper.steam_api import fetch_recently_played_games
 from ..utils.helper.game_cover import resolve_cover_names
 from ..utils.helper.game_detail import resolve_game_names
@@ -73,6 +75,14 @@ async def _account_pill(steamid64: str) -> PillAccount | None:
     )
 
 
+def _ai_return_recent_play(entries: Sequence[GameRankingEntry]) -> None:
+    """把已解析的最近游玩记录以文本交给 AI。"""
+    lines = ["[Steam] 最近两周游玩记录："]
+    for index, entry in enumerate(entries, 1):
+        lines.append(f"{index}. {entry.name} (AppID {entry.appid})：{format_duration(entry.duration_seconds)}")
+    ai_return("\n".join(lines))
+
+
 async def build_recent_play(steamid64: str) -> bytes:
     """出图入口：拉近两周游玩记录 -> 排序截断 -> 解析名字与封面 -> 渲染。"""
     keys = SteamConfig.get_config("SteamAPIKey").data
@@ -90,6 +100,7 @@ async def build_recent_play(steamid64: str) -> bytes:
         raise ValueError("该账号最近两周没有游玩记录")
 
     entries = await _game_entries(ranked)
+    _ai_return_recent_play(entries)
     account, card_bg_name = await asyncio.gather(
         _account_pill(steamid64),
         load_card_background_name(steamid64),

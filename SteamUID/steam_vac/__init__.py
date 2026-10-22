@@ -12,7 +12,19 @@ from ..utils.helper.command import command_guard, resolve_target
 vac_sv = SV("steam用户相关")
 
 
-@vac_sv.on_command(("vac", "查封禁"), block=True)
+@vac_sv.on_command(
+    ("vac", "查封禁"),
+    block=True,
+    to_ai="""查询 Steam 账号的社区封禁、VAC 封禁、游戏封禁和经济封禁状态。
+当用户询问自己的账号是否被封、是否有 VAC 记录，或需要检查某个 Steam 账号时调用。
+
+Args:
+    text: 可选的目标账号，填写个人资料页、SteamID 或好友码。
+          留空时查询当前会话中用户已绑定的主账号。
+""",
+    covers=["Steam 账号封禁状态：社区封禁、VAC 封禁、游戏封禁、经济封禁"],
+    aliases=["Steam·查VAC", "Steam·查封禁", "Steam·账号安全状态"],
+)
 @command_guard
 async def steam_vac(bot: Bot, ev: Event) -> None:
     """steamvac / steam查封禁[@他人|个人资料页|steamid|好友码]：查询目标账号的封禁汇总。"""

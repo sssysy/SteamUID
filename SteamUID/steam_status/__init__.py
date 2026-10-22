@@ -15,7 +15,19 @@ from .friend_status_services import build_friend_status_image
 status_sv = SV("steam用户相关")
 
 
-@status_sv.on_command("状态", block=True)
+@status_sv.on_command(
+    "状态",
+    block=True,
+    to_ai="""查询 Steam 账号的实时在线状态、当前正在玩的游戏和 Steam 等级。
+当用户询问某个人现在是否在线、正在玩什么，或自己的 Steam 状态时调用。
+
+Args:
+    text: 可选的目标账号，填写个人资料页、SteamID 或好友码。
+          留空时查询当前会话中用户已绑定的主账号。
+""",
+    covers=["Steam 账号实时在线状态、当前正在玩的游戏、Steam 等级"],
+    aliases=["Steam·在线状态", "Steam·正在玩什么", "Steam·Steam等级"],
+)
 @command_guard
 async def steam_status(bot: Bot, ev: Event) -> None:
     """steam状态[@他人|个人资料页|steamid|好友码]：渲染目标账号的迷你资料卡。"""

@@ -11,7 +11,18 @@ players_sv = SV("Steam当前玩家")
 
 
 # 长命令词先注册，"当前玩家数 x" 才不会被 "当前玩家" 抢走参数
-@players_sv.on_prefix(("当前玩家数", "当前玩家"), block=True)
+@players_sv.on_prefix(
+    ("当前玩家数", "当前玩家"),
+    block=True,
+    to_ai="""查询指定 Steam 游戏当前在线玩家数。
+当用户询问某款游戏现在有多少人在线、热度如何时调用。
+
+Args:
+    text: 游戏名称或 Steam AppID，例如 "艾尔登法环" 或 "AppID"。
+""",
+    covers=["Steam 游戏当前在线人数查询：按游戏名或 AppID"],
+    aliases=["Steam·当前玩家数", "Steam·在线人数", "Steam·游戏热度查询"],
+)
 @command_guard
 async def steam_current_players(bot: Bot, ev: Event) -> None:
     """steam当前玩家(数)<游戏名/AppID>：查询该游戏当前在线玩家数。"""

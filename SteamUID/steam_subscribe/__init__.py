@@ -37,7 +37,19 @@ async def steam_toggle_all_push(bot: Bot, ev: Event) -> None:
     await toggle_all_subscribe(bot, ev, enable=_ALL_CMDS[ev.command])
 
 
-@subscribe_sv.on_fullmatch("订阅状态", block=True)
+@subscribe_sv.on_fullmatch(
+    "订阅状态",
+    block=True,
+    to_ai="""查询当前群聊或私聊会话的 Steam 推送订阅状态。
+当用户询问自己订阅了哪些 Steam 推送、公告订阅数量或降价订阅数量时调用。
+无需参数，自动读取当前会话。
+
+Args:
+    text: 无需参数，留空即可。
+""",
+    covers=["当前会话 Steam 推送订阅状态、公告订阅数、降价订阅数"],
+    aliases=["Steam·推送订阅状态", "Steam·订阅查询"],
+)
 @command_guard
 async def steam_subscribe_status(bot: Bot, ev: Event) -> None:
     """steam订阅状态：查看本会话的推送开关与公告 / 降价订阅数量。"""
