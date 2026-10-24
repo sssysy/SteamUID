@@ -5,7 +5,6 @@ description = "全功能 Steam 插件"
 authors = [
     {name = "sssysy", email = "sssysy@vip.qq.com"},
 ]
-dependencies = ["imageio-ffmpeg"]
 requires-python = ">=3.12"
 readme = "README.md"
 license = {file = "LICENSE"}
