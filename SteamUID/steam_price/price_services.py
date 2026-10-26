@@ -37,7 +37,12 @@ from ..utils.helper.price_drop import (
     subscription_data,
     subscription_mode,
 )
-from ..utils.helper.game_detail import load_store_detail, resolve_game_names
+from ..utils.helper.game_detail import (
+    load_store_detail,
+    resolve_game_names,
+    preferred_game_name,
+    preferred_game_names,
+)
 from ..utils.helper.history_low import (
     HISTORY_LOW_CACHE_TYPE,
     history_low_key,
@@ -99,6 +104,11 @@ async def _resolve_ref(bot: Bot, ev: Event) -> GameRef:
     if not raw.isdigit():
         await bot.send(match_tip_text(ref))
     return ref
+
+
+async def _display_name(ref: GameRef) -> str:
+    """订阅回执的游戏名：开关开启时优先 steamcmd，失败保留搜索命中名。"""
+    return await preferred_game_name(ref.appid, fallback=ref.name, lang=region_lang())
 
 
 def _mode_label(mode: PriceMode) -> str:
@@ -170,10 +180,11 @@ def _entry(
 
 async def _subscribe(bot: Bot, ev: Event, mode: PriceMode) -> None:
     ref = await _resolve_ref(bot, ev)
+    display_name = await _display_name(ref)
     rows = await scope_subscribe_rows(ev, SUBSCRIBE_TASK, ref.appid)
     old_mode = subscription_mode(rows[0].extra_data) if rows else None
     if old_mode == mode:
-        await bot.send(f"{scope_name(ev)}已订阅该游戏：{ref.name}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}已订阅该游戏：{display_name}({ref.appid})")
         return
 
     prices = await fetch_price_overviews([ref.appid], cc=region_cc())
@@ -200,10 +211,10 @@ async def _subscribe(bot: Bot, ev: Event, mode: PriceMode) -> None:
 
     price = format_price(overview, region().currency)
     if old_mode is None:
-        message = f"已为{scope_name(ev)}订阅【{ref.name}】({ref.appid}) {_mode_label(mode)}，当前售价 {price}"
+        message = f"已为{scope_name(ev)}订阅【{display_name}】({ref.appid}) {_mode_label(mode)}，当前售价 {price}"
     else:
         message = (
-            f"已将{scope_name(ev)}对【{ref.name}】({ref.appid})的推送模式改为{_mode_label(mode)}，当前售价 {price}"
+            f"已将{scope_name(ev)}对【{display_name}】({ref.appid})的推送模式改为{_mode_label(mode)}，当前售价 {price}"
         )
     await bot.send(message)
 
@@ -220,12 +231,13 @@ async def subscribe_history(bot: Bot, ev: Event) -> None:
 
 async def _unsubscribe(bot: Bot, ev: Event, mode: PriceMode) -> None:
     ref = await _resolve_ref(bot, ev)
+    display_name = await _display_name(ref)
     rows = await scope_subscribe_rows(ev, SUBSCRIBE_TASK, ref.appid)
     if not rows or subscription_mode(rows[0].extra_data) != mode:
-        await bot.send(f"{scope_name(ev)}未订阅该游戏：{ref.name}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}未订阅该游戏：{display_name}({ref.appid})")
         return
     await delete_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
-    await bot.send(f"已取消{scope_name(ev)}订阅的【{ref.name}】({ref.appid}) {_mode_label(mode)}")
+    await bot.send(f"已取消{scope_name(ev)}订阅的【{display_name}】({ref.appid}) {_mode_label(mode)}")
 
 
 async def unsubscribe_price(bot: Bot, ev: Event) -> None:
@@ -253,6 +265,11 @@ async def build_price_list_card(ev: Event) -> bytes:
         _load_details(appids, cc),
     )
     names = await resolve_game_names(appids, cc=cc, lang=region_lang(), details=dict(zip(appids, details)))
+    names = await preferred_game_names(
+        appids,
+        fallbacks={appid: names[appid] if appid in names else appid for appid in appids},
+        lang=region_lang(),
+    )
     currency = region().currency
     entries = [
         _entry(

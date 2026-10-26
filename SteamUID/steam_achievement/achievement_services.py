@@ -39,7 +39,13 @@ from ..utils.helper.steam_api import (
     fetch_global_achievement_percentages,
 )
 from ..utils.helper.game_cover import resolve_cover_name
-from ..utils.helper.game_detail import pics_game_meta, pics_game_name, load_store_detail, store_detail_name
+from ..utils.helper.game_detail import (
+    pics_game_meta,
+    pics_game_name,
+    load_store_detail,
+    store_detail_name,
+    preferred_game_name,
+)
 from ..utils.database.model_poll import SteamPoll
 from ..utils.helper.achievement_task import (
     ACHIEVEMENT_TASK_NAME,
@@ -380,6 +386,7 @@ async def build_achievement_card(steamid64: str, query: str) -> AchievementCardR
         game_name = store_name
     elif game_name == ref.appid:
         game_name = await pics_game_name(ref.appid, lang=lang) or ref.appid
+    game_name = await preferred_game_name(ref.appid, fallback=game_name, lang=lang)
 
     card = AchievementCard(
         game_name=game_name,

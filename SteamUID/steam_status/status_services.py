@@ -6,8 +6,10 @@ from ..steam_config import SteamConfig
 from ..utils.api.models import PlayerSummary
 from ..utils.helper.bind import is_logged_in
 from ..utils.helper.level import load_level_badge
+from ..utils.helper.config import region_lang
 from ..utils.helper.profile import load_status_assets
 from ..utils.helper.steam_api import fetch_player_summaries
+from ..utils.helper.game_detail import preferred_game_name
 from ..utils.render.html.status_card import StatusCard, render_status_card
 from ..utils.render.html.static_assets import (
     get_img_cache_url,
@@ -29,10 +31,15 @@ PERSONA_TEXT: dict[int, str] = {
 }
 
 
-def _presence(player: PlayerSummary) -> tuple[str, str]:
+async def _presence(player: PlayerSummary) -> tuple[str, str]:
     """返回 (状态文案, 色调)；游戏中优先于在线状态。"""
     if "gameid" in player and player["gameid"]:
         title = player["gameextrainfo"] if "gameextrainfo" in player else ""
+        title = await preferred_game_name(
+            player["gameid"],
+            fallback=title or player["gameid"],
+            lang=region_lang(),
+        )
         return (f"游戏中：{title}" if title else "游戏中"), "in-game"
 
     state = player["personastate"] if "personastate" in player else 0
@@ -76,7 +83,7 @@ async def build_status_image(steamid64: str) -> bytes:
     fallback_avatar = player["avatarfull"] if "avatarfull" in player else ""
     assets = await load_status_assets(steamid64, fallback_avatar_url=fallback_avatar)
     badge = await load_level_badge(assets.level)
-    status_text, status_tone = _presence(player)
+    status_text, status_tone = await _presence(player)
     _ai_return_status(player, level=assets.level, status_text=status_text)
 
     card = StatusCard(

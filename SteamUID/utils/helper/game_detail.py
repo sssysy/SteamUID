@@ -15,7 +15,7 @@ import msgspec
 
 from gsuid_core.logger import logger
 
-from .config import store_base
+from .config import store_base, force_steamcmd_game_name
 from ..api.pics import get_app_info
 from ..api.cover import build_app_icon_url, build_store_asset_url
 from ..api.models import AppDetailsEntry, PicsInfoResponse
@@ -144,6 +144,47 @@ async def pics_game_name(appid: str, *, lang: str) -> str:
     """steamcmd PICS 里的游戏名；未收录或请求失败返回空串。"""
     meta = await pics_game_meta(appid, lang=lang)
     return meta["name"] if "name" in meta else ""
+
+
+async def preferred_game_name(
+    appid: str,
+    *,
+    fallback: str,
+    lang: str,
+    force: bool | None = None,
+) -> str:
+    """开关开启时优先取 steamcmd 译名，未命中或失败时保留调用方名称。"""
+    enabled = force_steamcmd_game_name() if force is None else force
+    if not enabled:
+        return fallback
+    return await pics_game_name(appid, lang=lang) or fallback
+
+
+async def preferred_game_names(
+    appids: Sequence[str],
+    *,
+    fallbacks: Mapping[str, str],
+    lang: str,
+    force: bool | None = None,
+) -> dict[str, str]:
+    """批量覆盖为 steamcmd 译名；开关关闭时原样返回调用方名称。"""
+    ordered = list(dict.fromkeys(appid.strip() for appid in appids if appid.strip()))
+    names = {appid: fallbacks[appid] for appid in ordered if appid in fallbacks}
+    enabled = force_steamcmd_game_name() if force is None else force
+    if not enabled:
+        return names
+
+    sem = asyncio.Semaphore(_NAME_BATCH)
+
+    async def one(appid: str) -> str:
+        async with sem:
+            return await pics_game_name(appid, lang=lang)
+
+    resolved = await asyncio.gather(*(one(appid) for appid in ordered))
+    for appid, name in zip(ordered, resolved):
+        if name:
+            names[appid] = name
+    return names
 
 
 async def resolve_game_name(appid: str, *, cc: str, lang: str) -> str:

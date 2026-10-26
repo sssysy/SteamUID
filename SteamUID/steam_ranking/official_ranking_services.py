@@ -13,7 +13,7 @@ from ..utils.helper.library import LibraryGame
 from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_background_name
 from ..utils.helper.steam_api import fetch_owned_games
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import resolve_game_names
+from ..utils.helper.game_detail import resolve_game_names, preferred_game_names
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.game_ranking import GameRankingEntry, render_game_ranking
 from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
@@ -97,6 +97,14 @@ async def build_official_self_ranking(ev: Event) -> bytes:
         ),
         _resolve_names(top_games, cc=country, lang=lang),
     )
+    names = await preferred_game_names(
+        [game.appid for game in top_games],
+        fallbacks={
+            game.appid: (names[game.appid] if game.appid in names and names[game.appid] else game.name or game.appid)
+            for game in top_games
+        },
+        lang=lang,
+    )
     profile, card_bg_name = await asyncio.gather(
         load_profile_assets(steamid64),
         load_card_background_name(steamid64),
@@ -104,7 +112,7 @@ async def build_official_self_ranking(ev: Event) -> bytes:
     entries = [
         GameRankingEntry(
             appid=game.appid,
-            name=game.name or (names[game.appid] if game.appid in names else game.appid),
+            name=(names[game.appid] if game.appid in names and names[game.appid] else game.name or game.appid),
             cover_url=get_img_cache_url(covers[game.appid]) if game.appid in covers else "",
             duration_seconds=game.playtime_minutes * 60,
         )

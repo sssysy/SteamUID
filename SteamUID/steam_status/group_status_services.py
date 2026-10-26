@@ -1,7 +1,7 @@
 """steam群友状态：本群已绑定群友的实时在线与游戏状态列表。"""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import replace, dataclass
 from collections.abc import Mapping, Sequence
 
 from gsuid_core.logger import logger
@@ -16,6 +16,7 @@ from ..utils.helper.profile import load_mini_background_name, load_initiator_car
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steam_api import fetch_player_summaries
 from ..utils.helper.game_cover import resolve_cover_name
+from ..utils.helper.game_detail import preferred_game_names
 from ..utils.database.model_bind import SteamBind
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.group_status import render_group_status
@@ -39,17 +40,17 @@ class _ActiveAccount:
     appid: str
 
 
-def _presence(player: PlayerSummary) -> tuple[str, str] | None:
+def _presence(player: PlayerSummary) -> tuple[str, str, str] | None:
     """返回 (状态文案, 色调)；离线返回 None，personastate 取值未知时按在线处理。"""
     game_id = player["gameid"] if "gameid" in player else ""
     if game_id:
         title = player["gameextrainfo"] if "gameextrainfo" in player else ""
-        return (f"游戏中：{title}" if title else "游戏中"), "ingame"
+        return (f"游戏中：{title}" if title else "游戏中"), "ingame", game_id
 
     state = player["personastate"] if "personastate" in player else 0
     if state == 0:
         return None
-    return (PERSONA_TEXT[state] if state in PERSONA_TEXT else "在线"), "online"
+    return (PERSONA_TEXT[state] if state in PERSONA_TEXT else "在线"), "online", ""
 
 
 def _grouped_binds(binds: Sequence[SteamBind]) -> list[list[SteamBind]]:
@@ -73,13 +74,13 @@ def _pick_active(binds: Sequence[SteamBind], summaries: Mapping[str, PlayerSumma
         presence = _presence(player)
         if presence is None:
             continue
-        status_text, status_tone = presence
+        status_text, status_tone, appid = presence
         account = _ActiveAccount(
             user_id=bind.user_id,
             steamid64=bind.steamid64,
             status_text=status_text,
             status_tone=status_tone,
-            appid=player["gameid"] if "gameid" in player else "",
+            appid=appid,
         )
         if bind.is_main_id:
             return account
@@ -159,7 +160,30 @@ async def build_group_status_image(ev: Event) -> bytes:
     country = region_cc()
     lang = region_lang()
     griddb_key = griddb_cover_key()
-    shown = actives[:_MAX_MEMBERS]
+    targets = actives[:_MAX_MEMBERS]
+    appids = list(dict.fromkeys(account.appid for account in targets if account.appid))
+    fallbacks: dict[str, str] = {}
+    for account in targets:
+        if not account.appid:
+            continue
+        prefix = "游戏中："
+        fallbacks[account.appid] = (
+            account.status_text.removeprefix(prefix) if account.status_text.startswith(prefix) else ""
+        )
+    names = await preferred_game_names(
+        appids,
+        fallbacks=fallbacks,
+        lang=lang,
+    )
+    shown = [
+        replace(
+            account,
+            status_text=f"游戏中：{names[account.appid]}",
+        )
+        if account.appid in names and names[account.appid]
+        else account
+        for account in targets
+    ]
     loaded, card_bg_name = await asyncio.gather(
         asyncio.gather(
             *(_background_url(account, country=country, lang=lang, griddb_key=griddb_key) for account in shown),

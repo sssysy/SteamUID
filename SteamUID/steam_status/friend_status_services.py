@@ -1,7 +1,7 @@
 """steam好友状态：目标账号在线好友的药丸列表。"""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import replace, dataclass
 from collections.abc import Mapping, Sequence
 
 from gsuid_core.logger import logger
@@ -17,6 +17,7 @@ from ..utils.helper.command import resolve_target
 from ..utils.helper.profile import load_card_background_name, load_mini_background_name
 from ..utils.helper.steam_api import fetch_friend_list, fetch_player_summaries
 from ..utils.helper.game_cover import resolve_cover_names
+from ..utils.helper.game_detail import preferred_game_names
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.group_status import render_group_status
 from ..utils.render.html.static_assets import (
@@ -59,6 +60,34 @@ def _presence(player: PlayerSummary) -> tuple[int, str, str, str] | None:
     if state in (3, 4):
         return 2, text, "away", ""
     return 1, text, "online", ""
+
+
+async def _localized_statuses(entries: Sequence[_OnlineFriend], *, lang: str) -> list[_OnlineFriend]:
+    """只为正在游戏的在线好友解析译名；同一 appid 只请求一次。"""
+    appids = list(dict.fromkeys(entry.appid for entry in entries if entry.appid))
+    if not appids:
+        return list(entries)
+    fallbacks: dict[str, str] = {}
+    for entry in entries:
+        if entry.appid and entry.appid not in fallbacks:
+            prefix = "游戏中："
+            fallbacks[entry.appid] = (
+                entry.status_text.removeprefix(prefix) if entry.status_text.startswith(prefix) else ""
+            )
+    names = await preferred_game_names(
+        appids,
+        fallbacks=fallbacks,
+        lang=lang,
+    )
+    return [
+        replace(
+            entry,
+            status_text=f"游戏中：{names[entry.appid]}",
+        )
+        if entry.appid in names and names[entry.appid]
+        else entry
+        for entry in entries
+    ]
 
 
 def _avatar_url(player: PlayerSummary) -> str:
@@ -119,6 +148,7 @@ async def _build_pills(
     card_steamid64: str,
 ) -> tuple[list[PillAccount], str]:
     """并发补齐头像 / 游戏封面 / 迷你背景，返回药丸数据与卡片底图。"""
+    shown = await _localized_statuses(shown, lang=lang)
     appids = list(dict.fromkeys(friend.appid for friend in shown if friend.appid))
     avatar_urls = [friend.avatar_url for friend in shown]
     sem = asyncio.Semaphore(_MINI_BG_CONCURRENCY)

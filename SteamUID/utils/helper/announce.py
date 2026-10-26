@@ -12,7 +12,7 @@ import msgspec
 
 from .game_cover import resolve_cover_name, download_image_name
 from ..api.models import StoreEvent
-from .game_detail import pics_game_meta, resolve_game_name
+from .game_detail import pics_game_meta, resolve_game_name, preferred_game_name
 
 _TAG = "[Steam·公告订阅]"
 _LANG = "schinese"
@@ -157,6 +157,7 @@ def subscribe_ts(extra_data: str | None) -> int:
 async def resolve_game_badge(appid: str, *, cc: str, lang: str, griddb_key: str) -> tuple[str, str]:
     """卡片顶部的游戏名与方形 logo 文件名：PICS 方形图标优先，取不到回落官方封面。"""
     name = await resolve_game_name(appid, cc=cc, lang=lang) or appid
+    name = await preferred_game_name(appid, fallback=name, lang=lang)
     meta = await pics_game_meta(appid, lang=lang)
     icon = await download_image_name(meta["icon_url"]) if "icon_url" in meta else ""
     if icon:

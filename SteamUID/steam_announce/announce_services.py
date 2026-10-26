@@ -39,7 +39,7 @@ from ..utils.helper.announce import (
     is_new_announcement,
 )
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import resolve_game_name
+from ..utils.helper.game_detail import preferred_game_name, preferred_game_names
 from ..utils.database.model_poll import SteamPoll
 from ..utils.render.html.announce_list import (
     AnnounceEntry,
@@ -129,6 +129,11 @@ async def _resolve_ref(bot: Bot, ev: Event) -> GameRef:
     return ref
 
 
+async def _display_name(ref: GameRef) -> str:
+    """公告回执的游戏名：开关开启时优先 steamcmd，失败保留搜索命中名。"""
+    return await preferred_game_name(ref.appid, fallback=ref.name, lang=region_lang())
+
+
 async def _build_card(item: AnnounceItem) -> AnnouncePushCard:
     """公告出卡：徽标与正文各自解析，正文为空时回落标题。"""
     name, cover_name = await resolve_game_badge(
@@ -149,9 +154,10 @@ async def _build_card(item: AnnounceItem) -> AnnouncePushCard:
 async def subscribe_announce(bot: Bot, ev: Event) -> None:
     """steam订阅公告<游戏名/AppID>：订阅该游戏的新公告推送。"""
     ref = await _resolve_ref(bot, ev)
+    display_name = await _display_name(ref)
     mine = await _my_rows(ev, ref.appid)
     if mine:
-        await bot.send(f"{scope_name(ev)}已订阅该游戏：{_name_of(mine, ref.appid)}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}已订阅该游戏：{display_name}({ref.appid})")
         return
 
     # 订阅前先记下当前最新公告作为基线，避免刚订阅就把旧公告推出去
@@ -159,7 +165,7 @@ async def subscribe_announce(bot: Bot, ev: Event) -> None:
     if latest is None:
         raise ValueError(_NO_ANNOUNCE)
 
-    name = await resolve_game_name(ref.appid, cc=region_cc(), lang=region_lang()) or ref.appid
+    name = display_name
     extra_message, extra_data = subscribe_fields(name)
     await add_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid, extra_message=extra_message, extra_data=extra_data)
     await SteamPoll.upsert(BASELINE_TASK, ref.appid, baseline_to_json(baseline_of(latest)))
@@ -169,9 +175,10 @@ async def subscribe_announce(bot: Bot, ev: Event) -> None:
 async def unsubscribe_announce(bot: Bot, ev: Event) -> None:
     """steam取消订阅公告<游戏名/AppID>：取消订阅该游戏的公告推送。"""
     ref = await _resolve_ref(bot, ev)
+    display_name = await _display_name(ref)
     mine = await _my_rows(ev, ref.appid)
     if not mine:
-        await bot.send(f"{scope_name(ev)}未订阅该游戏：{ref.name}({ref.appid})")
+        await bot.send(f"{scope_name(ev)}未订阅该游戏：{display_name}({ref.appid})")
         return
 
     await delete_scope_subscribe(ev, SUBSCRIBE_TASK, ref.appid)
@@ -179,7 +186,7 @@ async def unsubscribe_announce(bot: Bot, ev: Event) -> None:
     remaining = _subscribe_rows(await gs_subscribe.get_subscribe(SUBSCRIBE_TASK, uid=ref.appid))
     if not remaining:
         await SteamPoll.delete_row(BASELINE_TASK, ref.appid)
-    await bot.send(f"已取消{scope_name(ev)}订阅的【{_name_of(mine, ref.appid)}】({ref.appid}) 公告推送")
+    await bot.send(f"已取消{scope_name(ev)}订阅的【{display_name}】({ref.appid}) 公告推送")
 
 
 async def build_announce_list_card(ev: Event) -> bytes:
@@ -192,9 +199,14 @@ async def build_announce_list_card(ev: Event) -> bytes:
     cc = region_cc()
     lang = region_lang()
     covers = await resolve_cover_names(appids, country=cc, lang=lang, griddb_key=_griddb_key())
+    names = await preferred_game_names(
+        appids,
+        fallbacks={appid: _name_of(rows, appid) for appid in appids},
+        lang=lang,
+    )
     entries: list[AnnounceEntry] = []
     for appid in appids:
-        name = _name_of(rows, appid)
+        name = names[appid] if appid in names and names[appid] else _name_of(rows, appid)
         cover_url = get_img_cache_url(covers[appid]) if appid in covers else ""
         entries.append(
             AnnounceEntry(

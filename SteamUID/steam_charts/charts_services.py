@@ -1,5 +1,6 @@
 """steam 榜单：周热销 / 当前在线 / 本周活跃三个榜单的取数与出图。"""
 
+import asyncio
 import datetime
 from dataclasses import dataclass
 from collections.abc import Callable, Sequence
@@ -25,7 +26,7 @@ from ..utils.helper.charts import (
 )
 from ..utils.helper.config import region_cc, region_lang, griddb_cover_key
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import clean_description
+from ..utils.helper.game_detail import clean_description, resolve_game_names, preferred_game_names
 from ..utils.render.html.charts_grid import (
     ChartGame,
     ChartRank,
@@ -78,6 +79,16 @@ def _appid_of(item: StoreBrowseItem) -> str:
 
 def _name_of(item: StoreBrowseItem) -> str:
     return item["name"] if "name" in item else ""
+
+
+def _names_of(picked: Sequence[_Picked]) -> dict[str, str]:
+    """候选 appid 到榜单原名的映射，保持首次出现顺序。"""
+    names: dict[str, str] = {}
+    for row in picked:
+        appid = _appid_of(row.item)
+        if appid and appid not in names:
+            names[appid] = _name_of(row.item)
+    return names
 
 
 def _description_of(item: StoreBrowseItem) -> str:
@@ -177,6 +188,24 @@ async def _resolve_covers(picked: Sequence[_Picked]) -> dict[str, str]:
     return covers
 
 
+async def _localize_names(picked: Sequence[_Picked], *, lang: str) -> dict[str, str]:
+    """榜单卡片按 appid 批量替换译名；未命中保留榜单原名称。"""
+    appids = [appid for appid in (_appid_of(row.item) for row in picked) if appid]
+    fallbacks = _names_of(picked)
+    official, localized = await asyncio.gather(
+        resolve_game_names(appids, cc=region_cc(), lang=lang),
+        preferred_game_names(appids, fallbacks=fallbacks, lang=lang),
+    )
+    return {
+        appid: localized[appid]
+        if appid in localized and localized[appid]
+        else official[appid]
+        if appid in official and official[appid]
+        else fallbacks[appid]
+        for appid in appids
+    }
+
+
 def _fill_slots(picked: Sequence[_Picked], covers: dict[str, str]) -> list[_Picked]:
     """按名次顺序补满 9 条；封面拿不到的跳过，由后面的候选顶上来。"""
     filled: list[_Picked] = []
@@ -189,13 +218,19 @@ def _fill_slots(picked: Sequence[_Picked], covers: dict[str, str]) -> list[_Pick
     return filled
 
 
-def _card(row: _Picked, covers: dict[str, str], value: ChartValue) -> ChartGame:
+def _card(
+    row: _Picked,
+    covers: dict[str, str],
+    value: ChartValue,
+    names: dict[str, str],
+) -> ChartGame:
     """组装一格：封面取挂载直链，名次直接用 Steam 真实名次。"""
+    appid = _appid_of(row.item)
     return ChartGame(
         rank=row.rank,
-        name=_name_of(row.item),
+        name=names[appid] if appid in names and names[appid] else _name_of(row.item),
         description=_description_of(row.item),
-        cover_url=get_img_cache_url(covers[_appid_of(row.item)]),
+        cover_url=get_img_cache_url(covers[appid]),
         value=value,
     )
 
@@ -256,7 +291,8 @@ async def build_hot_chart(period: str) -> bytes:
         logger.info(f"{_TAG} {period}热门榜过滤后只有 {len(filled)} 条")
 
     build_value = _hot_value(period)
-    games = [_card(row, covers, build_value(row)) for row in filled]
+    names = await _localize_names(filled, lang=lang)
+    games = [_card(row, covers, build_value(row), names) for row in filled]
     return await render_steam_charts("Steam 热门排行", subtitle, games, card_bg_url=get_bg_url())
 
 
@@ -285,6 +321,7 @@ async def build_sale_chart(period: str) -> bytes:
         logger.info(f"{_TAG} {period}热销榜过滤后只有 {len(filled)} 条")
 
     prices = await fetch_price_overviews([_appid_of(row.item) for row in filled], cc=cc)
-    games = [_card(row, covers, _sale_value(row.item, prices)) for row in filled]
+    names = await _localize_names(filled, lang=lang)
+    games = [_card(row, covers, _sale_value(row.item, prices), names) for row in filled]
 
     return await render_steam_charts("Steam 热销排行", period, games, card_bg_url=get_bg_url())

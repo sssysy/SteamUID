@@ -8,7 +8,7 @@ from gsuid_core.models import Event
 from ..utils.api.public import get_number_of_current_players
 from ..utils.helper.game import match_tip_text, resolve_game_ref
 from ..utils.helper.config import api_base, region_cc, region_lang
-from ..utils.helper.game_detail import resolve_game_name
+from ..utils.helper.game_detail import resolve_game_name, preferred_game_name
 
 _USAGE = "steam当前玩家 艾尔登法环 或 steam当前玩家 黑神话"
 
@@ -23,7 +23,8 @@ async def query_current_players(bot: Bot, ev: Event) -> None:
     if not raw.isdigit():
         await bot.send(match_tip_text(ref))
 
-    name = await resolve_game_name(ref.appid, cc=region_cc(), lang=region_lang()) or ref.name
+    fallback = await resolve_game_name(ref.appid, cc=region_cc(), lang=region_lang()) or ref.name
+    name = await preferred_game_name(ref.appid, fallback=fallback, lang=region_lang())
     try:
         payload = await get_number_of_current_players(ref.appid, base_url=api_base())
     except httpx.HTTPStatusError as error:

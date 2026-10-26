@@ -16,7 +16,7 @@ from ..utils.helper.steam_api import fetch_owned_games
 from ..utils.render.html.wall import WallGame, render_game_wall
 from ..utils.helper.auth_token import run_with_token
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import clean_description, load_store_detail
+from ..utils.helper.game_detail import clean_description, load_store_detail, preferred_game_names
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
 from ..utils.render.html.game_recommend import RecommendGame, render_game_recommend
@@ -85,10 +85,15 @@ async def build_game_wall(steamid64: str) -> bytes:
         lang=region_lang(),
         griddb_key=griddb_key,
     )
+    names = await preferred_game_names(
+        [game.appid for game in played],
+        fallbacks={game.appid: game.name for game in played},
+        lang=region_lang(),
+    )
 
     wall_games = [
         WallGame(
-            name=game.name,
+            name=names[game.appid] if game.appid in names and names[game.appid] else game.name,
             playtime_minutes=game.playtime_minutes,
             cover_url=get_img_cache_url(covers[game.appid]) if game.appid in covers else "",
         )
@@ -155,9 +160,14 @@ async def build_recommend_pick(steamid64: str) -> bytes:
         ),
         load_card_background_name(steamid64),
     )
+    names = await preferred_game_names(
+        [candidate.appid for candidate in picked],
+        fallbacks={candidate.appid: candidate.name for candidate in picked},
+        lang=region_lang(),
+    )
     games = [
         RecommendGame(
-            name=candidate.name,
+            name=names[candidate.appid] if candidate.appid in names and names[candidate.appid] else candidate.name,
             description=candidate.description,
             cover_url=(get_img_cache_url(covers[candidate.appid]) if candidate.appid in covers else ""),
         )
@@ -232,9 +242,14 @@ async def build_family_wall(steamid64: str) -> bytes:
         lang=region_lang(),
         griddb_key=griddb_cover_key(),
     )
+    names = await preferred_game_names(
+        [game.appid for game in games],
+        fallbacks={game.appid: game.name for game in games},
+        lang=region_lang(),
+    )
     wall_games = [
         WallGame(
-            name=game.name,
+            name=names[game.appid] if game.appid in names and names[game.appid] else game.name,
             playtime_minutes=game.playtime_minutes,
             cover_url=get_img_cache_url(covers[game.appid]) if game.appid in covers else "",
         )

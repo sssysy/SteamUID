@@ -143,6 +143,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "关闭后将不会请求游戏封面图片，只会有文字",
         True,
     ),
+    "ForceSteamCMDGameName": GsBoolConfig(
+        "强制使用steamcmd获取游戏译名",
+        "开启后，用户查询与实际推送优先使用当前地区对应的 steamcmd 译名",
+        False,
+    ),
     "QueuePushGroup": GsBoolConfig(
         "探索队列结果群聊推送",
         "自动探索队列执行完毕后是否向对应群聊推送结果",

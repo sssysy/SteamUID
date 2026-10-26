@@ -13,7 +13,7 @@ from ..utils.helper.profile import load_profile_assets, load_card_background_nam
 from ..utils.helper.ranking import format_duration
 from ..utils.helper.steam_api import fetch_recently_played_games
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import resolve_game_names
+from ..utils.helper.game_detail import resolve_game_names, preferred_game_names
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.game_ranking import GameRankingEntry, render_game_ranking
 from ..utils.render.html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
@@ -46,6 +46,11 @@ async def _game_entries(ranked: Sequence[tuple[str, int, str]]) -> list[GameRank
     covers, names = await asyncio.gather(
         resolve_cover_names(appids, country=country, lang=region_lang(), griddb_key=griddb_key),
         resolve_game_names(appids, cc=country, lang=region_lang()),
+    )
+    names = await preferred_game_names(
+        appids,
+        fallbacks={appid: names[appid] if appid in names else api_name for appid, _, api_name in ranked},
+        lang=region_lang(),
     )
 
     return [

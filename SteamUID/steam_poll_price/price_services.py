@@ -38,6 +38,7 @@ from ..utils.helper.game_detail import (
     clean_description,
     load_store_detail,
     store_detail_name,
+    preferred_game_name,
 )
 from ..utils.helper.history_low import (
     HISTORY_LOW_CACHE_TYPE,
@@ -178,6 +179,7 @@ async def _drop_card(drop: _Drop) -> PriceDropCard:
         data = detail["data"]
         desc = clean_description(data["short_description"] if "short_description" in data else "")
     name = store_detail_name(detail) or await pics_game_name(drop.appid, lang=region_lang()) or drop.appid
+    name = await preferred_game_name(drop.appid, fallback=name, lang=region_lang())
 
     cover_name = await resolve_cover_name(
         drop.appid,

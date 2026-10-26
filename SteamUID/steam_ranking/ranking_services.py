@@ -15,7 +15,13 @@ from ..utils.helper.profile import load_profile_assets, load_card_background_nam
 from ..utils.helper.ranking import load_group_members
 from ..utils.helper.steamid import auto2steamid64
 from ..utils.helper.game_cover import download_image_name, resolve_cover_names
-from ..utils.helper.game_detail import pics_game_meta, resolve_game_name, resolve_game_names
+from ..utils.helper.game_detail import (
+    pics_game_meta,
+    resolve_game_name,
+    resolve_game_names,
+    preferred_game_name,
+    preferred_game_names,
+)
 from ..utils.database.model_bind import SteamBind
 from ..utils.render.html.account_pill import PillAccount
 from ..utils.render.html.game_ranking import GameRankingEntry, render_game_ranking
@@ -93,6 +99,11 @@ async def _game_entries(seconds: Mapping[str, int]) -> list[GameRankingEntry]:
         resolve_cover_names(appids, country=country, lang=region_lang(), griddb_key=griddb_key),
         resolve_game_names(appids, cc=country, lang=region_lang()),
     )
+    names = await preferred_game_names(
+        appids,
+        fallbacks={appid: names[appid] if appid in names else appid for appid in appids},
+        lang=region_lang(),
+    )
 
     return [
         GameRankingEntry(
@@ -115,6 +126,7 @@ async def _game_badge(appid: str, fallback_name: str) -> RankingBadge:
         pics_game_meta(appid, lang=lang),
         resolve_cover_names([appid], country=country, lang=lang, griddb_key=griddb_key),
     )
+    name = await preferred_game_name(appid, fallback=name or fallback_name, lang=lang)
     icon_name = await download_image_name(meta["icon_url"]) if "icon_url" in meta else ""
     logo_name = icon_name or (covers[appid] if appid in covers else "")
     return RankingBadge(

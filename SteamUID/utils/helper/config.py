@@ -78,6 +78,11 @@ def griddb_cover_key() -> str:
     return SteamConfig.get_config("GridDBApiKey").data.strip()
 
 
+def force_steamcmd_game_name() -> bool:
+    """是否在低频查询与实际推送中优先使用 steamcmd 译名。"""
+    return bool(SteamConfig.get_config("ForceSteamCMDGameName").data)
+
+
 def push_options() -> PushOptions:
     """汇总一次推送所需的全部配置项。"""
     return PushOptions(
@@ -85,6 +90,7 @@ def push_options() -> PushOptions:
         cd_seconds=SteamConfig.get_config("NotifyCD").data * 60,
         mode=SteamConfig.get_config("PushMode").data,
         with_cover=SteamConfig.get_config("PushImage").data,
+        force_steamcmd_name=force_steamcmd_game_name(),
         region_cc=region_cc(),
         region_lang=region_lang(),
         griddb_key=griddb_cover_key(),

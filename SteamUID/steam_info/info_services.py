@@ -8,7 +8,7 @@ from ..steam_config import SteamConfig
 from ..utils.api.models import PlayerSummary, OwnedGamesPayload
 from ..utils.helper.level import load_level_badge
 from ..utils.helper.price import sum_library_value
-from ..utils.helper.config import region, region_cc, use_profile_card_bg
+from ..utils.helper.config import region, region_cc, region_lang, use_profile_card_bg
 from ..utils.helper.command import resolve_steamid64
 from ..utils.helper.profile import load_custom_url, load_profile_assets, load_card_background_name
 from ..utils.helper.steamid import (
@@ -20,6 +20,7 @@ from ..utils.helper.steamid import (
     steamid64_to_community_url,
 )
 from ..utils.helper.steam_api import fetch_owned_games, fetch_player_summaries
+from ..utils.helper.game_detail import preferred_game_name
 from ..utils.render.html.info_card import InfoCard, render_info_card
 from ..utils.render.html.static_assets import get_img_cache_url, get_default_avatar_url
 
@@ -27,10 +28,15 @@ _SECONDS_PER_YEAR = 31557600.0
 _MINUTES_PER_HOUR = 60
 
 
-def _presence(player: PlayerSummary) -> tuple[str, str]:
+async def _presence(player: PlayerSummary) -> tuple[str, str]:
     """返回 (状态文案, 色调)；游戏中优先于在线状态。"""
     if "gameid" in player and player["gameid"]:
         title = player["gameextrainfo"] if "gameextrainfo" in player else ""
+        title = await preferred_game_name(
+            player["gameid"],
+            fallback=title or player["gameid"],
+            lang=region_lang(),
+        )
         return (f"游戏中：{title}" if title else "游戏中"), "ingame"
     state = player["personastate"] if "personastate" in player else 0
     if state != 0:
@@ -80,7 +86,7 @@ async def build_steam_info(steamid64: str) -> bytes:
         sum_library_value(appids, cc=region_cc()),
         load_level_badge(profile.level),
     )
-    status_text, status_tone = _presence(player)
+    status_text, status_tone = await _presence(player)
     country = player["loccountrycode"] if "loccountrycode" in player else ""
     created = player["timecreated"] if "timecreated" in player else 0
 

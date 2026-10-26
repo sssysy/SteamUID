@@ -34,7 +34,12 @@ from ..utils.helper.profile import SteamProfile, load_profile_assets, load_card_
 from ..utils.helper.steam_api import fetch_wishlist
 from ..utils.helper.auth_token import run_with_token
 from ..utils.helper.game_cover import resolve_cover_names
-from ..utils.helper.game_detail import load_store_detail, resolve_game_names
+from ..utils.helper.game_detail import (
+    load_store_detail,
+    resolve_game_names,
+    preferred_game_name,
+    preferred_game_names,
+)
 from ..utils.render.html.wishlist import (
     WishlistCard,
     WishlistEntry,
@@ -176,6 +181,11 @@ async def build_wishlist_card(ev: Event, *, allow_at: bool) -> bytes:
         load_card_background_name(steamid64),
     )
     names = await resolve_game_names(appids, cc=cc, lang=region_lang(), details=dict(zip(appids, details)))
+    names = await preferred_game_names(
+        appids,
+        fallbacks={appid: names[appid] if appid in names else appid for appid in appids},
+        lang=region_lang(),
+    )
 
     currency = region().currency
     entries = [
@@ -215,6 +225,11 @@ async def _checked_target(bot: Bot, ev: Event) -> tuple[str, GameRef]:
     return steamid64, ref
 
 
+async def _display_name(ref: GameRef) -> str:
+    """愿望单回执的游戏名：开关开启时优先 steamcmd，失败保留搜索命中名。"""
+    return await preferred_game_name(ref.appid, fallback=ref.name, lang=region_lang())
+
+
 async def _load_own_items(steamid64: str) -> list[WishlistItem]:
     """增删校验用本人凭据读愿望单；读取失败直接报错，不盲目写入。"""
     items = await _fetch_by_token(steamid64)
@@ -231,20 +246,22 @@ def _in_wishlist(items: Sequence[WishlistItem], appid: str) -> bool:
 async def add_wishlist_game(bot: Bot, ev: Event) -> None:
     """steam增加愿望单<游戏名/AppID>：把游戏加入自己账号的愿望单。"""
     steamid64, ref = await _checked_target(bot, ev)
+    display_name = await _display_name(ref)
     if _in_wishlist(await _load_own_items(steamid64), ref.appid):
-        await bot.send(f"该游戏已在愿望单中：{ref.name}({ref.appid})")
+        await bot.send(f"该游戏已在愿望单中：{display_name}({ref.appid})")
         return
 
     if await run_with_token(steamid64, partial(add_to_wishlist, appid=int(ref.appid), base_url=api_base())) is None:
         raise ValueError(_AUTH_EXPIRED)
-    await bot.send(f"已将 {ref.name}({ref.appid}) 加入愿望单")
+    await bot.send(f"已将 {display_name}({ref.appid}) 加入愿望单")
 
 
 async def remove_wishlist_game(bot: Bot, ev: Event) -> None:
     """steam删除愿望单<游戏名/AppID>：把游戏移出自己账号的愿望单。"""
     steamid64, ref = await _checked_target(bot, ev)
+    display_name = await _display_name(ref)
     if not _in_wishlist(await _load_own_items(steamid64), ref.appid):
-        await bot.send(f"该游戏不在愿望单中：{ref.name}({ref.appid})")
+        await bot.send(f"该游戏不在愿望单中：{display_name}({ref.appid})")
         return
 
     if (
@@ -252,4 +269,4 @@ async def remove_wishlist_game(bot: Bot, ev: Event) -> None:
         is None
     ):
         raise ValueError(_AUTH_EXPIRED)
-    await bot.send(f"已将 {ref.name}({ref.appid}) 从愿望单移除")
+    await bot.send(f"已将 {display_name}({ref.appid}) 从愿望单移除")

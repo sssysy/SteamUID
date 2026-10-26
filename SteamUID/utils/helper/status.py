@@ -54,6 +54,7 @@ class PushOptions:
     cd_seconds: int
     mode: str
     with_cover: bool
+    force_steamcmd_name: bool
     region_cc: str
     region_lang: str
     griddb_key: str

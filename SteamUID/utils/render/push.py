@@ -4,6 +4,7 @@
 """
 
 import asyncio
+from dataclasses import replace
 from collections.abc import Sequence
 
 from gsuid_core.logger import logger
@@ -32,6 +33,7 @@ from .html.game_status import (
 )
 from ..helper.game_cover import CoverResolution, resolve_cover
 from .html.static_assets import get_img_cache_url, get_default_avatar_url
+from ..helper.game_detail import preferred_game_names
 
 _TAG = "[Steam·状态推送]"
 _PREFIX = "[Steam]"
@@ -47,10 +49,44 @@ async def dispatch_events(events: Sequence[UserStatusEvent], *, options: PushOpt
     deliveries = await collect_deliveries(events, options)
     if not deliveries:
         return
+    deliveries = await _localize_deliveries(deliveries, options)
     if is_image_mode(options.mode):
         await _dispatch_image(deliveries, options)
     else:
         await _dispatch_text(deliveries, options)
+
+
+async def _localize_deliveries(deliveries: Sequence[Delivery], options: PushOptions) -> list[Delivery]:
+    """只对确定要发送的游戏事件请求译名；同一 appid 在一次推送中只查一次。"""
+    if not options.force_steamcmd_name:
+        return list(deliveries)
+    game_entries = [
+        (event, group_name)
+        for delivery in deliveries
+        for event, group_name in delivery.entries
+        if event.appid and event.kind in GAME_KINDS | {ACHIEVEMENT_KIND}
+    ]
+    if not game_entries:
+        return list(deliveries)
+    appids = list(dict.fromkeys(event.appid for event, _ in game_entries))
+    fallbacks: dict[str, str] = {}
+    for event, _ in game_entries:
+        if event.appid not in fallbacks:
+            fallbacks[event.appid] = event.game_name or event.appid
+    localized = await preferred_game_names(appids, fallbacks=fallbacks, lang=options.region_lang, force=True)
+    localized_deliveries: list[Delivery] = []
+    for delivery in deliveries:
+        entries = tuple(
+            (
+                replace(event, game_name=localized[event.appid])
+                if event.appid in localized and event.kind in GAME_KINDS | {ACHIEVEMENT_KIND}
+                else event,
+                group_name,
+            )
+            for event, group_name in delivery.entries
+        )
+        localized_deliveries.append(Delivery(sub=delivery.sub, entries=entries))
+    return localized_deliveries
 
 
 async def _dispatch_text(deliveries: Sequence[Delivery], options: PushOptions) -> None:
