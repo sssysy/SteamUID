@@ -32,6 +32,7 @@ from ..api.public import (
     get_global_achievement_percentages,
 )
 from ...steam_config import SteamConfig
+from ..api.endpoints import COMMUNITY_ASSETS_TEMPLATE
 from ..database.model_cache import SteamCache
 
 # GetPlayerSummaries 单次请求的 steamid 上限，写死不再配置
@@ -39,6 +40,24 @@ SUMMARY_CHUNK = 50
 _LANG = "schinese"
 _SCHEMA_CACHE_TYPE = "achievement_schema"
 _PERCENT_PATTERN = re.compile(r"\d+(?:\.\d+)?")
+_LEGACY_ACHIEVEMENT_ICON_PATH = "/steamcommunity/public/images/apps/"
+
+
+def _normalize_achievement_icon_url(url: str) -> str:
+    """把 Steam 旧版成就图标路径迁到 community_assets CDN。"""
+    if _LEGACY_ACHIEVEMENT_ICON_PATH not in url:
+        return url
+    relative_path = url.split(_LEGACY_ACHIEVEMENT_ICON_PATH, 1)[1]
+    return COMMUNITY_ASSETS_TEMPLATE.format(path=f"apps/{relative_path}")
+
+
+def _normalize_achievement_icons(entries: list[AchievementSchemaEntry]) -> None:
+    """同时迁移已解锁与灰化图标；缓存命中也执行，修复历史缓存。"""
+    for entry in entries:
+        if "icon" in entry:
+            entry["icon"] = _normalize_achievement_icon_url(entry["icon"])
+        if "icongray" in entry:
+            entry["icongray"] = _normalize_achievement_icon_url(entry["icongray"])
 
 
 async def _request_summaries(chunk: list[str], key: str) -> list[PlayerSummary]:
@@ -190,10 +209,12 @@ async def fetch_achievement_schema(
     """取成就定义；命中持久缓存直接返回，未命中才走密钥池并回写。"""
     cached = await SteamCache.get_value(_SCHEMA_CACHE_TYPE, appid)
     if cached:
-        return msgspec.json.decode(cached, type=list[AchievementSchemaEntry])
+        entries = msgspec.json.decode(cached, type=list[AchievementSchemaEntry])
+    else:
+        entries = await request_with_api_key(partial(_request_schema, appid), keys, cooldown_seconds=cooldown)
 
-    entries = await request_with_api_key(partial(_request_schema, appid), keys, cooldown_seconds=cooldown)
-    if entries:
+    _normalize_achievement_icons(entries)
+    if not cached and entries:
         encoded = msgspec.json.encode(entries).decode("utf-8")
         await SteamCache.upsert(_SCHEMA_CACHE_TYPE, appid, encoded, int(time.time()))
     return entries
