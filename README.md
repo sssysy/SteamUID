@@ -22,6 +22,9 @@
 
 > **注意：该插件为 [早柚核心(gsuid_core)](https://github.com/Genshin-bots/gsuid_core) 的扩展，具体安装方式可参考上方安装文档**
 >
+> **如果已经是最新版本的 `gsuid_core`，可以直接对 bot 发送 `core安装插件SteamUID`，然后重启 Core 以应用安装**
+
+> [!IMPORTANT]
 > 插件需要配置有效的 Steam Web API Key 才可正常使用
 >
 > 若从本插件 0.1.0 版本升级至 2.x 版本请手动执行一次 `steam迁移订阅状态` 迁移数据库
