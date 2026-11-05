@@ -13,18 +13,17 @@ from ..downloader import download
 from ..helper.bind import get_binds, session_ids, is_logged_in
 from ..helper.config import hide_id
 from .html.bind_list import BindCardItem, render_bind_list
-from ..helper.command import sender_text
 from ..helper.profile import load_profile_assets, load_initiator_card_background_name
 from ..helper.steamid import steamid64_to_friend_code
 from .html.static_assets import get_img_cache_url, resolve_card_bg_url, get_default_avatar_url
 from ..database.model_bind import SteamBind
+from ..helper.user_identity import load_user_identity
 
 _TAG = "[Steam·账户绑定]"
 
 
-async def _resolve_qq_avatar(ev: Event) -> str:
-    """群聊头像经 downloader 落 img_cache 后取直链，缺失回落默认头像。"""
-    url = sender_text(ev, "avatar")
+async def _resolve_user_avatar(url: str) -> str:
+    """目标用户头像经 downloader 落 img_cache 后取直链，缺失回落默认头像。"""
     if url.startswith(("http://", "https://")):
         path = await download(url, kind="image")
         if path is not None:
@@ -78,15 +77,15 @@ async def _build_card_items(binds: Sequence[SteamBind], group_id: str, *, force:
 async def render_bind_card_image(ev: Event, user_id: str, *, force: bool = False) -> bytes:
     """渲染该会话内 user_id 的绑定列表卡片（与 steam查看 同款）；force 为真时重下资料图片。"""
     binds = await get_binds(ev, user_id)
-    items, card_bg_name = await asyncio.gather(
+    identity, items, card_bg_name = await asyncio.gather(
+        load_user_identity(ev, user_id),
         _build_card_items(binds, session_ids(ev)[2], force=force),
         load_initiator_card_background_name(ev, force=force),
     )
-    user_name = sender_text(ev, "nickname") or user_id
-    qq_avatar_url = await _resolve_qq_avatar(ev)
+    qq_avatar_url = await _resolve_user_avatar(identity.avatar_url)
     return await render_bind_list(
         items,
-        user_name=user_name,
+        user_name=identity.name,
         qq_avatar_url=qq_avatar_url,
         card_bg_url=resolve_card_bg_url(card_bg_name),
     )

@@ -13,5 +13,5 @@ login_sv = SV("Steam登录")
 @login_sv.on_fullmatch("登录", block=True)
 @command_guard_at
 async def steam_login(bot: Bot, ev: Event) -> None:
-    """扫码登录：发送二维码并等待手机端确认。"""
+    """扫码登录：风险确认通过后发送二维码并等待手机端确认。"""
     await start_qr_login(bot, ev)

@@ -1,4 +1,4 @@
-"""扫码登录流程：发起会话、发送二维码、轮询、落库与自动绑定。"""
+"""扫码登录流程：风险确认、发起会话、发送二维码、轮询、落库与自动绑定。"""
 
 import json
 import time
@@ -23,6 +23,13 @@ _TAG = "[Steam·扫码登录]"
 _PREFIX = "[Steam]"
 # 提示文案的有效期与轮询上限共用它，改动时文案自动同步
 _QR_TTL_SECONDS = 120.0
+_CONFIRM_TIMEOUT_SECONDS = 180.0
+_CONFIRM_TEXT = "确认继续登录"
+_RISK_NOTICE = (
+    "【注意】Steam 登录会使账号在异地机器、异地IP上登录账号，而 Steam 对此情况极易产生异地红信。\n"
+    "如果不需要使用帮助中的高级功能，使用【Steam绑定】命令即可使用大部分功能\n"
+    "如果确认风险并希望继续登录，请在3分钟内发送【确认继续登录】，否则静默或发送任意文本取消登录"
+)
 
 
 def _at_user(ev: Event) -> Message:
@@ -32,6 +39,11 @@ def _at_user(ev: Event) -> Message:
 async def _notify(bot: Bot, ev: Event, text: str) -> None:
     """按 @用户 + [Steam] 的固定格式发一条普通消息。"""
     await bot.send([_at_user(ev), MessageSegment.text(f" {_PREFIX} {text}")])
+
+
+async def _cancel_login(bot: Bot, ev: Event) -> None:
+    """按确认阶段的固定文案告知登录已取消。"""
+    await bot.send([_at_user(ev), MessageSegment.text(" 已取消 Steam 登录！")])
 
 
 def _login_hint(user_id: str) -> str:
@@ -93,7 +105,12 @@ async def _complete_login(bot: Bot, ev: Event, ready: QrReady) -> None:
 
 
 async def start_qr_login(bot: Bot, ev: Event) -> None:
-    """扫码登录主流程：二维码 → 轮询确认 → 落库绑定 → 回卡片。"""
+    """扫码登录主流程：风险确认 → 二维码 → 轮询确认 → 落库绑定 → 回卡片。"""
+    resp = await bot.receive_resp(_RISK_NOTICE, timeout=_CONFIRM_TIMEOUT_SECONDS)
+    if resp is None or resp.text.strip() != _CONFIRM_TEXT:
+        await _cancel_login(bot, ev)
+        return
+
     async with SteamQrLogin(api_base_url=api_base()) as session:
         challenge = await session.begin()
         image = await render_qr_png(challenge["challenge_url"])

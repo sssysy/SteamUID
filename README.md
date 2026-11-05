@@ -5,7 +5,7 @@
     <img src="ICON.png" width="227" height="227" alt="SteamUID">
   </a>
 </p>
-<h1 align="center">SteamUID 2.0.0</h1>
+<h1 align="center">SteamUID 2.1.0</h1>
 <h4 align="center">基于 gsuid_core 的 全功能 Steam 插件</h4>
 
 <p align="center">
@@ -48,6 +48,7 @@
 | 命令 | 说明 |
 |------|:------:|
 | `steam绑定 12345678` | 绑定 Steam 账号 |
+| `steam批量绑定 12345678/7656xxxx,23456789/7656xxxxxx` | 管理员及以上批量绑定，多个用中英文逗号分隔，斜杠可用正反斜杠 |
 | `steam解绑 12345678` | 解绑当前会话选中的 Steam 账号 |
 | `steam登录` | 扫码登录 Steam 账号 |
 | `steam查看` | 查看会话内已绑定的 Steam 账号 |

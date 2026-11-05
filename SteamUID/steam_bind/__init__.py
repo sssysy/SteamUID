@@ -14,9 +14,22 @@ from .bind_services import (
     cancel_openid_login,
     request_openid_login,
 )
+from .batch_bind_services import ensure_admin, parse_batch_bind, batch_bind_accounts
 from ..utils.helper.command import command_guard, resolve_target, command_guard_at
 
 bind_sv = SV("Steam绑定账号")
+
+
+@bind_sv.on_fullmatch("批量绑定", block=True)
+@bind_sv.on_prefix("批量绑定", block=True)
+@command_guard
+async def steam_batch_bind(bot: Bot, ev: Event) -> None:
+    """steam批量绑定<用户id/steamid>,...：管理员批量写入当前会话绑定。"""
+    ensure_admin(ev)
+    result = await batch_bind_accounts(ev, parse_batch_bind(ev.text))
+    lines = [f"批量绑定执行完毕，已绑定 {result.bound} 个账户"]
+    lines.extend(f"用户 {user_id} 绑定失败：对应 Steam 账号已被绑定" for user_id in result.conflicts)
+    await bot.send("\n".join(lines))
 
 
 @bind_sv.on_command("绑定")
