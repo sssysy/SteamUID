@@ -234,6 +234,26 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后卡片底图优先用目标账号的个人资料背景",
         False,
     ),
+    "_AsfDivider": GsDivider(
+        "ASF 服务相关配置",
+        "",
+    ),
+    "ASFEnabled": GsBoolConfig(
+        "启用 ASF 相关功能",
+        "关闭后所有 ASF 功能不可用",
+        False,
+    ),
+    "ASFServerURL": GsStrConfig(
+        "ASF 服务器地址",
+        "填写 ASF 服务根地址，例如 http://127.0.0.1:1242；插件会自动拼 /Api",
+        "http://127.0.0.1:1242",
+    ),
+    "ASFPassword": GsStrConfig(
+        "ASF 服务器密码（可选）",
+        "对应 ASF 的 IPCPassword，留空表示无需认证",
+        "",
+        secret=True,
+    ),
 }
 
 
