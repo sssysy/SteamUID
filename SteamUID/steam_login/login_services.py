@@ -25,6 +25,7 @@ _PREFIX = "[Steam]"
 _QR_TTL_SECONDS = 120.0
 _CONFIRM_TIMEOUT_SECONDS = 180.0
 _CONFIRM_TEXT = "确认继续登录"
+_ASF_HINT = "当前已启用 ASF 功能，建议使用 【steamasf登录】 命令登录 Steam 而不是此命令！\n"
 _RISK_NOTICE = (
     "【注意】Steam 登录会使账号在异地机器、异地IP上登录账号，而 Steam 对此情况极易产生异地红信。\n"
     "如果不需要使用帮助中的高级功能，使用【Steam绑定】命令即可使用大部分功能\n"
@@ -106,7 +107,8 @@ async def _complete_login(bot: Bot, ev: Event, ready: QrReady) -> None:
 
 async def start_qr_login(bot: Bot, ev: Event) -> None:
     """扫码登录主流程：风险确认 → 二维码 → 轮询确认 → 落库绑定 → 回卡片。"""
-    resp = await bot.receive_resp(_RISK_NOTICE, timeout=_CONFIRM_TIMEOUT_SECONDS)
+    notice = _ASF_HINT + _RISK_NOTICE if SteamConfig.get_config("ASFEnabled").data else _RISK_NOTICE
+    resp = await bot.receive_resp(notice, timeout=_CONFIRM_TIMEOUT_SECONDS)
     if resp is None or resp.text.strip() != _CONFIRM_TEXT:
         await _cancel_login(bot, ev)
         return
