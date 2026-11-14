@@ -27,9 +27,6 @@
 > [!IMPORTANT]
 > 插件需要配置有效的 Steam Web API Key 才可正常使用
 >
-> 若从本插件 0.1.0 版本升级至 2.x 版本请手动执行一次 `steam迁移订阅状态` 迁移数据库
-> 新安装用户请忽略此提示
->
 > 此插件需要可连接至 Steam 社区的网络环境，如无法直连请在插件设置中配置代理
 >
 > 🚧 项目快速迭代中，有漏洞可提issue或pr 🚧
@@ -147,6 +144,7 @@
 
 - 本项目仅供学习使用，请勿用于商业用途
 - [GPL-3.0 License](LICENSE)
+- 若 issue 回复不及时请进群 [929275476](https://qm.qq.com/cgi-bin/qm/qr?k=d1oNQ1wePPbCkhPbP3vZN-DsXDD0hG61&authKey=0PdxKz%2BMbWgy7kwcF9OB%2B%2BrgOWKuREFG6tgJuWpr%2BzN8gtBTlGR6wDbk6N0W3bL1&noverify=0&group_code=929275476) @我
 
 ## 丨QA
 #### 1. 插件安装完毕后大部分功能无法使用？
@@ -158,7 +156,7 @@
 > 3. 找到游戏appid对应的 `appmanifest_{appid}.acf` 文件
 >   (appid可通过`游戏库` - `右键游戏` - `属性` - `更新` - `APP ID` 获取)
 > 4. 将文件上传，并引用文件发送 `steam更新acf` 指令
->   **需要core适配器支持文件引用功能**
+>   **（需要core适配器支持文件引用功能）**
 > 5. 插件返回新的acf文件后替换本地同名文件即可
 
 ## 致谢

@@ -30,14 +30,13 @@ async def steam_clear_cache(bot: Bot, ev: Event) -> None:
     await clear_cache(bot, ev.regex_dict["target"])
 
 
-_CLEAN_DAYS = SteamConfig.get_config("CacheCleanDays").data
-
-# 0 表示不清理，且 interval 的 days 不能为 0，直接不注册任务
-if _CLEAN_DAYS > 0:
-
-    @scheduler.scheduled_job("interval", days=_CLEAN_DAYS)
-    async def clean_steam_cache_job() -> None:
-        cutoff = int(time.time()) - _CLEAN_DAYS * 86400
-        deleted = await SteamCache.delete_expired(cutoff, exclude_types=(HISTORY_LOW_CACHE_TYPE,))
-        removed = await clean_cache_files(cutoff)
-        logger.info(f"{_TAG} 清理 {_CLEAN_DAYS} 天前的缓存，删除 {deleted} 行 / {removed} 个文件")
+@scheduler.scheduled_job("interval", hours=1)
+async def clean_steam_cache_job() -> None:
+    clean_days = SteamConfig.get_config("CacheCleanDays").data
+    # 0 表示不清理；此时 cutoff 会等于当前时间，必须提前返回
+    if clean_days <= 0:
+        return
+    cutoff = int(time.time()) - clean_days * 86400
+    deleted = await SteamCache.delete_expired(cutoff, exclude_types=(HISTORY_LOW_CACHE_TYPE,))
+    removed = await clean_cache_files(cutoff)
+    logger.info(f"{_TAG} 清理 {clean_days} 天前的缓存，删除 {deleted} 行 / {removed} 个文件")
