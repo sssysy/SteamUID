@@ -17,6 +17,7 @@ from ..utils.asf.api import (
     send_input,
     update_bot_config,
 )
+from ..utils.asf.client import AsfEndpoint
 from ..utils.asf.models import AsfBot, AsfEOlineStatus, AsfEUserInputType, AsfEFarmingPreferences
 from ..utils.helper.asf import asf_endpoint, asf_settings
 from ..utils.helper.bind import session_ids
@@ -56,8 +57,11 @@ def _bot_name(ev: Event) -> str:
 
 
 def _steamid_of(bot_state: AsfBot) -> str:
-    raw = bot_state["SteamID"]
-    return str(raw)
+    for key in ("s_SteamID", "SteamID"):
+        raw = bot_state[key]
+        if raw is not None and str(raw) != "0":
+            return str(raw)
+    raise ValueError("ASF 尚未返回有效 SteamID")
 
 
 async def _wait_for_confirm(bot: Bot, ev: Event) -> bool:
@@ -126,7 +130,8 @@ async def _wait_for_qr(
         if url is None:
             required = state["RequiredInput"]
             if required == int(_QR_INPUT):
-                await send_input(endpoint, bot_name, _QR_INPUT, "Y")
+                if not await _submit_qr_choice(endpoint, bot_name):
+                    raise ValueError("ASF 扫码选择提交失败，请重试")
             elif required in (int(AsfEUserInputType.LOGIN), int(AsfEUserInputType.PASSWORD)):
                 raise ValueError("ASF 正在等待账号密码，无法进入扫码流程；请检查 ASF 是否处于无头模式")
             else:
@@ -147,6 +152,23 @@ async def _wait_for_qr(
         await asyncio.sleep(_POLL_INTERVAL_SECONDS)
 
     raise ValueError("ASF 登录超时，请重新发起")
+
+
+async def _submit_qr_choice(endpoint: AsfEndpoint, bot_name: str) -> bool:
+    """提交 Y 后确认 ASF 已离开 QrCodeLogin 等待态。"""
+    await send_input(endpoint, bot_name, _QR_INPUT, "Y")
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        await asyncio.sleep(1.0)
+        bots = await get_bots(endpoint, bot_name)
+        if bot_name not in bots:
+            return False
+        state = bots[bot_name]
+        if state["QrChallengeURL"] is not None:
+            return True
+        if state["RequiredInput"] != int(_QR_INPUT):
+            return True
+    return False
 
 
 async def _finish_login(bot_name: str, bot: Bot, ev: Event) -> None:

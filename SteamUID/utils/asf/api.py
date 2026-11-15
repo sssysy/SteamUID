@@ -51,15 +51,25 @@ def _read_bot(name: str, raw: object) -> AsfBot:
         QrChallengeURL=_optional_str(raw["QrChallengeURL"]),
         IsConnectedAndLoggedOn=bool(raw["IsConnectedAndLoggedOn"]),
         HasMobileAuthenticator=bool(raw["HasMobileAuthenticator"]),
-        SteamID=raw["SteamID"],
+        KeepRunning=bool(raw["KeepRunning"]),
+        SteamID=_optional_id(raw["SteamID"]),
+        s_SteamID=_optional_str(raw["s_SteamID"]),
     )
 
 
 def _optional_str(raw: object) -> str | None:
     if raw is None:
         return None
+    if isinstance(raw, int):
+        return str(raw)
     if not isinstance(raw, str):
         raise ValueError("ASF 字段类型异常")
+    return raw
+
+
+def _optional_id(raw: object) -> int | str:
+    if not isinstance(raw, (int, str)):
+        raise ValueError("ASF SteamID 字段类型异常")
     return raw
 
 
@@ -107,8 +117,11 @@ async def send_input(
 
 
 async def start_bot(endpoint: AsfEndpoint, bot_name: str) -> None:
-    """启动 bot；已在运行时 ASF 会直接返回成功。"""
-    await _post_action(endpoint, bot_action_path(bot_name, "Start"))
+    """启动 bot；已在运行时 ASF 返回成功标记为 false，按已启动处理。"""
+    response = await request_asf(endpoint, "POST", bot_action_path(bot_name, "Start"))
+    result: AsfGenericResponse = json.loads(response.content)
+    if not result["Success"] and "already running" not in (result["Message"] or "").lower():
+        raise ValueError("ASF 启动 bot 失败")
 
 
 async def stop_bot(endpoint: AsfEndpoint, bot_name: str) -> None:

@@ -50,7 +50,10 @@ class AsfBot(TypedDict):
     QrChallengeURL: str | None
     IsConnectedAndLoggedOn: bool
     HasMobileAuthenticator: bool
+    KeepRunning: bool
+    # ASF 同时下发 SteamID 与 s_SteamID；登录前均可能为空或 "0"
     SteamID: int | str
+    s_SteamID: str | int | None
 
 
 class AsfBotInputRequest(TypedDict):
